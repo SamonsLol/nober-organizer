@@ -1,9 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarDays, ExternalLink, FolderOpen, LayoutGrid, NotebookPen, Search, X } from "lucide-react";
+import { CalendarDays, ExternalLink, FolderOpen, LayoutGrid, Loader2, NotebookPen, Search, X } from "lucide-react";
 import { AffineInline, AffineLink, openAffine, type AffineDoc } from "@/components/affine/affine";
 import { FilterMenu, Section, ViewTabs, cn } from "@/components/blocks/primitives";
+import { useRouter } from "next/navigation";
+import { toast } from "@/components/shell/toast";
+import { prepareClassNote } from "@/lib/actions/affine";
 import { AFFINE_HOME } from "@/lib/affine";
 import { capitalize, fmt, friendlyDay, relativeAgo } from "@/lib/dates";
 import type { NotesPageData } from "@/lib/data";
@@ -122,10 +125,14 @@ export function NotesView({ data }: { data: NotesPageData }) {
                     <div className="truncate text-[13px]">{course.name}</div>
                     <div className="text-[11.5px] text-faint">{capitalize(friendlyDay(c.start, now))} · {fmt(c.start, "HH:mm")}</div>
                   </div>
-                  <AffineLink href={doc.url} {...doc} className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-pill px-2.5 text-[11.5px] hover:bg-pill-hover">
-                    <NotebookPen className="size-3.5" />
-                    Preparar
-                  </AffineLink>
+                  {!(c.external && c.href) && data.affine.connected ? (
+                    <PrepareButton courseId={course.id} start={c.start} doc={doc} />
+                  ) : (
+                    <AffineLink href={doc.url} {...doc} className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-pill px-2.5 text-[11.5px] hover:bg-pill-hover">
+                      <NotebookPen className="size-3.5" />
+                      {c.external && c.href ? "Abrir" : "Preparar"}
+                    </AffineLink>
+                  )}
                 </li>
               );
             })}
@@ -133,7 +140,7 @@ export function NotesView({ data }: { data: NotesPageData }) {
         </Section>
 
         <Section title="Editados hace poco">
-          {data.recentDocs.length === 0 ? <p className="text-[12.5px] text-faint">Nada todavía. En la Fase 4 se listarán aquí los documentos que edites en AFFiNE.</p> : null}
+          {data.recentDocs.length === 0 ? <p className="text-[12.5px] text-faint">Aquí aparecen los apuntes que crees desde la app (con AFFiNE conectado en Ajustes).</p> : null}
           <ul className="flex flex-col gap-0.5">
             {data.recentDocs.map((doc) => {
               const c = doc.courseId ? courseById[doc.courseId] : undefined;
@@ -244,5 +251,28 @@ function ByCourse({ lectures, courses, current, onOpen }: { lectures: Lecture[];
         );
       })}
     </div>
+  );
+}
+
+/** «Preparar» con AFFiNE conectado: crea la clase y su apunte, y lo abre en el panel. */
+function PrepareButton({ courseId, start, doc }: { courseId: string; start: string; doc: AffineDoc }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      onClick={async () => {
+        setBusy(true);
+        const r = await prepareClassNote({ courseId, start });
+        setBusy(false);
+        if (!r.ok) return toast(r.error);
+        openAffine({ ...doc, url: r.data.url });
+        router.refresh();
+      }}
+      disabled={busy}
+      className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-accent px-2.5 text-[11.5px] font-medium text-white hover:bg-accent-hover disabled:opacity-60"
+    >
+      {busy ? <Loader2 className="size-3.5 animate-spin" /> : <NotebookPen className="size-3.5" />}
+      {busy ? "Creando…" : "Preparar"}
+    </button>
   );
 }

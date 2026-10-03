@@ -2,10 +2,10 @@ import "server-only";
 import { addDays, isWithinInterval, parseISO, startOfDay } from "date-fns";
 import { cache } from "react";
 import { buildMock, type MockDB } from "@/lib/mock/seed";
-import { hasDatabase } from "@/lib/db/prisma";
+import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { getSession, requireUserId } from "@/lib/session";
 import { loadUserDB } from "@/lib/data/source";
-import { AFFINE_BASE } from "@/lib/affine";
+import { AFFINE_BASE, AFFINE_WORKSPACE } from "@/lib/affine";
 import { courseGrade, periodAverage, yearAverage } from "@/lib/grades";
 import { dayKey, toDate } from "@/lib/dates";
 import { buildItems, expandClasses, holidayKeys } from "@/lib/calendar";
@@ -21,6 +21,16 @@ const db = cache(async (): Promise<MockDB> => {
   if (!hasDatabase()) return buildMock(new Date());
   return loadUserDB(await requireUserId());
 });
+
+/** Estado de la conexión con AFFiNE (nunca el token). */
+export const getAffineStatus = cache(async () => {
+  if (!hasDatabase()) return { connected: false, workspace: AFFINE_WORKSPACE, customWorkspace: "" };
+  const userId = await requireUserId();
+  const s = await prisma.settings.findUnique({ where: { userId }, select: { affineToken: true, affineWorkspace: true } });
+  return { connected: Boolean(s?.affineToken), workspace: s?.affineWorkspace || AFFINE_WORKSPACE, customWorkspace: s?.affineWorkspace ?? "" };
+});
+
+export type AffineStatus = Awaited<ReturnType<typeof getAffineStatus>>;
 
 export async function getProfile() {
   const d = await db();
@@ -271,6 +281,7 @@ export async function getCourseDetail(slug: string) {
     upcoming,
     resources: d.resources.filter((r) => r.courseId === course.id),
     docs: d.recentDocs.filter((r) => r.courseId === course.id),
+    affine: await getAffineStatus(),
   };
 }
 
@@ -331,6 +342,7 @@ export async function getNotesPage() {
     topics: d.topics,
     nextClasses,
     affineBase: AFFINE_BASE,
+    affine: await getAffineStatus(),
   };
 }
 
@@ -406,6 +418,7 @@ export async function getSettings() {
     periodUsage: Object.fromEntries(d.periods.map((p) => [p.id, d.assessments.filter((a) => a.periodId === p.id).length])) as Record<string, number>,
     affineBase: AFFINE_BASE,
     account: hasDatabase() ? { email: (await getSession())?.user.email ?? "" } : null,
+    affine: await getAffineStatus(),
   };
 }
 

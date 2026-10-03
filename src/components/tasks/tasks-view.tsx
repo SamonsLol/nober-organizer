@@ -471,7 +471,7 @@ function ListRow({ t, now, courseById, openId, onOpen, onToggle }: RowProps & { 
         <div className="mt-1 md:hidden"><CourseTag course={t.courseId ? courseById[t.courseId] : undefined} /></div>
       </div>
       <div className="hidden min-w-0 md:block"><CourseTag course={t.courseId ? courseById[t.courseId] : undefined} /></div>
-      <span className="hidden text-[12.5px] text-muted md:block">{TASK_TYPE[t.type].label}</span>
+      <span className="hidden text-[12.5px] text-muted md:block mb-4 flex flex-wrap items-center gap-2">{TASK_TYPE[t.type].label}</span>
       <span className={cn("hidden text-[12.5px] md:block", PRIORITY[t.priority].tone)}>{PRIORITY[t.priority].label}</span>
       <span className="hidden whitespace-nowrap text-[12.5px] text-muted md:block">{dueLabel(t)}</span>
       <span className={cn("whitespace-nowrap text-right text-[12px]", toneClass[dl.tone])}>{dl.label}</span>

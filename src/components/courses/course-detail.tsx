@@ -289,7 +289,7 @@ function PeriodBars({ d }: { d: CourseDetail }) {
 /* ───────────── Clases ───────────── */
 
 export function ClassesTab({ d }: { d: CourseDetail }) {
-  return <LectureGrid course={d.course} lectures={d.lectures} topics={d.topics} schedule={d.schedule} now={d.now} />;
+  return <LectureGrid course={d.course} lectures={d.lectures} topics={d.topics} schedule={d.schedule} now={d.now} affineConnected={d.affine.connected} />;
 }
 
 /* ───────────── Temas ───────────── */

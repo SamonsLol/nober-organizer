@@ -3,14 +3,15 @@
 import { useEffect, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { NotebookPen, Pencil, Plus } from "lucide-react";
-import { AffineLink } from "@/components/affine/affine";
+import { Loader2, NotebookPen, Pencil, Plus } from "lucide-react";
+import { AffineLink, openAffine } from "@/components/affine/affine";
 import { GhostAdd, Section, Tag, cn } from "@/components/blocks/primitives";
 import { PREP, RESOURCE_KIND } from "@/components/blocks/shared";
 import { Dialog, DialogFooter, Field, TitleRow, inputCls } from "@/components/blocks/dialog";
 import { ResourceEditor } from "@/components/resources/resource-editor";
 import { toast } from "@/components/shell/toast";
 import { deleteLecture, deleteTopic, saveLecture, saveTopic } from "@/lib/actions/study";
+import { createLectureDoc } from "@/lib/actions/affine";
 import { AFFINE_HOME } from "@/lib/affine";
 import { capitalize, fmt, relativeAgo, toDate } from "@/lib/dates";
 import type { ClassSchedule, Course, Lecture, Preparation, Resource, Topic } from "@/lib/types";
@@ -159,14 +160,27 @@ function TopicEditor({ topic: t, courseId, onClose }: { topic?: Topic; courseId:
 
 /* ───────────── Clases ───────────── */
 
-export function LectureGrid({ course, lectures, topics, schedule, now }: {
+export function LectureGrid({ course, lectures, topics, schedule, now, affineConnected }: {
   course: Course;
   lectures: Lecture[];
   topics: Topic[];
   schedule: ClassSchedule[];
   now: string;
+  /** Con AFFiNE conectado por MCP, las clases sin apunte ofrecen «Crear apunte». */
+  affineConnected?: boolean;
 }) {
+  const router = useRouter();
   const [editing, setEditing] = useState<Lecture | "new" | null>(null);
+  const [creating, setCreating] = useState<string | null>(null);
+
+  async function createDoc(l: Lecture) {
+    setCreating(l.id);
+    const r = await createLectureDoc(l.id);
+    setCreating(null);
+    if (!r.ok) return toast(r.error);
+    openAffine({ url: r.data.url, title: l.title, meta: course.name, emoji: l.emoji || course.emoji, color: course.color });
+    router.refresh();
+  }
   const nowDate = new Date(now);
   const weeks = new Map<string, Lecture[]>();
   for (const l of lectures) {
@@ -207,6 +221,18 @@ export function LectureGrid({ course, lectures, topics, schedule, now }: {
                         <NotebookPen className="size-3.5" />
                         {future ? "Preparar apunte" : "Abrir apunte"}
                       </AffineLink>
+                    ) : affineConnected ? (
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => createDoc(l)}
+                          disabled={creating === l.id}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 text-[12px] font-medium text-white hover:bg-accent-hover disabled:opacity-60"
+                        >
+                          {creating === l.id ? <Loader2 className="size-3.5 animate-spin" /> : <NotebookPen className="size-3.5" />}
+                          {creating === l.id ? "Creando…" : "Crear apunte"}
+                        </button>
+                        <button onClick={() => setEditing(l)} className="text-[12px] text-faint hover:text-text">o enlazar uno</button>
+                      </div>
                     ) : (
                       <button onClick={() => setEditing(l)} className="mt-4 inline-flex items-center gap-1.5 self-start rounded-full border border-dashed border-border-strong px-3.5 py-1.5 text-[12px] text-muted hover:text-text">
                         <Plus className="size-3.5" /> Enlazar apunte

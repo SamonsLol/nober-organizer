@@ -7,7 +7,8 @@ import { AlertTriangle, CalendarDays, Check, Loader2, LogOut, Maximize2, Moon, P
 import { toast } from "@/components/shell/toast";
 import { saveSettings } from "@/lib/actions/settings";
 import { signOut } from "@/lib/auth-client";
-import { AFFINE_HOME, AFFINE_HOST, AFFINE_WORKSPACE } from "@/lib/affine";
+import { AFFINE_HOME, AFFINE_HOST } from "@/lib/affine";
+import { AffineConnect } from "@/components/settings/affine-connect";
 import { AffineLink } from "@/components/affine/affine";
 import { Tag, cn } from "@/components/blocks/primitives";
 import { setTheme, useTheme } from "@/components/shell/theme";
@@ -190,15 +191,13 @@ export function SettingsView({ data }: { data: SettingsData }) {
             <Integration
               name="AFFiNE"
               emoji="📝"
-              status={<Tag color="green">Enlaces activos</Tag>}
+              status={<Tag color="green">{data.affine.connected ? "Conectado" : "Enlaces activos"}</Tag>}
               body={
                 <>
                   <Row label="Servidor">{AFFINE_HOST}</Row>
-                  <Row label="Espacio">{AFFINE_WORKSPACE ? <span className="break-all font-mono text-[11.5px]">{AFFINE_WORKSPACE}</span> : <span className="text-warn">Sin configurar (NEXT_PUBLIC_AFFINE_WORKSPACE)</span>}</Row>
+                  <Row label="Espacio">{data.affine.workspace ? <span className="break-all font-mono text-[11.5px]">{data.affine.workspace}</span> : <span className="text-warn">Sin configurar</span>}</Row>
                   <Row label="Embebido">En toda la app (panel lateral, ancho o pantalla completa), en el mismo dominio que la app.</Row>
-                  <p className="mt-2 text-[11.5px] leading-snug text-faint">
-                    Fase 4: crear el apunte de cada clase y listar los recientes desde el servidor (MCP con token).
-                  </p>
+                  <AffineConnect status={data.affine} enabled={Boolean(data.account)} />
                 </>
               }
               action={<AffineLink href={AFFINE_HOME} title="AFFiNE" meta="Todos los documentos" size="full" pill>Abrir <Maximize2 className="size-3.5" /></AffineLink>}

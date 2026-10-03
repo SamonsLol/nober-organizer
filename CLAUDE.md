@@ -245,8 +245,11 @@ src/
   los calcula; en la Fase 3 los calculará la consulta).
 - Capturas sin interfaz: Edge headless tiene un ancho mínimo (~500 px); para móvil, envolver la página en
   un iframe de 390 px. El tema claro se activa con `localStorage['nober-theme'] = 'light'`.
-- Si `npm run build` falla con `EPERM` (rmdir/unlink en `.next`), es OneDrive: quitar solo lectura y borrar la
-  salida (`attrib -R .next\server\* /S /D` y borrar `.next/server`, o todo `.next` si no corre `npm run dev`).
+- Si `npm run build` falla con `EPERM` (rmdir/unlink en `.next`), es OneDrive: quitar solo lectura y borrar las
+  salidas de compilación (`.next/server`, `.next/standalone`, `.next/static`), nunca `.next/dev` si corre `npm run dev`.
+- Migraciones en sesiones no interactivas (`prisma migrate dev` se niega): generar el SQL con
+  `npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script > prisma/migrations/<fecha>_<nombre>/migration.sql`
+  (con la base de desarrollo al día) y aplicar con `npx prisma migrate deploy`.
 - Antes de terminar: `npm run build` sin errores y revisar la pantalla en el navegador (oscuro, claro y móvil).
 
 <!-- BEGIN:nextjs-agent-rules -->

@@ -199,6 +199,10 @@ model Settings {
   scaleMax      Float  @default(5)
   scalePassing  Float  @default(3)
   scaleDecimals Int    @default(1)
+  /// Espacio de AFFiNE propio (si no, NEXT_PUBLIC_AFFINE_WORKSPACE)
+  affineWorkspace String?
+  /// Token MCP de AFFiNE (aff_mcp_v1…), cifrado con AES-256-GCM (lib/crypto.ts). Nunca se envía al navegador.
+  affineToken     String?
 }
 
 model Period {
