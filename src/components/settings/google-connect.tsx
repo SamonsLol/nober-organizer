@@ -89,7 +89,7 @@ export function GoogleConnect({ status }: { status: GoogleStatus }) {
 
   if (!status.linked) {
     return (
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
         <p className="min-w-0 flex-1 text-[12.5px] leading-relaxed text-muted">
           Se creará un calendario propio con tus clases (recurrentes, sin festivos), entregas, evaluaciones y eventos.
           Google solo nos da permiso sobre ese calendario.
@@ -103,7 +103,7 @@ export function GoogleConnect({ status }: { status: GoogleStatus }) {
 
   if (!status.enabled) {
     return (
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
         <p className="min-w-0 flex-1 text-[12.5px] text-muted">Cuenta de Google conectada. La sincronización está apagada.</p>
         <button onClick={enable} disabled={busy !== null} className={`${pill} bg-accent font-medium text-white hover:bg-accent-hover`}>
           {busy === "sync" ? <Loader2 className="size-3.5 animate-spin" /> : null} Activar sincronización
@@ -116,7 +116,7 @@ export function GoogleConnect({ status }: { status: GoogleStatus }) {
     <div className="flex flex-col gap-2.5">
       <div className="flex flex-wrap items-center gap-3 text-[12.5px]">
         {status.error ? <AlertTriangle className="size-4 shrink-0 text-danger" /> : <Check className="size-4 shrink-0 text-success" />}
-        <span className="min-w-0 flex-1 text-muted">
+        <span className="min-w-0 flex-1 basis-[calc(100%-2rem)] text-muted sm:basis-auto">
           {status.error ? <span className="text-danger">{status.error}</span> : "Sincronizando con el calendario propio de la app."}
           {status.syncedAt ? (
             <span className="block text-[11.5px] text-faint">Última sincronización {relativeAgo(status.syncedAt)} · se repite sola al abrir Inicio</span>
