@@ -1,0 +1,10 @@
+node_modules
+.next
+next-env.d.ts
+*.tsbuildinfo
+.env*.local
+.env
+!.env.example
+src/generated/
+.env.production
+CLAUDE.local.md

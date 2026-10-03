@@ -1,0 +1,470 @@
+// Modelo de datos de Nober Organizer.
+// Refleja los tipos de `src/lib/types.ts`; la conversión vive en `src/lib/data/source.ts`.
+// Todo cuelga de `userId`: cada estudiante ve solo lo suyo.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/* ───────────── Autenticación (Better Auth) ───────────── */
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  settings      Settings?
+  periods       Period[]
+  courses       Course[]
+  schedule      ClassSchedule[]
+  tasks         Task[]
+  assessments   Assessment[]
+  topics        Topic[]
+  lectures      Lecture[]
+  events        CalendarEvent[]
+  goals         Goal[]
+  quickNotes    QuickNote[]
+  recentDocs    RecentDoc[]
+  focusSessions FocusSession[]
+  resources     Resource[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+/* ───────────── Enumeraciones ───────────── */
+
+enum TagColor {
+  gray
+  brown
+  orange
+  yellow
+  green
+  blue
+  purple
+  pink
+  red
+}
+
+enum CoverKind {
+  math
+  physics
+  chemistry
+  english
+  history
+  literature
+  biology
+  philosophy
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum TaskType {
+  TODO
+  HOMEWORK
+  PROJECT
+  ESSAY
+  LAB
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum AssessmentKind {
+  EXAM
+  QUIZ
+  HOMEWORK
+  PROJECT
+  PARTICIPATION
+  OTHER
+}
+
+enum Preparation {
+  NONE
+  LEARNING
+  GOOD
+  MASTERED
+}
+
+enum EventKind {
+  CLASS
+  EXAM
+  DEADLINE
+  EVENT
+  IMPORTANT
+  HOLIDAY
+}
+
+enum GoalScope {
+  WEEK
+  PERIOD
+  YEAR
+}
+
+enum ResourceKind {
+  PDF
+  DOC
+  LINK
+  VIDEO
+  SLIDES
+}
+
+enum ResourceOrigin {
+  TEACHER
+  OWN
+}
+
+enum FocusKind {
+  FOCUS
+  BREAK
+}
+
+/* ───────────── Perfil y año académico ───────────── */
+
+/// Datos del perfil y escala de notas (uno por usuario). El nombre vive en `User.name`.
+model Settings {
+  userId        String @id
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grade         String @default("")
+  school        String @default("")
+  studentId     String @default("")
+  year          String
+  scaleMin      Float  @default(1)
+  scaleMax      Float  @default(5)
+  scalePassing  Float  @default(3)
+  scaleDecimals Int    @default(1)
+}
+
+model Period {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  start       DateTime     @db.Date
+  end         DateTime     @db.Date
+  weight      Float
+  assessments Assessment[]
+
+  @@index([userId, start])
+}
+
+/* ───────────── Materias ───────────── */
+
+model Course {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug            String
+  name            String
+  emoji           String
+  color           TagColor        @default(gray)
+  cover           CoverKind       @default(math)
+  teacher         String          @default("")
+  room            String          @default("")
+  code            String          @default("")
+  affineFolderUrl String?
+  position        Int             @default(0)
+  createdAt       DateTime        @default(now())
+  schedule        ClassSchedule[]
+  tasks           Task[]
+  assessments     Assessment[]
+  topics          Topic[]
+  lectures        Lecture[]
+  events          CalendarEvent[]
+  recentDocs      RecentDoc[]
+  resources       Resource[]
+
+  @@unique([userId, slug])
+}
+
+model ClassSchedule {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  /// ISO: 1 = lunes … 7 = domingo
+  weekday  Int
+  /// "HH:mm" en hora local del colegio
+  start    String
+  end      String
+  room     String @default("")
+
+  @@index([userId, weekday])
+}
+
+/* ───────────── Tareas ───────────── */
+
+model Task {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId     String?
+  course       Course?     @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  title        String
+  emoji        String      @default("")
+  description  String?
+  type         TaskType    @default(TODO)
+  dueAt        DateTime
+  allDay       Boolean     @default(false)
+  priority     Priority    @default(MEDIUM)
+  status       TaskStatus  @default(TODO)
+  tags         String[]
+  note         String?
+  /// Evaluación que esta tarea entrega (una tarea con evaluación se muestra como "Entrega").
+  assessmentId String?     @unique
+  assessment   Assessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  completedAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  steps        TaskStep[]
+  files        TaskFile[]
+  links        TaskLink[]
+
+  @@index([userId, dueAt])
+  @@index([courseId])
+}
+
+model TaskStep {
+  id       String  @id @default(cuid())
+  taskId   String
+  task     Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title    String
+  done     Boolean @default(false)
+  position Int     @default(0)
+
+  @@index([taskId])
+}
+
+model TaskFile {
+  id       String       @id @default(cuid())
+  taskId   String
+  task     Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  name     String
+  kind     ResourceKind
+  /// Tamaño ya formateado ("1,2 MB"); en la Fase 4 se guardará en bytes junto al archivo.
+  size     String?
+  position Int          @default(0)
+
+  @@index([taskId])
+}
+
+model TaskLink {
+  id       String @id @default(cuid())
+  taskId   String
+  task     Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label    String
+  url      String
+  position Int    @default(0)
+
+  @@index([taskId])
+}
+
+/* ───────────── Calificaciones ───────────── */
+
+model Assessment {
+  id       String         @id @default(cuid())
+  userId   String
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  periodId String
+  period   Period         @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  title    String
+  kind     AssessmentKind @default(OTHER)
+  date     DateTime?
+  /// % dentro del período
+  weight   Float
+  score    Float?
+  maxScore Float?
+  task     Task?
+
+  @@index([userId, periodId])
+  @@index([courseId])
+}
+
+/* ───────────── Temas y clases ───────────── */
+
+model Topic {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId      String
+  course        Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title         String
+  emoji         String      @default("")
+  preparation   Preparation @default(NONE)
+  lastStudiedAt DateTime?
+  lectures      Lecture[]
+
+  @@index([courseId])
+}
+
+/// Una clase concreta (con su apunte de AFFiNE). Las clases futuras se generan del horario.
+model Lecture {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId     String
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  date         DateTime
+  title        String
+  emoji        String   @default("")
+  topicId      String?
+  topic        Topic?   @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  affineDocUrl String?
+
+  @@index([userId, date])
+  @@index([courseId])
+}
+
+/* ───────────── Calendario ───────────── */
+
+model CalendarEvent {
+  id       String    @id @default(cuid())
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title    String
+  emoji    String    @default("")
+  kind     EventKind @default(EVENT)
+  start    DateTime
+  end      DateTime?
+  allDay   Boolean   @default(false)
+  courseId String?
+  course   Course?   @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  location String?
+
+  @@index([userId, start])
+}
+
+/* ───────────── Inicio ───────────── */
+
+model Goal {
+  id       String    @id @default(cuid())
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope    GoalScope
+  title    String
+  done     Boolean   @default(false)
+  position Int       @default(0)
+
+  @@index([userId])
+}
+
+model QuickNote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text      String
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Referencia a un documento de AFFiNE editado hace poco (solo metadatos; el contenido vive en AFFiNE).
+model RecentDoc {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  courseId  String?
+  course    Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  url       String
+  updatedAt DateTime
+
+  @@index([userId, updatedAt])
+}
+
+model FocusSession {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      FocusKind
+  startedAt DateTime
+  minutes   Int
+
+  @@index([userId, startedAt])
+}
+
+/* ───────────── Recursos ───────────── */
+
+model Resource {
+  id       String         @id @default(cuid())
+  userId   String
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  kind     ResourceKind
+  origin   ResourceOrigin @default(OWN)
+  title    String
+  url      String
+  size     String?
+  addedAt  DateTime       @default(now())
+
+  @@index([userId, courseId])
+}

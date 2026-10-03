@@ -1,0 +1,59 @@
+# Producción
+#   docker compose --env-file .env.production up -d --build
+# La app escucha solo en 127.0.0.1:${APP_PORT}; un proxy (nginx, Caddy…) la publica con HTTPS.
+# Variables en .env.production (plantilla: .env.production.example).
+
+name: nober
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nober}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en .env.production}
+      POSTGRES_DB: ${POSTGRES_DB:-nober}
+      TZ: ${TZ:-America/Bogota}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Aplica las migraciones pendientes y termina; la app arranca solo si salió bien
+  migrate:
+    build:
+      context: .
+      target: migrate
+      args: &affine
+        NEXT_PUBLIC_AFFINE_ORIGIN: ${NEXT_PUBLIC_AFFINE_ORIGIN:-https://app.affine.pro}
+        NEXT_PUBLIC_AFFINE_WORKSPACE: ${NEXT_PUBLIC_AFFINE_WORKSPACE:-}
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-nober}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-nober}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+      args: *affine
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-nober}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-nober}
+      TZ: ${TZ:-America/Bogota}
+    ports:
+      - "127.0.0.1:${APP_PORT:-3100}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
