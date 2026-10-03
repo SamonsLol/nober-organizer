@@ -3,10 +3,14 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { APP_NAME } from "@/lib/brand";
+import { ServiceWorker } from "@/components/shell/service-worker";
 
 export const metadata: Metadata = {
   title: APP_NAME,
-  description: "Tu centro de control académico",
+  description: "Tu organizador académico: materias, tareas, calendario, notas y apuntes.",
+  applicationName: APP_NAME,
+  appleWebApp: { capable: true, title: "Nober", statusBarStyle: "black-translucent" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
@@ -27,7 +31,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorker />
+      </body>
     </html>
   );
 }
