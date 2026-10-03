@@ -36,7 +36,10 @@ FROM base AS runner
 ENV NODE_ENV=production \
     TZ=America/Bogota \
     PORT=3000 \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    UPLOAD_DIR=/data/uploads
+# Archivos subidos: volumen montado aquí (el usuario node debe poder escribir)
+RUN mkdir -p /data/uploads && chown -R node:node /data
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 COPY --from=builder --chown=node:node /app/public ./public

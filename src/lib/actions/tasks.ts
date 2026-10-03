@@ -7,7 +7,8 @@ import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { requireUserId } from "@/lib/session";
 import { taskInclude, toTask } from "@/lib/data/source";
 import { UserError, run, type Result } from "@/lib/actions/result";
-import type { Task, TaskLink, TaskStep } from "@/lib/types";
+import { formatBytes, kindOfMime, removeUploads } from "@/lib/storage";
+import type { Task, TaskFile, TaskLink, TaskStep } from "@/lib/types";
 
 /**
  * Escritura de tareas. Cada acción comprueba la sesión y que la fila sea del usuario.
@@ -110,7 +111,46 @@ export async function deleteTask(taskId: string): Promise<Result> {
     const tid = id.parse(taskId);
     if (!hasDatabase()) return;
     const userId = await requireUserId();
+    // Los archivos subidos de la tarea se borran también del disco
+    const files = await prisma.taskFile.findMany({ where: { taskId: tid, task: { userId }, uploadId: { not: null } }, select: { uploadId: true } });
     await prisma.task.deleteMany({ where: { id: tid, userId } });
+    await removeUploads(userId, files.map((f) => f.uploadId!));
+    done();
+  });
+}
+
+/* ───────────── Archivos ───────────── */
+
+/** Adjunta a la tarea un archivo ya subido con POST /api/files. */
+export async function attachTaskFile(taskId: string, uploadId: string): Promise<Result<TaskFile>> {
+  return run(async () => {
+    const tid = id.parse(taskId);
+    const uid = id.parse(uploadId);
+    if (!hasDatabase()) throw new UserError("Subir archivos necesita la base de datos.");
+    const userId = await requireUserId();
+    await assertTask(userId, tid);
+    const up = await prisma.upload.findFirst({ where: { id: uid, userId }, include: { taskFile: true, resource: true } });
+    if (!up) throw new UserError("Ese archivo no existe. Vuelve a subirlo.");
+    if (up.taskFile || up.resource) throw new UserError("Ese archivo ya está adjunto en otro lugar.");
+    const last = await prisma.taskFile.aggregate({ where: { taskId: tid }, _max: { position: true } });
+    const row = await prisma.taskFile.create({
+      data: { taskId: tid, name: up.name, kind: kindOfMime(up.mime), size: formatBytes(up.size), uploadId: up.id, position: (last._max.position ?? -1) + 1 },
+    });
+    done();
+    return { id: row.id, name: row.name, kind: row.kind, size: row.size ?? undefined, url: `/api/files/${up.id}` };
+  });
+}
+
+/** Quita un archivo de la tarea (y lo borra del disco si se había subido). */
+export async function deleteTaskFile(fileId: string): Promise<Result> {
+  return run(async () => {
+    const fid = id.parse(fileId);
+    if (!hasDatabase()) return;
+    const userId = await requireUserId();
+    const row = await prisma.taskFile.findFirst({ where: { id: fid, task: { userId } }, select: { uploadId: true } });
+    if (!row) throw new UserError("Ese archivo no existe.");
+    await prisma.taskFile.delete({ where: { id: fid } });
+    if (row.uploadId) await removeUploads(userId, [row.uploadId]);
     done();
   });
 }

@@ -3,10 +3,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Check, ChevronDown, ExternalLink, Link2, Plus, Trash2, X } from "lucide-react";
-import { GhostAdd, Tag, cn } from "@/components/blocks/primitives";
+import { Check, ChevronDown, ExternalLink, Link2, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { Tag, cn } from "@/components/blocks/primitives";
 import { KIND, PRIORITY, RESOURCE_KIND, TASK_STATUS, TASK_TYPE, toneClass } from "@/components/blocks/shared";
-import { toast } from "@/components/shell/toast";
 import { deadline, toDate } from "@/lib/dates";
 import type { Assessment, Course, Priority, Task, TaskStatus, TaskType } from "@/lib/types";
 
@@ -20,6 +19,8 @@ export interface TaskPeekActions {
   onDeleteStep: (stepId: string) => void;
   onAddLink: (url: string, label?: string) => Promise<boolean>;
   onDeleteLink: (linkId: string) => void;
+  onUploadFiles: (files: File[]) => Promise<void>;
+  onDeleteFile: (fileId: string) => void;
   onDelete: () => void;
 }
 
@@ -182,23 +183,33 @@ export function TaskPeek({
           </Block>
 
           {/* Archivos */}
-          <Block title="Archivos" right={<GhostAdd label="Subir" onClick={() => toast("Subir archivos llegará con el almacenamiento de archivos (Fase 4).", "ok")} />}>
+          <Block title="Archivos" right={<UploadButton onFiles={act.onUploadFiles} />}>
             {t.files?.length ? (
               <ul className="flex flex-col gap-1.5">
                 {t.files.map((f) => {
                   const Icon = RESOURCE_KIND[f.kind].icon;
-                  return (
-                    <li key={f.id} className="flex items-center gap-3 rounded-[14px] bg-surface-2 px-3 py-2">
+                  const inner = (
+                    <>
                       <span className={cn("grid size-8 shrink-0 place-items-center rounded-[10px] text-on-pastel", `pastel-${course?.color ?? "gray"}`)}>
                         <Icon className="size-4" />
                       </span>
                       <span className="min-w-0 flex-1 truncate text-[13px]">{f.name}</span>
                       {f.size ? <span className="text-[11.5px] text-faint">{f.size}</span> : null}
+                    </>
+                  );
+                  return (
+                    <li key={f.id} className="group flex items-center rounded-[14px] bg-surface-2 pr-1 transition-colors hover:bg-surface-hover">
+                      {f.url ? (
+                        <a href={f.url} target="_blank" rel="noreferrer" className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2">{inner}</a>
+                      ) : (
+                        <span className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2">{inner}</span>
+                      )}
+                      <RowDelete label={`Quitar «${f.name}»`} onClick={() => act.onDeleteFile(f.id)} />
                     </li>
                   );
                 })}
               </ul>
-            ) : <p className="text-[13px] text-faint">Sin archivos.</p>}
+            ) : <p className="text-[13px] text-faint">Sin archivos. Puedes subir PDF, documentos, imágenes, audio o video.</p>}
           </Block>
 
           {/* Enlaces */}
@@ -436,6 +447,37 @@ function AddRow({ placeholder, onAdd, inputMode }: { placeholder: string; onAdd:
         className="h-8 min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-faint disabled:opacity-60"
       />
     </form>
+  );
+}
+
+function UploadButton({ onFiles }: { onFiles: (files: File[]) => Promise<void> }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <>
+      <input
+        ref={input}
+        type="file"
+        multiple
+        hidden
+        onChange={async (e) => {
+          const files = [...(e.target.files ?? [])];
+          e.target.value = "";
+          if (!files.length) return;
+          setBusy(true);
+          await onFiles(files);
+          setBusy(false);
+        }}
+      />
+      <button
+        onClick={() => input.current?.click()}
+        disabled={busy}
+        className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] text-muted transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-60"
+      >
+        {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
+        {busy ? "Subiendo…" : "Subir"}
+      </button>
+    </>
   );
 }
 

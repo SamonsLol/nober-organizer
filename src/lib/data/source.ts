@@ -35,7 +35,7 @@ export function toTask(t: TaskRow): Task {
     type: t.type, dueAt: iso(t.dueAt), allDay: t.allDay, priority: t.priority, status: t.status, tags: t.tags,
     note: opt(t.note), assessmentId: opt(t.assessmentId),
     steps: t.steps.length ? t.steps.map((s) => ({ id: s.id, title: s.title, done: s.done })) : undefined,
-    files: t.files.length ? t.files.map((f) => ({ id: f.id, name: f.name, kind: f.kind, size: opt(f.size) })) : undefined,
+    files: t.files.length ? t.files.map((f) => ({ id: f.id, name: f.name, kind: f.kind, size: opt(f.size), url: f.uploadId ? `/api/files/${f.uploadId}` : undefined })) : undefined,
     links: t.links.length ? t.links.map((l) => ({ id: l.id, label: l.label, url: l.url })) : undefined,
     // Conteos derivados
     subtasks: t.steps.length ? { done: t.steps.filter((s) => s.done).length, total: t.steps.length } : undefined,

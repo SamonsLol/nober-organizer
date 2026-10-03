@@ -6,6 +6,7 @@ import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { requireUserId } from "@/lib/session";
 import { UserError, run, type Result } from "@/lib/actions/result";
 import { isAffineUrl } from "@/lib/affine";
+import { removeUploads } from "@/lib/storage";
 
 /**
  * Crear, editar y eliminar materias con su horario semanal.
@@ -137,8 +138,11 @@ export async function deleteCourse(courseId: string): Promise<Result> {
     const id = z.string().min(1).max(64).parse(courseId);
     if (!hasDatabase()) return;
     const userId = await requireUserId();
+    // Los recursos de la materia se borran con ella: también sus archivos en disco
+    const files = await prisma.resource.findMany({ where: { courseId: id, userId, uploadId: { not: null } }, select: { uploadId: true } });
     const { count } = await prisma.course.deleteMany({ where: { id, userId } });
     if (!count) throw new UserError("Esa materia no existe.");
+    await removeUploads(userId, files.map((f) => f.uploadId!));
     revalidatePath("/", "layout");
   });
 }

@@ -11,3 +11,4 @@ npm-debug.log*
 compose*.yaml
 Dockerfile
 .dockerignore
+.data

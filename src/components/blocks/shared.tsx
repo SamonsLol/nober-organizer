@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FileText, FileType2, Link2, PlayCircle, Presentation, type LucideIcon } from "lucide-react";
+import { FileText, FileType2, ImageIcon, Link2, PlayCircle, Presentation, type LucideIcon } from "lucide-react";
 import type { DeadlineTone } from "@/lib/dates";
 import type { AssessmentKind, Preparation, Priority, ResourceKind, TaskStatus, TaskType } from "@/lib/types";
 
@@ -50,6 +50,7 @@ export const RESOURCE_KIND: Record<ResourceKind, { label: string; icon: LucideIc
   LINK: { label: "Enlace", icon: Link2 },
   VIDEO: { label: "Video", icon: PlayCircle },
   SLIDES: { label: "Presentación", icon: Presentation },
+  IMAGE: { label: "Imagen", icon: ImageIcon },
 };
 
 /** Progreso en puntos, como en la referencia. */

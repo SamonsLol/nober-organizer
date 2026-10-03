@@ -8,3 +8,4 @@ next-env.d.ts
 src/generated/
 .env.production
 CLAUDE.local.md
+.data/

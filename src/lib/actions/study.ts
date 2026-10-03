@@ -6,6 +6,7 @@ import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { requireUserId } from "@/lib/session";
 import { UserError, run, type Result } from "@/lib/actions/result";
 import { isAffineUrl } from "@/lib/affine";
+import { formatBytes, removeUploads } from "@/lib/storage";
 import type { Goal, Lecture, QuickNote, Resource, Topic } from "@/lib/types";
 
 /**
@@ -117,28 +118,48 @@ const resourceInput = z.object({
   id: id.optional(),
   courseId: id,
   title: z.string().trim().min(1, "Escribe un título.").max(160),
-  url: z.url({ protocol: /^https?$/, error: "Pega un enlace que empiece por http:// o https://." }).max(1000),
-  kind: z.enum(["PDF", "DOC", "LINK", "VIDEO", "SLIDES"]),
+  /** Enlace externo… */
+  url: z.url({ protocol: /^https?$/, error: "Pega un enlace que empiece por http:// o https://." }).max(1000).optional(),
+  /** …o un archivo subido con POST /api/files */
+  uploadId: id.nullable().optional(),
+  kind: z.enum(["PDF", "DOC", "LINK", "VIDEO", "SLIDES", "IMAGE"]),
   origin: z.enum(["TEACHER", "OWN"]),
 });
 
 export async function saveResource(input: z.input<typeof resourceInput>): Promise<Result<Resource>> {
   return run(async () => {
     const data = resourceInput.parse(input);
-    const domain = (resourceId: string, addedAt: Date): Resource => ({ id: resourceId, ...data, addedAt: addedAt.toISOString() });
-    if (!hasDatabase()) return domain(data.id ?? newId(), new Date());
+    if (!data.uploadId && !data.url) throw new UserError("Pega un enlace o sube un archivo.");
+    if (!hasDatabase()) {
+      return { id: data.id ?? newId(), courseId: data.courseId, title: data.title, url: data.url ?? "#", kind: data.kind, origin: data.origin, addedAt: new Date().toISOString() };
+    }
     const userId = await requireUserId();
     await ownCourse(userId, data.courseId);
-    const { id: resourceId, ...fields } = data;
-    if (resourceId) {
-      gone((await prisma.resource.updateMany({ where: { id: resourceId, userId }, data: fields })).count, "Ese recurso");
-      const row = await prisma.resource.findUniqueOrThrow({ where: { id: resourceId }, select: { addedAt: true } });
-      done();
-      return domain(resourceId, row.addedAt);
+
+    // Archivo subido: debe ser del usuario; el enlace y el tamaño salen de él
+    let fileFields: { url: string; size: string | null; uploadId: string | null } = { url: data.url!, size: null, uploadId: null };
+    if (data.uploadId) {
+      const up = await prisma.upload.findFirst({ where: { id: data.uploadId, userId } });
+      if (!up) throw new UserError("Ese archivo no existe. Vuelve a subirlo.");
+      fileFields = { url: `/api/files/${up.id}`, size: formatBytes(up.size), uploadId: up.id };
     }
-    const row = await prisma.resource.create({ data: { ...fields, userId } });
+    const fields = { courseId: data.courseId, title: data.title, kind: data.kind, origin: data.origin, ...fileFields };
+
+    let row;
+    if (data.id) {
+      const before = await prisma.resource.findFirst({ where: { id: data.id, userId }, select: { uploadId: true } });
+      if (!before) throw new UserError("Ese recurso no existe.");
+      row = await prisma.resource.update({ where: { id: data.id }, data: fields });
+      // Si cambió de archivo (o pasó a enlace), el archivo anterior ya no se usa
+      if (before.uploadId && before.uploadId !== row.uploadId) await removeUploads(userId, [before.uploadId]);
+    } else {
+      row = await prisma.resource.create({ data: { ...fields, userId } });
+    }
     done();
-    return domain(row.id, row.addedAt);
+    return {
+      id: row.id, courseId: row.courseId, title: row.title, url: row.url, kind: row.kind, origin: row.origin,
+      size: row.size ?? undefined, addedAt: row.addedAt.toISOString(),
+    };
   });
 }
 
@@ -147,7 +168,10 @@ export async function deleteResource(resourceId: string): Promise<Result> {
     const rid = id.parse(resourceId);
     if (!hasDatabase()) return;
     const userId = await requireUserId();
-    gone((await prisma.resource.deleteMany({ where: { id: rid, userId } })).count, "Ese recurso");
+    const row = await prisma.resource.findFirst({ where: { id: rid, userId }, select: { uploadId: true } });
+    if (!row) throw new UserError("Ese recurso no existe.");
+    await prisma.resource.delete({ where: { id: rid } });
+    if (row.uploadId) await removeUploads(userId, [row.uploadId]);
     done();
   });
 }

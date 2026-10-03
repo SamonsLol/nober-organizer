@@ -38,6 +38,7 @@ model User {
   recentDocs    RecentDoc[]
   focusSessions FocusSession[]
   resources     Resource[]
+  uploads       Upload[]
 
   @@map("user")
 }
@@ -171,6 +172,7 @@ enum ResourceKind {
   LINK
   VIDEO
   SLIDES
+  IMAGE
 }
 
 enum ResourceOrigin {
@@ -306,9 +308,12 @@ model TaskFile {
   task     Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
   name     String
   kind     ResourceKind
-  /// Tamaño ya formateado ("1,2 MB"); en la Fase 4 se guardará en bytes junto al archivo.
+  /// Tamaño ya formateado ("1,2 MB") para mostrar
   size     String?
   position Int          @default(0)
+  /// Archivo subido (si lo hay); al borrar el archivo se borra esta fila
+  uploadId String?      @unique
+  upload   Upload?      @relation(fields: [uploadId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
 }
@@ -465,6 +470,25 @@ model Resource {
   url      String
   size     String?
   addedAt  DateTime       @default(now())
+  /// Archivo subido (si el recurso no es un enlace externo)
+  uploadId String?        @unique
+  upload   Upload?        @relation(fields: [uploadId], references: [id], onDelete: Cascade)
 
   @@index([userId, courseId])
+}
+
+/// Archivo subido por un usuario. El contenido vive en disco (UPLOAD_DIR/<userId>/<key>), no en la base.
+model Upload {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  mime      String
+  size      Int
+  key       String    @unique
+  createdAt DateTime  @default(now())
+  taskFile  TaskFile?
+  resource  Resource?
+
+  @@index([userId])
 }

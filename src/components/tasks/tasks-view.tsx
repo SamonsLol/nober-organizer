@@ -8,9 +8,11 @@ import { PRIORITY, TASK_STATUS, TASK_TYPE, toneClass } from "@/components/blocks
 import { CourseTag, TaskPeek, type TaskEdit } from "@/components/tasks/task-peek";
 import { toast } from "@/components/shell/toast";
 import {
-  addTaskLink, addTaskStep, createTask, deleteTask, deleteTaskLink, deleteTaskStep, updateTask, updateTaskStep,
+  addTaskLink, addTaskStep, attachTaskFile, createTask, deleteTask, deleteTaskFile, deleteTaskLink, deleteTaskStep,
+  updateTask, updateTaskStep,
 } from "@/lib/actions/tasks";
 import type { Result } from "@/lib/actions/result";
+import { uploadFile } from "@/lib/upload-client";
 import { capitalize, deadline, fmt, toDate } from "@/lib/dates";
 import type { TasksPageData } from "@/lib/data";
 import type { Course, Priority, Task, TaskStatus, TaskType } from "@/lib/types";
@@ -153,6 +155,23 @@ export function TasksView({
     },
     onDeleteLink: (linkId: string) =>
       persist(t.id, (cur) => ({ links: cur.links?.filter((x) => x.id !== linkId) }), () => deleteTaskLink(linkId)),
+    onUploadFiles: async (files: File[]) => {
+      for (const file of files) {
+        const up = await uploadFile(file);
+        if (!up.ok) {
+          toast(up.error);
+          continue;
+        }
+        const r = await attachTaskFile(t.id, up.data.id);
+        if (!r.ok) {
+          toast(r.error);
+          continue;
+        }
+        local(t.id, (cur) => ({ files: [...(cur.files ?? []), r.data] }));
+      }
+    },
+    onDeleteFile: (fileId: string) =>
+      persist(t.id, (cur) => ({ files: cur.files?.filter((x) => x.id !== fileId) }), () => deleteTaskFile(fileId)),
     onDelete: () => remove(t.id),
   });
 

@@ -95,6 +95,8 @@ export interface TaskFile {
   name: string;
   kind: ResourceKind;
   size?: string;
+  /** Descarga del archivo subido (/api/files/<id>) */
+  url?: string;
 }
 
 export type AssessmentKind = "EXAM" | "QUIZ" | "HOMEWORK" | "PROJECT" | "PARTICIPATION" | "OTHER";
@@ -173,7 +175,7 @@ export interface FocusDay {
   breakMin: number;
 }
 
-export type ResourceKind = "PDF" | "DOC" | "LINK" | "VIDEO" | "SLIDES";
+export type ResourceKind = "PDF" | "DOC" | "LINK" | "VIDEO" | "SLIDES" | "IMAGE";
 
 export interface Resource {
   id: string;

@@ -87,6 +87,13 @@ docker compose --env-file .env.production exec -T db \
 
 (Si cambiaste `POSTGRES_USER` o `POSTGRES_DB`, usa esos nombres.)
 
+Los archivos subidos viven en el volumen `nober_uploads` (no en la base de datos). Cópialos también:
+
+```bash
+docker run --rm -v nober_uploads:/data -v ~/backups:/backup alpine \
+  tar -czf /backup/nober-archivos-$(date +%F).tar.gz -C /data .
+```
+
 ## Problemas comunes
 
 - **502 Bad Gateway**: la app no está arriba → `docker compose --env-file .env.production logs app`.
