@@ -13,7 +13,7 @@ SSL **Full** o **Full (strict)**.
 ## 2. Código y variables
 
 ```bash
-git clone https://github.com/<usuario>/nober-organizer.git ~/apps/nober
+git clone https://github.com/SamonsLol/nober-organizer.git ~/apps/nober
 cd ~/apps/nober
 cp .env.production.example .env.production
 nano .env.production

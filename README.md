@@ -35,7 +35,7 @@ contributions to translate it are welcome.*
 Requisitos: un servidor con Docker y Docker Compose, y un dominio con HTTPS (nginx, Caddy, Cloudflare…).
 
 ```bash
-git clone https://github.com/<usuario>/nober-organizer.git
+git clone https://github.com/SamonsLol/nober-organizer.git
 cd nober-organizer
 cp .env.production.example .env.production   # completar: contraseñas, dominio, AFFiNE
 docker compose --env-file .env.production up -d --build

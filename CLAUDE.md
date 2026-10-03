@@ -1,6 +1,6 @@
 # Nober Organizer — contexto del proyecto
 
-Proyecto de código abierto (licencia MIT, repositorio público). Aplicación web personal de gestión académica
+Proyecto de código abierto (licencia MIT): https://github.com/SamonsLol/nober-organizer (rama `main`). Aplicación web personal de gestión académica
 (colegio, Colombia). Antes se llamaba «Academic OS»; el nombre vive en `src/lib/brand.ts` (`APP_NAME`).
 Lo específico de la instalación del mantenedor (dominios, servidor) está en `CLAUDE.local.md` (no se publica):
 **nunca** poner dominios, IPs, IDs de espacios ni datos personales en archivos versionados. Estructura inspirada en la plantilla
