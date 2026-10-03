@@ -4,6 +4,7 @@ import { cache } from "react";
 import { buildMock, type MockDB } from "@/lib/mock/seed";
 import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { getSession, requireUserId } from "@/lib/session";
+import { googleAccount, googleConfigured, hasCalendarScope, maybeAutoSync } from "@/lib/google-calendar";
 import { loadUserDB } from "@/lib/data/source";
 import { AFFINE_BASE, AFFINE_WORKSPACE } from "@/lib/affine";
 import { courseGrade, periodAverage, yearAverage } from "@/lib/grades";
@@ -31,6 +32,26 @@ export const getAffineStatus = cache(async () => {
 });
 
 export type AffineStatus = Awaited<ReturnType<typeof getAffineStatus>>;
+
+/** Estado de Google Calendar para Ajustes (nunca tokens). */
+export async function getGoogleStatus() {
+  const configured = googleConfigured();
+  if (!hasDatabase()) return { configured, linked: false, enabled: false, syncedAt: null as string | null, error: null as string | null };
+  const userId = await requireUserId();
+  const [acc, s] = await Promise.all([
+    googleAccount(userId),
+    prisma.settings.findUnique({ where: { userId }, select: { googleSync: true, googleSyncedAt: true, googleSyncError: true } }),
+  ]);
+  return {
+    configured,
+    linked: Boolean(acc && hasCalendarScope(acc.scope)),
+    enabled: Boolean(s?.googleSync),
+    syncedAt: s?.googleSyncedAt?.toISOString() ?? null,
+    error: s?.googleSyncError ?? null,
+  };
+}
+
+export type GoogleStatus = Awaited<ReturnType<typeof getGoogleStatus>>;
 
 export async function getProfile() {
   const d = await db();
@@ -60,6 +81,8 @@ export async function getCurrentPeriod(now = new Date()) {
 /** Todo lo que necesita la pantalla de Inicio, en una sola llamada. */
 export async function getDashboard() {
   const d = await db();
+  // Google Calendar: sincronización en segundo plano como mucho cada 15 minutos
+  if (hasDatabase()) maybeAutoSync(await requireUserId()).catch(() => {});
   const now = toDate(d.now);
   const week = toDate(d.week);
   const weekEnd = addDays(week, 7);
@@ -419,6 +442,7 @@ export async function getSettings() {
     affineBase: AFFINE_BASE,
     account: hasDatabase() ? { email: (await getSession())?.user.email ?? "" } : null,
     affine: await getAffineStatus(),
+    google: await getGoogleStatus(),
   };
 }
 

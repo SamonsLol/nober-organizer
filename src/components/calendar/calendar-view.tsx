@@ -150,8 +150,9 @@ export function CalendarView({
         <DayPanel day={selected} items={byDay.get(dayKey(selected)) ?? []} now={now} courseById={courseById} />
         <div className="rounded-[24px] border border-dashed border-border-strong p-5 text-[12.5px] leading-relaxed text-muted">
           <div className="mb-1.5 text-[13px] font-medium text-text">Google Calendar</div>
-          En la Fase 4 este calendario se enviará a un calendario propio «{APP_NAME}» en Google, y tus otros
-          calendarios se mostrarán aquí en solo lectura.
+          Puedes enviar clases, entregas, evaluaciones y eventos a un calendario propio «{APP_NAME}» en Google
+          (en el celular, con avisos). Se activa en{" "}
+          <Link href="/settings#integraciones" className="text-accent-text hover:underline">Ajustes → Integraciones</Link>.
         </div>
       </div>
     </div>

@@ -373,7 +373,7 @@ function NewTask({ onCreate, status, autoFocus, className }: { onCreate: CreateF
   const [open, setOpen] = useState(Boolean(autoFocus));
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
-  if (!open) return <GhostAdd label="Nueva tarea" className={cn("self-start", className)} onClick={() => setOpen(true)} />;
+  if (!open) return <GhostAdd label="Nueva tarea" className={cn("self-start ", className)} onClick={() => setOpen(true)} />;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -387,7 +387,7 @@ function NewTask({ onCreate, status, autoFocus, className }: { onCreate: CreateF
     setBusy(false);
   };
   return (
-    <form onSubmit={submit} className={cn("flex items-center gap-2 rounded-[14px] bg-surface-2 px-2.5 py-1.5", className)}>
+    <form onSubmit={submit} className={cn("flex items-center gap-2 rounded-[14px] bg-surface-2 px-2.5 py-1.5 ", className)}>
       <input
         autoFocus
         value={title}
@@ -471,7 +471,7 @@ function ListRow({ t, now, courseById, openId, onOpen, onToggle }: RowProps & { 
         <div className="mt-1 md:hidden"><CourseTag course={t.courseId ? courseById[t.courseId] : undefined} /></div>
       </div>
       <div className="hidden min-w-0 md:block"><CourseTag course={t.courseId ? courseById[t.courseId] : undefined} /></div>
-      <span className="hidden text-[12.5px] text-muted md:block mb-4 flex flex-wrap items-center gap-2">{TASK_TYPE[t.type].label}</span>
+      <span className="hidden text-[12.5px] text-muted md:block ">{TASK_TYPE[t.type].label}</span>
       <span className={cn("hidden text-[12.5px] md:block", PRIORITY[t.priority].tone)}>{PRIORITY[t.priority].label}</span>
       <span className="hidden whitespace-nowrap text-[12.5px] text-muted md:block">{dueLabel(t)}</span>
       <span className={cn("whitespace-nowrap text-right text-[12px]", toneClass[dl.tone])}>{dl.label}</span>
@@ -492,7 +492,7 @@ function BoardView({ tasks, onMove, onCreate, ...p }: RowProps & { tasks: Task[]
     setOver(null);
   };
   return (
-    <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-3">
+    <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-3 ">
       {COLUMNS.map((s) => {
         const st = TASK_STATUS[s];
         const list = tasks.filter((t) => t.status === s);

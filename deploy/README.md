@@ -63,6 +63,31 @@ sudo nginx -t && sudo systemctl reload nginx
    `docker compose --env-file .env.production up -d` (no hace falta recompilar).
 3. Si usas AFFiNE propio, entra una vez en él desde el mismo navegador para que el panel embebido tenga sesión.
 
+## Integraciones (opcionales)
+
+### AFFiNE: crear el apunte de cada clase
+
+Cada usuario lo conecta desde **Ajustes → Integraciones** con un token de su espacio de AFFiNE
+(en AFFiNE: ajustes del espacio → *Integrations* → *MCP Server* → *Create credential*, con lectura y escritura).
+Necesita AFFiNE 0.27 o superior. El token se guarda cifrado con `BETTER_AUTH_SECRET`: si cambias ese secreto,
+hay que volver a conectar.
+
+### Google Calendar (y entrar con Google)
+
+1. En [Google Cloud Console](https://console.cloud.google.com/) crea un proyecto y activa **Google Calendar API**.
+2. *APIs y servicios → Pantalla de consentimiento de OAuth*: tipo **Externo**, nombre de la app y tu correo.
+   En *Permisos* añade `.../auth/calendar.app.created` (solo calendarios creados por la app). Mientras la app esté
+   en modo *Prueba*, agrega como **usuarios de prueba** los correos que la usarán.
+3. *Credenciales → Crear credenciales → ID de cliente de OAuth*, tipo **Aplicación web**:
+   - Orígenes autorizados: `https://organizador.midominio.com`
+   - URI de redirección: `https://organizador.midominio.com/api/auth/callback/google`
+4. Copia el ID y el secreto en `.env.production` (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) y reinicia:
+   `docker compose --env-file .env.production up -d`.
+
+Con eso aparece «Continuar con Google» en el inicio de sesión y, en **Ajustes → Integraciones**, «Conectar Google
+Calendar». La app crea un calendario propio y le envía clases (recurrentes, sin festivos), tareas pendientes,
+evaluaciones y eventos. Se sincroniza al pulsar «Sincronizar ahora» y sola al abrir Inicio (como mucho cada 15 min).
+
 ## Actualizar
 
 ```bash

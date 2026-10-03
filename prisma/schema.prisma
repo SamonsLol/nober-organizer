@@ -203,6 +203,11 @@ model Settings {
   affineWorkspace String?
   /// Token MCP de AFFiNE (aff_mcp_v1…), cifrado con AES-256-GCM (lib/crypto.ts). Nunca se envía al navegador.
   affineToken     String?
+  /// Google Calendar: sincronización activa, calendario propio de la app y estado de la última sincronización
+  googleSync       Boolean   @default(false)
+  googleCalendarId String?
+  googleSyncedAt   DateTime?
+  googleSyncError  String?
 }
 
 model Period {

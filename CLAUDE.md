@@ -34,7 +34,7 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
 1. ✅ Diseño y arquitectura (acordado).
 2. ✅ Prototipo solo frontend con datos ficticios.
 3. ✅ Backend: PostgreSQL + Prisma, autenticación (Better Auth), CRUD de materias, tareas, calendario, calificaciones, recursos.
-4. 🔄 Integraciones ← **siguiente**: Google Calendar, AFFiNE, archivos, PWA, Docker, despliegue.
+4. ✅ Integraciones: Docker, PWA, archivos, AFFiNE por MCP, Google Calendar. Falta desplegar en el VPS del mantenedor.
 
 ### Estado de la Fase 2
 - Hecho: estructura base (sidebar flotante, ⌘K, tema oscuro/claro), **Inicio** completo,
@@ -132,8 +132,23 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
 - Valores por defecto neutrales: AFFiNE cae a `https://app.affine.pro`, dominios de ejemplo `midominio.com`,
   proyecto de compose `nober`, plantilla `deploy/nginx/nober.conf`. `TZ` configurable (por defecto `America/Bogota`).
 - `compose.dev.yaml` es solo la base de datos de desarrollo (`npm run db:up`); `compose.yaml` es producción.
-- Pendiente: ejecutar el despliegue; AFFiNE por servidor (crear apunte de clase, recientes — en 0.27 por MCP);
-  archivos de tareas y recursos; Google Calendar; PWA.
+- PWA: `app/manifest.ts`, `public/sw.js` (cachea solo estáticos; páginas a la red con `/offline.html` de respaldo;
+  solo se registra en producción), iconos en `public/icons`.
+- Archivos: modelo `Upload` (contenido en disco en `UPLOAD_DIR/<userId>/<key>`, volumen `uploads` en Docker),
+  `POST /api/files` (sesión, `MAX_UPLOAD_MB`, lista de tipos en `lib/storage.ts`; HTML/SVG rechazados),
+  `GET /api/files/:id` solo para el dueño (nosniff + CSP sandbox). Borrar tarea/recurso/materia borra el disco;
+  huérfanos se limpian a las 24 h. Cliente: `uploadFile()` (`lib/upload-client.ts`).
+- AFFiNE por MCP: `lib/affine-mcp.ts` (HTTP sin estado, JSON o SSE; `create_document` = {title, content Markdown},
+  devuelve JSON con `docId` — verificado en el código de AFFiNE `plugins/copilot/mcp/provider.ts`).
+  Token por usuario cifrado (`lib/crypto.ts`, AES-256-GCM con BETTER_AUTH_SECRET) en `Settings.affineToken`.
+  Acciones en `lib/actions/affine.ts`: conectar, crear apunte de clase, «Preparar» próxima clase.
+- Google Calendar: `lib/google-calendar.ts` (scope `calendar.app.created`, refresh propio del token desde la tabla
+  `account`, eventos con `extendedProperties.private.nober` + `nober_hash`, clases como RRULE semanal con EXDATE de
+  festivos). `GOOGLE_CALENDAR_API` y `GOOGLE_TOKEN_URL` solo existen para pruebas con simuladores.
+  Auto-sincronización al abrir Inicio (cada 15 min como mucho). Vinculación con `authClient.linkSocial`.
+- Todo lo anterior se probó de punta a punta con la imagen Docker de producción (AFFiNE y Google con simuladores
+  hechos con el SDK oficial de MCP y un servidor HTTP en memoria).
+- Pendiente: ejecutar el despliegue en el VPS; recordatorios push; leer otros calendarios de Google.
 
 ## Decisiones ya tomadas (no volver a preguntar)
 

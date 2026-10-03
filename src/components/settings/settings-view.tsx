@@ -9,13 +9,13 @@ import { saveSettings } from "@/lib/actions/settings";
 import { signOut } from "@/lib/auth-client";
 import { AFFINE_HOME, AFFINE_HOST } from "@/lib/affine";
 import { AffineConnect } from "@/components/settings/affine-connect";
+import { GoogleConnect } from "@/components/settings/google-connect";
 import { AffineLink } from "@/components/affine/affine";
 import { Tag, cn } from "@/components/blocks/primitives";
 import { setTheme, useTheme } from "@/components/shell/theme";
 import { formatGrade } from "@/lib/grades";
 import type { SettingsData } from "@/lib/data";
 import type { GradingScale, Period, Profile } from "@/lib/types";
-import { APP_NAME } from "@/lib/brand";
 
 const SECTIONS = [
   { id: "perfil", label: "Perfil" },
@@ -205,14 +205,13 @@ export function SettingsView({ data }: { data: SettingsData }) {
             <Integration
               name="Google Calendar"
               emoji="🗓️"
-              status={<Tag>Fase 4</Tag>}
-              body={
-                <p className="text-[12.5px] leading-relaxed text-muted">
-                  {APP_NAME} enviará clases, entregas y exámenes a un calendario propio «{APP_NAME}». Tus otros
-                  calendarios se mostrarán en solo lectura.
-                </p>
+              status={
+                <Tag color={data.google.enabled ? (data.google.error ? "red" : "green") : "gray"}>
+                  {data.google.enabled ? (data.google.error ? "Con errores" : "Sincronizando") : data.google.linked ? "Conectado" : "Desactivado"}
+                </Tag>
               }
-              action={<button disabled className="h-8 cursor-not-allowed rounded-full bg-pill px-3.5 text-[12.5px] text-faint">Conectar</button>}
+              body={<GoogleConnect status={data.google} />}
+              action={null}
             />
           </div>
         </Panel>

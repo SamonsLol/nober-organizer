@@ -94,12 +94,22 @@ prisma/               esquema, migraciones y seed
 deploy/               plantilla de nginx y guía de despliegue
 ```
 
+## Integraciones
+
+- **AFFiNE por MCP** (0.27+): con un token del espacio, cada clase ofrece «Crear apunte», que crea el documento
+  con una plantilla y lo enlaza. El token se guarda cifrado.
+- **Google Calendar**: un calendario propio con clases recurrentes (sin festivos), tareas, evaluaciones y eventos,
+  sin duplicados. Permiso mínimo: solo calendarios creados por la app.
+- **Archivos**: sube PDF, documentos, imágenes, audio o video a tareas y recursos (solo su dueño puede verlos).
+- **PWA**: instálala en el celular desde el navegador («Agregar a la pantalla de inicio»).
+
+Configuración en [`deploy/README.md`](deploy/README.md#integraciones-opcionales).
+
 ## Hoja de ruta
 
-- Crear el apunte de cada clase directamente en AFFiNE y listar los editados hace poco (MCP de AFFiNE).
-- Subir archivos a tareas y recursos.
-- Sincronización con Google Calendar (un calendario propio, clases como eventos recurrentes).
-- PWA instalable y recordatorios.
+- Recordatorios (notificaciones push) de entregas y exámenes.
+- Leer otros calendarios de Google en solo lectura.
+- Exportar e importar datos.
 - Traducción de la interfaz.
 
 ## Contribuir
