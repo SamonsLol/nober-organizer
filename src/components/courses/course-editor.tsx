@@ -13,7 +13,7 @@ import type { ClassSchedule, Course, CoverKind, TagColor } from "@/lib/types";
 /* ───────────── Apertura desde cualquier parte ───────────── */
 
 type Init = { course: Course; schedule: ClassSchedule[] } | undefined;
-const EVT = "aos:course-editor";
+const EVT = "nober:course-editor";
 
 /** Abre el editor de materias: sin argumentos crea una nueva; con materia y horario, la edita. */
 export function openCourseEditor(init?: Init) {

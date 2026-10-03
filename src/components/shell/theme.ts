@@ -2,15 +2,15 @@
 
 import { useSyncExternalStore } from "react";
 
-/** Tema claro/oscuro: vive en `data-theme` del <html> y en localStorage ("aos-theme"). */
+/** Tema claro/oscuro: vive en `data-theme` del <html> y en localStorage ("nober-theme"). */
 export type Theme = "dark" | "light";
 
-const EVT = "aos:theme";
+const EVT = "nober:theme";
 
 export function setTheme(t: Theme) {
   document.documentElement.dataset.theme = t;
   try {
-    localStorage.setItem("aos-theme", t);
+    localStorage.setItem("nober-theme", t);
   } catch {}
   window.dispatchEvent(new Event(EVT));
 }

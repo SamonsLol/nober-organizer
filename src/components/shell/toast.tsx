@@ -7,7 +7,7 @@ import { cn } from "@/components/blocks/primitives";
 type Tone = "error" | "ok";
 type Item = { id: number; text: string; tone: Tone };
 
-const EVENT = "aos-toast";
+const EVENT = "nober-toast";
 
 /** Aviso breve abajo al centro. Se puede llamar desde cualquier componente cliente. */
 export function toast(text: string, tone: Tone = "error") {

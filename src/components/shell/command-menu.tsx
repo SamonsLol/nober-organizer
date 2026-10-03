@@ -17,7 +17,7 @@ import { toast } from "@/components/shell/toast";
 import type { Course } from "@/lib/types";
 
 type Mode = "all" | "create";
-const EVT = "aos:command";
+const EVT = "nober:command";
 
 export function openCommandMenu(mode: Mode = "all") {
   window.dispatchEvent(new CustomEvent(EVT, { detail: mode }));

@@ -17,7 +17,7 @@ export interface EventEditorInit {
   date?: string;
 }
 
-const EVT = "aos:event-editor";
+const EVT = "nober:event-editor";
 
 export function openEventEditor(init: EventEditorInit = {}) {
   window.dispatchEvent(new CustomEvent<EventEditorInit>(EVT, { detail: init }));

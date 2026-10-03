@@ -23,8 +23,8 @@ export interface AffineDoc {
 
 type PanelSize = "side" | "wide" | "full";
 
-const EVT = "aos:affine";
-const SIZE_KEY = "aos-affine-size";
+const EVT = "nober:affine";
+const SIZE_KEY = "nober-affine-size";
 const SLOW_MS = 8000;
 
 export function openAffine(doc: AffineDoc) {

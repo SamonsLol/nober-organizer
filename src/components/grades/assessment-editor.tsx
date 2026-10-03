@@ -23,7 +23,7 @@ export interface AssessmentEditorInit {
   focusScore?: boolean;
 }
 
-const EVT = "aos:assessment-editor";
+const EVT = "nober:assessment-editor";
 
 export function openAssessmentEditor(init: AssessmentEditorInit = {}) {
   window.dispatchEvent(new CustomEvent<AssessmentEditorInit>(EVT, { detail: init }));

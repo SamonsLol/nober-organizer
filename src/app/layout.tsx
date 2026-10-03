@@ -14,7 +14,7 @@ export const viewport: Viewport = {
 };
 
 // Aplica el tema guardado antes de pintar, para evitar el parpadeo claro/oscuro.
-const themeScript = `(function(){try{var t=localStorage.getItem('aos-theme');if(t!=='light'&&t!=='dark'){t='dark'}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='dark'}})()`;
+const themeScript = `(function(){try{var t=localStorage.getItem('nober-theme');if(t!=='light'&&t!=='dark'){t='dark'}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='dark'}})()`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

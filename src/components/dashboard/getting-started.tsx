@@ -8,7 +8,7 @@ import { openCourseEditor } from "@/components/courses/course-editor";
 import { openAssessmentEditor } from "@/components/grades/assessment-editor";
 import type { DashboardData } from "@/lib/data";
 
-const HIDE_KEY = "aos-getting-started-hidden";
+const HIDE_KEY = "nober-getting-started-hidden";
 
 /** Tarjeta de bienvenida con los primeros pasos y su estado real. Se va sola al completarlos. */
 export function GettingStarted({ data, compact }: { data: DashboardData; compact?: boolean }) {

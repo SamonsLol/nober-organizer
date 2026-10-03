@@ -1,10 +1,11 @@
 # Nober Organizer — contexto del proyecto
 
-Proyecto de código abierto (licencia MIT): https://github.com/SamonsLol/nober-organizer (rama `main`). Aplicación web personal de gestión académica
-(colegio, Colombia). Antes se llamaba «Academic OS»; el nombre vive en `src/lib/brand.ts` (`APP_NAME`).
+Proyecto de código abierto (licencia MIT): https://github.com/SamonsLol/nober-organizer (rama `main`).
+Aplicación web personal de gestión académica (colegio, Colombia). El nombre vive en `src/lib/brand.ts`
+(`APP_NAME`); claves de localStorage y eventos internos usan el prefijo `nober-` / `nober:`.
 Lo específico de la instalación del mantenedor (dominios, servidor) está en `CLAUDE.local.md` (no se publica):
-**nunca** poner dominios, IPs, IDs de espacios ni datos personales en archivos versionados. Estructura inspirada en la plantilla
-"Academic OS" de Templation (Notion) y estilo visual tipo "Tasklyn" en versión oscura.
+**nunca** poner dominios, IPs, IDs de espacios ni datos personales en archivos versionados.
+Organización inspirada en plantillas académicas de Notion; estilo visual propio ("vidrio nocturno").
 Implementación propia: no copiar código ni assets de terceros.
 
 Idioma de la interfaz y de la conversación: **español**. Formato es-CO, 24 h, semana inicia el lunes.
@@ -16,7 +17,7 @@ Requiere **Node ≥ 22** (Prisma 7 no instala en Node 20; la máquina tiene Node
 ```bash
 npm install            # postinstall genera el cliente de Prisma en src/generated (ignorado por git)
 cp .env.example .env   # DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL
-npm run db:up          # PostgreSQL 17 en localhost:5433 (compose.dev.yaml)
+npm run db:up          # PostgreSQL 17 en localhost:5433 (compose.dev.yaml, proyecto nober-dev)
 npm run db:migrate     # aplica migraciones
 npm run db:seed        # usuario de prueba demo@example.com / nober-demo-2026 con los datos ficticios
 npm run dev            # http://localhost:3000
@@ -243,7 +244,7 @@ src/
 - `Task.steps` / `Task.files` son la fuente; `subtasks` y `attachments` son conteos derivados (el mock
   los calcula; en la Fase 3 los calculará la consulta).
 - Capturas sin interfaz: Edge headless tiene un ancho mínimo (~500 px); para móvil, envolver la página en
-  un iframe de 390 px. El tema claro se activa con `localStorage['aos-theme'] = 'light'`.
+  un iframe de 390 px. El tema claro se activa con `localStorage['nober-theme'] = 'light'`.
 - Si `npm run build` falla con `EPERM` (rmdir/unlink en `.next`), es OneDrive: quitar solo lectura y borrar la
   salida (`attrib -R .next\server\* /S /D` y borrar `.next/server`, o todo `.next` si no corre `npm run dev`).
 - Antes de terminar: `npm run build` sin errores y revisar la pantalla en el navegador (oscuro, claro y móvil).
