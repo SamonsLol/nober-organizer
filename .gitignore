@@ -9,3 +9,4 @@ src/generated/
 .env.production
 CLAUDE.local.md
 .data/
+CLAUDE.md
