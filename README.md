@@ -6,124 +6,126 @@
 
 # Nober Organizer
 
-**Organizador académico personal y de código abierto** para estudiantes de colegio: materias con horario,
-tareas, calendario, calificaciones por períodos, temas, recursos y apuntes en [AFFiNE](https://affine.pro),
-todo en un solo lugar. Interfaz en español (formato es-CO), modo oscuro y claro, y pensada también para móvil.
+**English** · [Español](README.es.md)
 
-*Open-source personal school planner (courses, tasks, calendar, grades, notes in AFFiNE). The UI is in Spanish;
-contributions to translate it are welcome.*
+**An open-source, self-hosted school planner** for students: courses with a weekly timetable, tasks, calendar,
+grades by term, topics, resources and class notes in [AFFiNE](https://affine.pro), all in one place.
+Dark and light themes, built for desktop and mobile.
 
-![Inicio](docs/screenshots/inicio.png)
+> The interface is in Spanish (Colombian format: 24 h, weeks start on Monday). Help translating it is welcome.
 
-| Tareas (tablero) | Calendario (semana) |
+![Home](docs/screenshots/inicio.png)
+
+| Tasks (board) | Calendar (week) |
 | --- | --- |
-| ![Tareas](docs/screenshots/tareas.png) | ![Calendario](docs/screenshots/calendario.png) |
-| **Calificaciones** | **Materia** |
-| ![Calificaciones](docs/screenshots/calificaciones.png) | ![Materia](docs/screenshots/materia.png) |
+| ![Tasks](docs/screenshots/tareas.png) | ![Calendar](docs/screenshots/calendario.png) |
+| **Grades** | **Course** |
+| ![Grades](docs/screenshots/calificaciones.png) | ![Course](docs/screenshots/materia.png) |
 
-## Qué hace
+## Features
 
-- **Inicio**: lo más urgente, clases de hoy, tareas de la semana, entregas y evaluaciones próximas, promedio del
-  período, temporizador de foco, metas y calendario del mes. Las cuentas nuevas tienen una guía de primeros pasos.
-- **Materias**: color, portada, profesor, aula y **horario semanal** (el calendario genera las clases a partir de él).
-  Cada materia tiene resumen, clases, temas (tablero por nivel de preparación), tareas, apuntes, recursos y notas.
-- **Tareas**: lista, tablero (arrastrar y soltar) y por fecha; pasos, enlaces, etiquetas, prioridad y nota.
-- **Calendario**: mes, semana y agenda con clases, entregas, exámenes, eventos y **festivos** (quitan las clases).
-- **Calificaciones**: escala configurable (1.0–5.0 por defecto, aprueba con 3.0), períodos con peso, notas «sobre»
-  otra escala (85/100 → 4,3), nota necesaria para aprobar y simulador.
-- **Apuntes en AFFiNE**: cada clase enlaza su documento y se abre embebido en un panel, sin salir de la app.
-  El contenido nunca se copia: vive en tu AFFiNE.
-- **Cuentas**: correo y contraseña (y Google, opcional) con [Better Auth](https://better-auth.com). Cada usuario ve
-  solo lo suyo; el registro se puede cerrar después de crear tu cuenta.
+- **Home**: what's most urgent, today's classes, this week's tasks, upcoming assignments and exams, term average,
+  focus timer, goals and a monthly calendar. New accounts get a getting-started guide.
+- **Courses**: color, cover, teacher, room and a **weekly timetable** (the calendar generates classes from it).
+  Each course has an overview, classes, topics (board by preparation level), tasks, notes, resources and grades.
+- **Tasks**: list, board (drag and drop) and by-date views; steps, links, tags, priority, notes and file attachments.
+- **Calendar**: month, week and agenda views with classes, deadlines, exams, events and **holidays** (they remove
+  that day's classes).
+- **Grades**: configurable scale (1.0–5.0 by default, passing at 3.0), weighted terms, scores on a different scale
+  (85/100 → 4.3), the grade you still need to pass, and a simulator.
+- **Notes in AFFiNE**: every class links to its document, which opens embedded in a side panel. Content is never
+  copied into the app; it stays in your AFFiNE.
+- **Accounts**: email and password (Google optional) with [Better Auth](https://better-auth.com). Each user only
+  sees their own data, and sign-ups can be closed once your account exists.
 
-## Instalar en tu servidor (Docker)
+## Integrations
 
-Requisitos: un servidor con Docker y Docker Compose, y un dominio con HTTPS (nginx, Caddy, Cloudflare…).
+- **AFFiNE via MCP** (0.27+): with a workspace token, each class offers "Crear apunte" (create note), which creates
+  the document from a template and links it. The token is stored encrypted.
+- **Google Calendar**: a dedicated calendar with recurring classes (skipping holidays), tasks, assessments and
+  events, without duplicates. Minimal permission: only calendars created by the app.
+- **Files**: upload PDFs, documents, images, audio or video to tasks and resources (only the owner can open them).
+- **PWA**: install it on your phone from the browser ("Add to Home Screen").
+
+Setup instructions are in the deployment guide ([`deploy/README.md`](deploy/README.md), in Spanish).
+
+## Self-hosting (Docker)
+
+Requirements: a server with Docker and Docker Compose, and a domain with HTTPS (nginx, Caddy, Cloudflare…).
 
 ```bash
 git clone https://github.com/SamonsLol/nober-organizer.git
 cd nober-organizer
-cp .env.production.example .env.production   # completar: contraseñas, dominio, AFFiNE
+cp .env.production.example .env.production   # fill in: passwords, domain, AFFiNE
 docker compose --env-file .env.production up -d --build
 curl -s http://127.0.0.1:3100/api/health     # {"ok":true,"db":true}
 ```
 
-Luego publica `127.0.0.1:3100` con tu proxy (plantilla de nginx en [`deploy/nginx/nober.conf`](deploy/nginx/nober.conf)).
-Guía completa —DNS, nginx, primer uso, actualizar y copias de seguridad— en [`deploy/README.md`](deploy/README.md).
+Then expose `127.0.0.1:3100` through your reverse proxy (nginx template in
+[`deploy/nginx/nober.conf`](deploy/nginx/nober.conf)). The full guide (DNS, nginx, first run, updates and backups)
+is in [`deploy/README.md`](deploy/README.md).
 
 ### AFFiNE
 
-Funciona con la nube de AFFiNE o con una instancia propia. Para que el panel embebido tenga sesión, lo ideal es
-**autoalojar AFFiNE en el mismo dominio** que la app (p. ej. `notas.midominio.com` y `organizador.midominio.com`):
-los navegadores bloquean las cookies de terceros dentro de un iframe. Variables:
+Works with AFFiNE Cloud or a self-hosted instance. For the embedded panel to stay signed in, **self-host AFFiNE on
+the same domain** as the app (e.g. `notes.example.com` and `planner.example.com`): browsers block third-party
+cookies inside iframes.
 
-| Variable | Qué es |
+| Variable | Meaning |
 | --- | --- |
-| `NEXT_PUBLIC_AFFINE_ORIGIN` | URL de tu AFFiNE (por defecto `https://app.affine.pro`) |
-| `NEXT_PUBLIC_AFFINE_WORKSPACE` | ID del espacio: lo que va después de `/workspace/` en la URL de AFFiNE |
+| `NEXT_PUBLIC_AFFINE_ORIGIN` | Your AFFiNE URL (defaults to `https://app.affine.pro`) |
+| `NEXT_PUBLIC_AFFINE_WORKSPACE` | Workspace ID: what comes after `/workspace/` in AFFiNE's URL |
 
-Se fijan al compilar la imagen: si las cambias, vuelve a ejecutar con `--build`.
+They are baked in at build time: if you change them, run again with `--build`.
 
-## Desarrollo
+## Development
 
-Requisitos: Node 22 o superior y Docker (para PostgreSQL).
+Requirements: Node 22 or newer and Docker (for PostgreSQL).
 
 ```bash
 npm install
-cp .env.example .env        # generar BETTER_AUTH_SECRET (el comando está en el archivo)
-npm run db:up               # PostgreSQL 17 en localhost:5433
+cp .env.example .env        # generate BETTER_AUTH_SECRET (the command is in the file)
+npm run db:up               # PostgreSQL 17 on localhost:5433
 npm run db:migrate
-npm run db:seed             # usuario demo@example.com / nober-demo-2026 con datos ficticios
+npm run db:seed             # demo user demo@example.com / nober-demo-2026 with sample data
 npm run dev                 # http://localhost:3000
 ```
 
-Sin `DATABASE_URL` la app arranca en **modo demostración** (datos ficticios en memoria, sin inicio de sesión):
-útil para trabajar solo en la interfaz.
+Without `DATABASE_URL` the app starts in **demo mode** (sample data in memory, no sign-in), handy for UI work.
 
-Otros comandos: `npm run lint` (TypeScript), `npm run build`, `npm run db:studio` (Prisma Studio).
+Other commands: `npm run lint` (TypeScript), `npm run build`, `npm run db:studio` (Prisma Studio).
 
 ### Stack
 
 Next.js 16 (App Router, Server Actions) · React 19 · TypeScript · Tailwind CSS v4 · Prisma 7 + PostgreSQL ·
-Better Auth · date-fns · lucide-react. Sin librería de componentes: el sistema de diseño es propio
-(`src/app/globals.css` y `src/components/blocks`).
+Better Auth · date-fns · lucide-react. No component library: the design system is custom
+(`src/app/globals.css` and `src/components/blocks`).
 
 ```
 src/
-  app/(app)/          pantallas (inicio, calendar, tasks, courses, notes, grades, resources, settings)
-  app/api/            auth y health
-  components/         vistas por pantalla, editores (diálogos) y bloques de diseño
-  lib/actions/        Server Actions (validan con zod y filtran siempre por usuario)
-  lib/data/           capa de datos: lee todo lo del usuario y deriva lo que pide cada pantalla
-  lib/affine.ts       integración con AFFiNE, aislada en un módulo
-prisma/               esquema, migraciones y seed
-deploy/               plantilla de nginx y guía de despliegue
+  app/(app)/          screens (home, calendar, tasks, courses, notes, grades, resources, settings)
+  app/api/            auth, files and health
+  components/         one view per screen, editors (dialogs) and design blocks
+  lib/actions/        Server Actions (validated with zod, always scoped to the user)
+  lib/data/           data layer: loads the user's data and derives what each screen needs
+  lib/affine*.ts      AFFiNE integration (links and MCP client), isolated
+prisma/               schema, migrations and seed
+deploy/               nginx template and deployment guide
 ```
 
-## Integraciones
+## Roadmap
 
-- **AFFiNE por MCP** (0.27+): con un token del espacio, cada clase ofrece «Crear apunte», que crea el documento
-  con una plantilla y lo enlaza. El token se guarda cifrado.
-- **Google Calendar**: un calendario propio con clases recurrentes (sin festivos), tareas, evaluaciones y eventos,
-  sin duplicados. Permiso mínimo: solo calendarios creados por la app.
-- **Archivos**: sube PDF, documentos, imágenes, audio o video a tareas y recursos (solo su dueño puede verlos).
-- **PWA**: instálala en el celular desde el navegador («Agregar a la pantalla de inicio»).
+- Reminders (push notifications) for deadlines and exams.
+- Read other Google calendars (read-only).
+- Data export and import.
+- Interface translations.
 
-Configuración en [`deploy/README.md`](deploy/README.md#integraciones-opcionales).
+## Contributing
 
-## Hoja de ruta
+Contributions are welcome! See [`CONTRIBUTING.md`](CONTRIBUTING.md) (in Spanish). Please don't open public issues
+for security problems; contact the maintainer instead.
 
-- Recordatorios (notificaciones push) de entregas y exámenes.
-- Leer otros calendarios de Google en solo lectura.
-- Exportar e importar datos.
-- Traducción de la interfaz.
+## License
 
-## Contribuir
-
-¡Bienvenidas las contribuciones! Lee [`CONTRIBUTING.md`](CONTRIBUTING.md). Para errores de seguridad, no abras un
-issue público: escribe a la persona que mantiene el proyecto.
-
-## Licencia
-
-[MIT](LICENSE). El diseño y el código son propios; la organización del contenido se inspira en plantillas
-académicas de Notion, sin relación con sus autores.
+[MIT](LICENSE). Original design and code; the content structure is inspired by academic Notion templates, with no
+affiliation to their authors.
