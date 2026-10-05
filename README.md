@@ -1,7 +1,7 @@
 <a href="https://www.buymeacoffee.com/TU_USUARIO" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
        alt="Buy Me A Coffee"
-       style="height: 60px !important;width: 217px !important;">
+       style="height: 20px !important;width: 100px !important;">
 </a>
 
 # Nober Organizer
