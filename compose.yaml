@@ -30,6 +30,7 @@ services:
       args: &affine
         NEXT_PUBLIC_AFFINE_ORIGIN: ${NEXT_PUBLIC_AFFINE_ORIGIN:-https://app.affine.pro}
         NEXT_PUBLIC_AFFINE_WORKSPACE: ${NEXT_PUBLIC_AFFINE_WORKSPACE:-}
+        NEXT_PUBLIC_SOURCE_URL: ${NEXT_PUBLIC_SOURCE_URL:-}
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-nober}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-nober}
     depends_on:

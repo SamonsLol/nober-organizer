@@ -8,6 +8,7 @@ import { toast } from "@/components/shell/toast";
 import { saveSettings } from "@/lib/actions/settings";
 import { signOut } from "@/lib/auth-client";
 import { AFFINE_HOME, AFFINE_HOST } from "@/lib/affine";
+import { APP_NAME, SOURCE_URL } from "@/lib/brand";
 import { AffineConnect } from "@/components/settings/affine-connect";
 import { GoogleConnect } from "@/components/settings/google-connect";
 import { AffineLink } from "@/components/affine/affine";
@@ -234,6 +235,10 @@ export function SettingsView({ data }: { data: SettingsData }) {
             </div>
             <span className="text-[12px] text-faint">Español (Colombia) · semana desde el lunes · 24 h</span>
           </div>
+          <p className="mt-4 text-[12px] text-faint">
+            {APP_NAME} es software libre bajo la licencia AGPLv3 ·{" "}
+            <a href={SOURCE_URL} target="_blank" rel="noreferrer" className="underline hover:text-muted">Código fuente</a>
+          </p>
         </Panel>
 
         {/* Barra de guardado: solo cuando hay algo que decir */}
