@@ -35,3 +35,8 @@ y revisa tu cambio en el navegador en **modo oscuro, claro y móvil** (~390 px).
 
 Incluye qué esperabas, qué pasó, pasos para reproducirlo, navegador/dispositivo y, si aplica, la salida de
 `docker compose --env-file .env.production logs app`.
+
+## Licencia de los aportes
+
+Al enviar un pull request aceptas que tu aporte se publique bajo la misma licencia del proyecto,
+[GNU AGPLv3](LICENSE).

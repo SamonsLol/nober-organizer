@@ -124,5 +124,11 @@ issue público: escribe a la persona que mantiene el proyecto.
 
 ## Licencia
 
-[MIT](LICENSE). El diseño y el código son propios; la organización del contenido se inspira en plantillas
-académicas de Notion, sin relación con sus autores.
+Copyright (C) 2026 Samuel y colaboradores de Nober Organizer.
+
+Licencia [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only). Puedes usarlo, estudiarlo, modificarlo y
+compartirlo; si ofreces una versión modificada como servicio web, debes dar su código fuente a quienes la usan. La
+app enlaza a su código en el inicio de sesión y en Ajustes; si lo cambias, apunta `NEXT_PUBLIC_SOURCE_URL` a tu fork.
+
+El diseño y el código son propios; la organización del contenido se inspira en plantillas académicas de Notion, sin
+relación con sus autores.

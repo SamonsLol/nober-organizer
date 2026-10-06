@@ -4,7 +4,7 @@ import { LoginForm } from "@/components/auth/login-form";
 import { googleEnabled } from "@/lib/auth";
 import { getSession } from "@/lib/session";
 import { hasDatabase } from "@/lib/db/prisma";
-import { APP_NAME } from "@/lib/brand";
+import { APP_NAME, SOURCE_URL } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: `Iniciar sesión · ${APP_NAME}` };
@@ -25,6 +25,10 @@ export default async function LoginPage() {
         <div className="glass p-6 sm:p-7">
           <LoginForm google={googleEnabled} allowSignUp={process.env.AUTH_DISABLE_SIGNUP !== "true"} />
         </div>
+        <p className="mt-5 text-center text-[11.5px] text-faint">
+          Software libre (AGPLv3) ·{" "}
+          <a href={SOURCE_URL} target="_blank" rel="noreferrer" className="underline hover:text-muted">Código fuente</a>
+        </p>
       </div>
     </div>
   );

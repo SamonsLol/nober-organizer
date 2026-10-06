@@ -47,6 +47,6 @@
     "prisma@7.10.0": true,
     "@prisma/engines@7.10.0": true
   },
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "description": "Organizador académico personal y de código abierto: materias, tareas, calendario, notas y apuntes en AFFiNE."
 }

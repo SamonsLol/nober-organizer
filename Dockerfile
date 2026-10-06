@@ -17,11 +17,13 @@ RUN npm ci
 # ── Compilación ──
 FROM base AS builder
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
-# AFFiNE se fija al compilar (variables NEXT_PUBLIC_*)
+# AFFiNE y el enlace al código fuente se fijan al compilar (variables NEXT_PUBLIC_*)
 ARG NEXT_PUBLIC_AFFINE_ORIGIN
 ARG NEXT_PUBLIC_AFFINE_WORKSPACE
+ARG NEXT_PUBLIC_SOURCE_URL
 ENV NEXT_PUBLIC_AFFINE_ORIGIN=$NEXT_PUBLIC_AFFINE_ORIGIN \
-    NEXT_PUBLIC_AFFINE_WORKSPACE=$NEXT_PUBLIC_AFFINE_WORKSPACE
+    NEXT_PUBLIC_AFFINE_WORKSPACE=$NEXT_PUBLIC_AFFINE_WORKSPACE \
+    NEXT_PUBLIC_SOURCE_URL=$NEXT_PUBLIC_SOURCE_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate && npm run build
