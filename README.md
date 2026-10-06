@@ -129,7 +129,7 @@ for security problems; contact the maintainer instead.
 
 Copyright (C) 2026 Samuel and Nober Organizer contributors.
 
-Licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only). You can use, study, modify and
+Licensed under the [GNU Affero General Public License](LICENSE), version 3 or (at your option) any later version (AGPL-3.0-or-later). You can use, study, modify and
 share it; if you run a modified version as a web service, you must offer its source code to its users. The app
 links to its source in the sign-in page and in Settings; set `NEXT_PUBLIC_SOURCE_URL` to your fork if you change it.
 

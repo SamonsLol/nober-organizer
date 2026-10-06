@@ -126,7 +126,7 @@ issue público: escribe a la persona que mantiene el proyecto.
 
 Copyright (C) 2026 Samuel y colaboradores de Nober Organizer.
 
-Licencia [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only). Puedes usarlo, estudiarlo, modificarlo y
+Licencia [GNU Affero General Public License](LICENSE), versión 3 o (a tu elección) cualquier versión posterior (AGPL-3.0-or-later). Puedes usarlo, estudiarlo, modificarlo y
 compartirlo; si ofreces una versión modificada como servicio web, debes dar su código fuente a quienes la usan. La
 app enlaza a su código en el inicio de sesión y en Ajustes; si lo cambias, apunta `NEXT_PUBLIC_SOURCE_URL` a tu fork.
 
