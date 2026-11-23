@@ -8,9 +8,8 @@ import {
 } from "lucide-react";
 import { EmptyHint, GhostAdd, NewButton, Section, Tag, ViewTabs, cn } from "@/components/blocks/primitives";
 import { CourseCover } from "@/components/illustrations/course-cover";
-import { AffineLink } from "@/components/affine/affine";
+import { LectureLink } from "@/components/notes/note-panel";
 import { openCommandMenu } from "@/components/shell/command-menu";
-import { AFFINE_HOME } from "@/lib/affine";
 import { openCourseEditor } from "@/components/courses/course-editor";
 import { toast } from "@/components/shell/toast";
 import { updateTask } from "@/lib/actions/tasks";
@@ -340,13 +339,10 @@ export function WeekLectures({ data }: { data: DashboardData }) {
                   {items.map((l) => {
                     const c = data.courseById[l.courseId];
                     return (
-                      <AffineLink
+                      <LectureLink
                         key={l.id}
-                        href={l.affineDocUrl ?? AFFINE_HOME}
-                        title={l.title}
-                        meta={`${c.name} · ${capitalize(fmt(l.date, "EEE d MMM").replace(".", ""))}`}
-                        emoji={l.emoji}
-                        color={c.color}
+                        lecture={l}
+                        course={c}
                         className="group rounded-md border border-border bg-surface-2 px-2 py-1.5 transition-colors hover:border-border-strong"
                       >
                         <div className="line-clamp-2 text-[12.5px] font-medium leading-snug">
@@ -357,7 +353,7 @@ export function WeekLectures({ data }: { data: DashboardData }) {
                           <span className="truncate">{c.name}</span>
                           <PanelRight className="ml-auto size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
                         </div>
-                      </AffineLink>
+                      </LectureLink>
                     );
                   })}
                 </div>
@@ -379,18 +375,15 @@ export function WeekLectures({ data }: { data: DashboardData }) {
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {items.map((l) => (
-                    <AffineLink
+                    <LectureLink
                       key={l.id}
-                      href={l.affineDocUrl ?? AFFINE_HOME}
-                      title={l.title}
-                      meta={`${c.name} · ${capitalize(fmt(l.date, "EEE d MMM").replace(".", ""))}`}
-                      emoji={l.emoji}
-                      color={c.color}
+                      lecture={l}
+                      course={c}
                       className="rounded-md border border-border bg-surface-2 px-2 py-1 text-[12.5px] hover:border-border-strong"
                     >
                       {l.emoji} {l.title}
                       <span className="ml-1.5 text-[11px] text-faint">{capitalize(fmt(l.date, "EEE").replace(".", ""))}</span>
-                    </AffineLink>
+                    </LectureLink>
                   ))}
                 </div>
               </div>

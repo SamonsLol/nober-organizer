@@ -34,7 +34,7 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
 1. ✅ Diseño y arquitectura (acordado).
 2. ✅ Prototipo solo frontend con datos ficticios.
 3. ✅ Backend: PostgreSQL + Prisma, autenticación (Better Auth), CRUD de materias, tareas, calendario, calificaciones, recursos.
-4. ✅ Integraciones: Docker, PWA, archivos, AFFiNE por MCP, Google Calendar. Falta desplegar en el VPS del mantenedor.
+4. ✅ Integraciones: Docker, PWA, archivos, Google Calendar, apuntes en Obsidian (antes AFFiNE). Desplegado en el VPS del mantenedor.
 
 ### Estado de la Fase 2
 - Hecho: estructura base (sidebar flotante, ⌘K, tema oscuro/claro), **Inicio** completo,
@@ -47,15 +47,15 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
   **Calendario** (`/calendar?view=mes|semana|agenda&d=yyyy-MM-dd`): todo se normaliza a `CalItem`
   (`lib/calendar.ts`, 6 tipos `CalKind`). Tarea con evaluación = "Entrega"; la evaluación ligada no se
   repite. Las clases se generan en el cliente con `expandClasses` para el rango visible (saltan festivos
-  y días fuera de períodos) y enlazan al apunte de AFFiNE. El mes no pinta clases (sí la semana y el
+  y días fuera de períodos) y enlazan al apunte de Obsidian (`CalItem.note`). El mes no pinta clases (sí la semana y el
   panel del día); en móvil el mes usa puntos. Exámenes y fechas importantes pendientes van en pastel.
   **Apuntes** (`/notes`): por fecha / por materia, próximas clases con «Preparar», recientes, y
-  vista previa en iframe de AFFiNE (`DocPeek`) con caída a «Abrir en AFFiNE».
+  lector del apunte (`NoteInline`) en la columna derecha (≥1280 px).
   **Calificaciones** (`/grades`): indicadores, tabla materia × período (+ año y nota necesaria),
   gráfico del período actual (una serie `chart-1`, línea de aprobación) y simulador con controles.
   **Recursos** (`/resources`): por materia / lista, filtros por materia, tipo y origen.
   **Ajustes** (`/settings`): perfil, períodos (validación de pesos = 100 %), escala, horario,
-  integraciones (AFFiNE, Google Calendar) y tema.
+  integraciones (Obsidian, Google Calendar) y tema.
 - Pulido de móvil y modo claro hecho (revisadas todas las rutas a 390 px y 1440 px, oscuro y claro):
   Inicio en móvil reordena los bloques por prioridad (columnas con `max-lg:contents` + `max-lg:order-*`),
   calendario de Inicio compacto con puntos en móvil, tablas con columnas secundarias ocultas en móvil
@@ -88,7 +88,7 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
   servidor; «Repartir en partes iguales»). Validación de pesos = 100 %, escala y fechas sin cruces en ambos lados.
 - Materias guardan de verdad (`lib/actions/courses.ts`): editor único en diálogo (`components/courses/course-editor.tsx`,
   `openCourseEditor()` / `<CourseEditorHost>` en el layout / `EditCourseButton`) con nombre, emoji, color, portada,
-  profesor, aula, código, carpeta AFFiNE y horario semanal (lunes a viernes). El servidor rechaza bloques que se
+  profesor, aula, código, carpeta de apuntes en Obsidian y horario semanal (lunes a viernes). El servidor rechaza bloques que se
   cruzan, también con otras materias. El slug se fija al crear (renombrar no cambia la URL). Eliminar muestra lo que
   se pierde (`courseUsage`); las tareas quedan como personales. Entradas: galería, «+» de la barra lateral, ⌘K, detalle.
   Campos vacíos (código, aula, profesor) no se pintan.
@@ -107,11 +107,11 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
   Entradas: «+ Evento» en el panel del día, clic en un evento, ⌘K.
 - Temas, clases, recursos, metas y pensamientos guardan de verdad (`lib/actions/study.ts`). En la materia,
   `components/courses/course-study.tsx`: `TopicBoard` (arrastrar entre niveles, «Estudiado hoy»), `LectureGrid`
-  (clase con fecha, tema y enlace al apunte de AFFiNE; sin enlace muestra «Enlazar apunte»), `CourseResources`.
+  (clase con fecha, tema y su apunte de Obsidian; sin él, «Crear apunte» o «Enlazar apunte»), `CourseResources`.
   `ResourceEditor` (`components/resources/resource-editor.tsx`) adivina el tipo por el enlace y se usa también en
   /resources. Metas (Inicio) y Pensamientos: añadir, marcar, quitar (`RemoveButton`).
 - Diálogos: usar `Dialog`, `DialogFooter`, `Field`, `TitleRow`, `inputCls` de `components/blocks/dialog.tsx`.
-- `affineDocUrl` y `affineFolderUrl` son opcionales: nunca `!`; caer a `AFFINE_HOME`.
+- `Lecture.notePath` y `Course.notesFolder` son opcionales: nunca `!`. Carpeta efectiva: `courseFolder(course, root)`.
 - `relativeAgo` dice «hace un momento» por debajo de un minuto (evita desajustes de hidratación).
   El `<script>` del tema en `<head>` debe seguir en línea (con `next/script beforeInteractive` se ejecuta tarde y parpadea).
 - Cuentas nuevas: `GettingStarted` (`components/dashboard/getting-started.tsx`) con 5 pasos y su estado real
@@ -129,7 +129,7 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
   `.env.production.example`, `deploy/nginx/nober.conf` y la guía `deploy/README.md`.
   Siempre `docker compose --env-file .env.production …` (las variables de compose salen de ahí).
   `/api/health` comprueba app + base de datos (lo usa el HEALTHCHECK de la imagen).
-- Valores por defecto neutrales: AFFiNE cae a `https://app.affine.pro`, dominios de ejemplo `midominio.com`,
+- Valores por defecto neutrales: apuntes en `Apuntes/` de la bóveda, dominios de ejemplo `midominio.com`,
   proyecto de compose `nober`, plantilla `deploy/nginx/nober.conf`. `TZ` configurable (por defecto `America/Bogota`).
 - `compose.dev.yaml` es solo la base de datos de desarrollo (`npm run db:up`); `compose.yaml` es producción.
 - PWA: `app/manifest.ts`, `public/sw.js` (cachea solo estáticos; páginas a la red con `/offline.html` de respaldo;
@@ -138,17 +138,16 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
   `POST /api/files` (sesión, `MAX_UPLOAD_MB`, lista de tipos en `lib/storage.ts`; HTML/SVG rechazados),
   `GET /api/files/:id` solo para el dueño (nosniff + CSP sandbox). Borrar tarea/recurso/materia borra el disco;
   huérfanos se limpian a las 24 h. Cliente: `uploadFile()` (`lib/upload-client.ts`).
-- AFFiNE por MCP: `lib/affine-mcp.ts` (HTTP sin estado, JSON o SSE; `create_document` = {title, content Markdown},
-  devuelve JSON con `docId` — verificado en el código de AFFiNE `plugins/copilot/mcp/provider.ts`).
-  Token por usuario cifrado (`lib/crypto.ts`, AES-256-GCM con BETTER_AUTH_SECRET) en `Settings.affineToken`.
-  Acciones en `lib/actions/affine.ts`: conectar, crear apunte de clase, «Preparar» próxima clase.
+- Apuntes en Obsidian (reemplazó a AFFiNE el 2026-11-23, migración `20261123200000_obsidian`): ver sección «Obsidian».
 - Google Calendar: `lib/google-calendar.ts` (scope `calendar.app.created`, refresh propio del token desde la tabla
   `account`, eventos con `extendedProperties.private.nober` + `nober_hash`, clases como RRULE semanal con EXDATE de
   festivos). `GOOGLE_CALENDAR_API` y `GOOGLE_TOKEN_URL` solo existen para pruebas con simuladores.
   Auto-sincronización al abrir Inicio (cada 15 min como mucho). Vinculación con `authClient.linkSocial`.
-- Todo lo anterior se probó de punta a punta con la imagen Docker de producción (AFFiNE y Google con simuladores
-  hechos con el SDK oficial de MCP y un servidor HTTP en memoria).
-- Pendiente: ejecutar el despliegue en el VPS; recordatorios push; leer otros calendarios de Google.
+- Google se probó de punta a punta con la imagen Docker de producción (simulador HTTP en memoria). Obsidian, con
+  Playwright contra la imagen de producción, una base temporal y una copia de la bóveda (crear, editar, tareas,
+  [[enlaces]], conflicto, móvil). Ojo: con el navegador en UTC salen errores de hidratación #418 (fechas); en
+  `America/Bogota` no hay ninguno.
+- Pendiente: recordatorios push; leer otros calendarios de Google.
 
 ## Decisiones ya tomadas (no volver a preguntar)
 
@@ -157,39 +156,33 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
 - Calendario propio (no FullCalendar) para controlar la estética.
 - Backend futuro dentro de Next (Server Components + Server Actions), Prisma + PostgreSQL,
   Better Auth (correo + Google), trabajos en segundo plano con pg-boss.
-- Despliegue: Docker Compose detrás de un proxy con HTTPS. AFFiNE autoalojado en el mismo dominio que la app
-  (mismo sitio → las cookies de sesión de AFFiNE funcionan dentro del iframe).
+- Despliegue: Docker Compose detrás de un proxy con HTTPS. Apuntes en una bóveda de Obsidian montada en el contenedor.
 - Código abierto MIT: README para la comunidad (con capturas en `docs/screenshots`), `CONTRIBUTING.md`, `LICENSE`.
 - Escala de notas por defecto 1.0–5.0, aprueba con 3.0, 4 períodos de 25 %. Todo configurable (`GradingScale`).
 - Tareas y "assignments" son un solo modelo `Task` con `type`; las notas viven en `Assessment`.
 - UI en español; nombres de rutas en inglés.
 
-## AFFiNE (apuntes)
+## Obsidian (apuntes)
 
-- Se configura con `NEXT_PUBLIC_AFFINE_ORIGIN` (por defecto la nube `https://app.affine.pro`) y
-  `NEXT_PUBLIC_AFFINE_WORKSPACE` (se fijan al compilar). Enlaces a documentos: `/workspace/{workspaceId}/{docId}`.
-  Sin espacio configurado, los enlaces caen a la raíz del servidor. Probado con AFFiNE 0.27.
-- Verificado: la respuesta **no** envía `X-Frame-Options` ni CSP → el iframe no está bloqueado por cabeceras.
-  El riesgo real es la sesión (cookies de terceros) → por eso AFFiNE en el mismo sitio que la app.
-- Tiene MCP nativo en `/api/workspaces/{id}/mcp` con token Bearer. AFFiNE 0.27+ quitó la API
-  antigua de tokens personales por GraphQL → aislar la integración en un solo módulo.
-- Estrategia: 1) enlaces profundos, 2) panel con iframe y caída a enlace, 3) sincronización por servidor
-  (crear apunte de clase, listar recientes). El contenido nunca se copia a la app.
-- **PRIORIDAD: AFFiNE embebido en toda la plataforma** (pasos 1 y 2 hechos). Reglas:
-  - Constantes y detección en `lib/affine.ts` (`AFFINE_ORIGIN`, `AFFINE_HOST`, `AFFINE_BASE`, `AFFINE_HOME`,
-    `isAffineUrl`). No escribir URLs ni dominios sueltos.
-  - Si el dominio de AFFiNE cambia, los enlaces guardados (`Course.affineFolderUrl`, `Lecture.affineDocUrl`,
-    `RecentDoc.url`) se reescriben con `replace()` en SQL.
-  - Todo enlace a AFFiNE usa `<AffineLink>` (`components/affine/affine.tsx`): abre el panel global
-    `AffinePanel` (montado en el layout; lateral / ancho / pantalla completa, preferencia en localStorage).
-    Sigue siendo un `<a>` real: Ctrl/⌘ + clic o clic central → pestaña nueva. Nunca `target="_blank"` directo
-    salvo el botón explícito «pestaña nueva».
-  - Desde código cliente: `openAffine({ url, title, meta, emoji, color, size })`.
-  - Para incrustar en una sección: `<AffineInline doc height>` (usa `AffineFrame`: carga, aviso a los 8 s,
-    reintentar, abrir en pestaña). Lo usan el lector de `/notes` (≥1280 px) y la pestaña Apuntes de cada materia.
-  - Verificado: el iframe carga AFFiNE real (pantalla de inicio de sesión sin sesión). En `localhost` las
-    cookies de AFFiNE son de terceros; la sesión dentro del iframe solo está garantizada en producción
-    con ambos en el mismo dominio.
+- Reemplazó a AFFiNE (que no se podía editar bien embebido). Los apuntes son notas `.md` de una bóveda montada en el
+  contenedor (`OBSIDIAN_VAULT_PATH`; en compose `OBSIDIAN_VAULT_DIR` → `/vault`). La app guarda solo la ruta relativa
+  (`Lecture.notePath`). La sincronización con los dispositivos la hace Obsidian (en el VPS: LiveSync + un Obsidian
+  web siempre abierto que escribe la bóveda en disco). Config en el servidor, no en el cliente: no hay `NEXT_PUBLIC_*`.
+- Variables: `OBSIDIAN_VAULT_NAME` (URIs `obsidian://`), `OBSIDIAN_NOTES_ROOT` (carpeta raíz; por materia
+  `<raíz>/<nombre>` salvo `Course.notesFolder`), `OBSIDIAN_ALLOWED_EMAILS` (la bóveda es de la instancia),
+  `OBSIDIAN_WEB_URL` (botón «Abrir Obsidian»). `getVault()` (data) → `VaultProvider` en el layout → `useVault()`.
+- `lib/vault.ts` es el ÚNICO que toca el disco: solo `.md`, sin `..` ni segmentos que empiecen por `.`, comprueba
+  enlaces simbólicos (`realpath`). Escritura con `mtime` base: si cambió en disco devuelve `conflict` y no escribe.
+- Plantilla de clase en `lib/actions/notes.ts`: propiedades `materia`, `fecha`, `tema`, `profesor`, `tags` (`clase` +
+  materia) y `nober: <lectureId>`. Esa marca permite re-enlazar la nota si se movió (`findByLectureId`).
+  NO usar la etiqueta `universidad`: el complemento Auto Note Mover del mantenedor mueve esas notas a la raíz.
+- «Editados hace poco» = notas más recientes (mtime) en las carpetas de las materias (`recentNotes`); ya no hay tabla.
+- UI: `<NoteLink path …>` abre el panel global (`NotePanel`); Ctrl/⌘ + clic → `obsidian://` (app). `openNote(doc)`
+  desde cliente; `<NoteInline>` en /notes y la pestaña Apuntes; `<LectureLink>` = nota o, sin ella, a Clases.
+  El editor (`NoteEditor`): Leer (Markdown con GFM, KaTeX, callouts, `[[enlaces]]` resueltos en el servidor, casillas
+  que guardan) / Editar (textarea, autoguardado 0,9 s, Ctrl+S, recarga al volver a la pestaña si no hay cambios).
+- `Markdown` preprocesa línea a línea sin cambiar el número de líneas: las casillas usan la línea de origen
+  (`node.position` + líneas de las propiedades) para `toggleTaskAt`. Si se cambia el preproceso, mantenerlo así.
 
 ## Google Calendar (Fase 4)
 
@@ -228,8 +221,8 @@ src/
   components/calendar/      calendar-view (mes/semana/agenda + panel del día)
   components/notes|grades|resources|settings/  una vista cliente por pantalla
   components/shell/theme.ts useTheme/setTheme (tema sincronizado entre barra lateral y Ajustes)
-  components/affine/        AffineLink, AffinePanel (global), AffineInline, AffineFrame, openAffine
-  lib/affine.ts             integración AFFiNE aislada (URLs del servidor y del espacio)
+  components/notes/         NotePanel (global), NoteLink, NoteInline, NoteEditor, Markdown, VaultProvider, OpenObsidian
+  lib/vault.ts              disco de la bóveda (server-only); lib/notes.ts utilidades sin disco; lib/actions/notes.ts
   lib/calendar.ts           CalItem, buildItems (servidor), expandClasses (cliente)
   components/illustrations/ portadas SVG propias
   lib/data/index.ts         CAPA DE DATOS: deriva lo que pide cada pantalla a partir de db()

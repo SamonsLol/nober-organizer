@@ -1,10 +1,10 @@
 # Nober Organizer
 
 **Organizador académico personal y de código abierto** para estudiantes de colegio: materias con horario,
-tareas, calendario, calificaciones por períodos, temas, recursos y apuntes en [AFFiNE](https://affine.pro),
+tareas, calendario, calificaciones por períodos, temas, recursos y apuntes en [Obsidian](https://obsidian.md),
 todo en un solo lugar. Interfaz en español (formato es-CO), modo oscuro y claro, y pensada también para móvil.
 
-*Open-source personal school planner (courses, tasks, calendar, grades, notes in AFFiNE). The UI is in Spanish;
+*Open-source personal school planner (courses, tasks, calendar, grades, notes in Obsidian). The UI is in Spanish;
 contributions to translate it are welcome.*
 
 ![Inicio](docs/screenshots/inicio.png)
@@ -25,8 +25,9 @@ contributions to translate it are welcome.*
 - **Calendario**: mes, semana y agenda con clases, entregas, exámenes, eventos y **festivos** (quitan las clases).
 - **Calificaciones**: escala configurable (1.0–5.0 por defecto, aprueba con 3.0), períodos con peso, notas «sobre»
   otra escala (85/100 → 4,3), nota necesaria para aprobar y simulador.
-- **Apuntes en AFFiNE**: cada clase enlaza su documento y se abre embebido en un panel, sin salir de la app.
-  El contenido nunca se copia: vive en tu AFFiNE.
+- **Apuntes en Obsidian**: cada clase tiene su nota `.md` en tu bóveda (con plantilla y propiedades). Se lee y
+  edita en un panel dentro de la app (fórmulas, tareas que se marcan con un clic, `[[enlaces]]`), y un clic la abre
+  en la app de Obsidian. El contenido vive en tu bóveda; tu sincronización de Obsidian lo lleva a tus dispositivos.
 - **Cuentas**: correo y contraseña (y Google, opcional) con [Better Auth](https://better-auth.com). Cada usuario ve
   solo lo suyo; el registro se puede cerrar después de crear tu cuenta.
 
@@ -37,7 +38,7 @@ Requisitos: un servidor con Docker y Docker Compose, y un dominio con HTTPS (ngi
 ```bash
 git clone https://github.com/SamonsLol/nober-organizer.git
 cd nober-organizer
-cp .env.production.example .env.production   # completar: contraseñas, dominio, AFFiNE
+cp .env.production.example .env.production   # completar: contraseñas, dominio, Obsidian
 docker compose --env-file .env.production up -d --build
 curl -s http://127.0.0.1:3100/api/health     # {"ok":true,"db":true}
 ```
@@ -45,18 +46,22 @@ curl -s http://127.0.0.1:3100/api/health     # {"ok":true,"db":true}
 Luego publica `127.0.0.1:3100` con tu proxy (plantilla de nginx en [`deploy/nginx/nober.conf`](deploy/nginx/nober.conf)).
 Guía completa —DNS, nginx, primer uso, actualizar y copias de seguridad— en [`deploy/README.md`](deploy/README.md).
 
-### AFFiNE
+### Obsidian
 
-Funciona con la nube de AFFiNE o con una instancia propia. Para que el panel embebido tenga sesión, lo ideal es
-**autoalojar AFFiNE en el mismo dominio** que la app (p. ej. `notas.midominio.com` y `organizador.midominio.com`):
-los navegadores bloquean las cookies de terceros dentro de un iframe. Variables:
+La app trabaja sobre una **copia de tu bóveda en el servidor** (una carpeta con `.obsidian/`) que se mantiene al día con
+la sincronización que ya uses: [Self-hosted LiveSync](https://github.com/vrtmrz/obsidian-livesync) (con un Obsidian
+siempre abierto en el servidor, p. ej. la imagen `linuxserver/obsidian`), Obsidian Sync con el cliente de escritorio,
+Syncthing, git… La app solo lee y escribe archivos `.md`. Variables:
 
 | Variable | Qué es |
 | --- | --- |
-| `NEXT_PUBLIC_AFFINE_ORIGIN` | URL de tu AFFiNE (por defecto `https://app.affine.pro`) |
-| `NEXT_PUBLIC_AFFINE_WORKSPACE` | ID del espacio: lo que va después de `/workspace/` en la URL de AFFiNE |
+| `OBSIDIAN_VAULT_DIR` | Ruta de la bóveda en el servidor (se monta en el contenedor; el uid 1000 debe poder escribir) |
+| `OBSIDIAN_VAULT_NAME` | Nombre de la bóveda en Obsidian, para los enlaces `obsidian://` (por defecto, el de la carpeta) |
+| `OBSIDIAN_NOTES_ROOT` | Carpeta de los apuntes: `<raíz>/<materia>/<fecha> <clase>.md` (por defecto `Apuntes`) |
+| `OBSIDIAN_ALLOWED_EMAILS` | Cuentas que pueden usar la bóveda (vacío = todas las de la instancia) |
+| `OBSIDIAN_WEB_URL` | Opcional: Obsidian en el navegador, para el botón «Abrir Obsidian» |
 
-Se fijan al compilar la imagen: si las cambias, vuelve a ejecutar con `--build`.
+Sin bóveda, la app funciona igual pero sin crear ni abrir apuntes.
 
 ## Desarrollo
 
@@ -89,15 +94,16 @@ src/
   components/         vistas por pantalla, editores (diálogos) y bloques de diseño
   lib/actions/        Server Actions (validan con zod y filtran siempre por usuario)
   lib/data/           capa de datos: lee todo lo del usuario y deriva lo que pide cada pantalla
-  lib/affine.ts       integración con AFFiNE, aislada en un módulo
+  lib/vault.ts        acceso a la bóveda de Obsidian (solo .md, nunca fuera de la bóveda)
 prisma/               esquema, migraciones y seed
 deploy/               plantilla de nginx y guía de despliegue
 ```
 
 ## Integraciones
 
-- **AFFiNE por MCP** (0.27+): con un token del espacio, cada clase ofrece «Crear apunte», que crea el documento
-  con una plantilla y lo enlaza. El token se guarda cifrado.
+- **Obsidian**: «Crear apunte» / «Preparar» crea la nota de la clase con una plantilla (propiedades `materia`,
+  `fecha`, `tema`, etiquetas `clase` y la materia). Si la mueves o renombras en Obsidian, la app la vuelve a encontrar.
+  Edición con autoguardado que nunca pisa un cambio hecho en Obsidian mientras tanto: pregunta cuál conservar.
 - **Google Calendar**: un calendario propio con clases recurrentes (sin festivos), tareas, evaluaciones y eventos,
   sin duplicados. Permiso mínimo: solo calendarios creados por la app.
 - **Archivos**: sube PDF, documentos, imágenes, audio o video a tareas y recursos (solo su dueño puede verlos).

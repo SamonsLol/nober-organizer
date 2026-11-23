@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { GraduationCap, Maximize2, Menu, Moon, NotebookPen, Plus, Search, Settings, Sun, X } from "lucide-react";
-import { AffineLink } from "@/components/affine/affine";
-import { AFFINE_HOME } from "@/lib/affine";
+import { ExternalLink, GraduationCap, Menu, Moon, NotebookPen, Plus, Search, Settings, Sun, X } from "lucide-react";
+import { OpenObsidian } from "@/components/notes/open-obsidian";
 import { cn } from "@/components/blocks/primitives";
 import { openCommandMenu } from "@/components/shell/command-menu";
 import { openCourseEditor } from "@/components/courses/course-editor";
@@ -90,11 +89,11 @@ export function Sidebar({ courses, subtitle }: { courses: Course[]; subtitle: st
       </div>
 
       <div className="flex flex-col gap-1">
-        <AffineLink href={AFFINE_HOME} title="AFFiNE" meta="Todos los documentos" size="full" className={item(false)}>
+        <OpenObsidian className={item(false)}>
           <NotebookPen className="size-[17px]" />
-          Abrir AFFiNE
-          <Maximize2 className="ml-auto size-3.5 text-faint" />
-        </AffineLink>
+          Abrir Obsidian
+          <ExternalLink className="ml-auto size-3.5 text-faint" />
+        </OpenObsidian>
         <div className="flex items-center gap-1">
           <Link href="/settings" className={cn(item(isActive("/settings")), "flex-1")}>
             <Settings className="size-[17px]" />

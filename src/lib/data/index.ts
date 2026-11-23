@@ -6,7 +6,8 @@ import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { getSession, requireUserId } from "@/lib/session";
 import { googleAccount, googleConfigured, hasCalendarScope, maybeAutoSync } from "@/lib/google-calendar";
 import { loadUserDB } from "@/lib/data/source";
-import { AFFINE_BASE, AFFINE_WORKSPACE } from "@/lib/affine";
+import { vaultInfo } from "@/lib/vault";
+import type { VaultInfo } from "@/lib/notes";
 import { courseGrade, periodAverage, yearAverage } from "@/lib/grades";
 import { dayKey, toDate } from "@/lib/dates";
 import { buildItems, expandClasses, holidayKeys } from "@/lib/calendar";
@@ -23,15 +24,19 @@ const db = cache(async (): Promise<MockDB> => {
   return loadUserDB(await requireUserId());
 });
 
-/** Estado de la conexión con AFFiNE (nunca el token). */
-export const getAffineStatus = cache(async () => {
-  if (!hasDatabase()) return { connected: false, workspace: AFFINE_WORKSPACE, customWorkspace: "" };
-  const userId = await requireUserId();
-  const s = await prisma.settings.findUnique({ where: { userId }, select: { affineToken: true, affineWorkspace: true } });
-  return { connected: Boolean(s?.affineToken), workspace: s?.affineWorkspace || AFFINE_WORKSPACE, customWorkspace: s?.affineWorkspace ?? "" };
+/**
+ * Bóveda de Obsidian del servidor. `canWrite`: esta cuenta puede crear y editar apuntes
+ * (hay bóveda, base de datos y, si OBSIDIAN_ALLOWED_EMAILS existe, el correo está en la lista).
+ */
+export const getVault = cache(async (): Promise<VaultInfo & { canWrite: boolean }> => {
+  const v = vaultInfo();
+  if (!v.enabled || !hasDatabase()) return { ...v, canWrite: false };
+  const allowed = (process.env.OBSIDIAN_ALLOWED_EMAILS ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const email = (await getSession())?.user.email?.toLowerCase() ?? "";
+  return { ...v, canWrite: !allowed.length || allowed.includes(email) };
 });
 
-export type AffineStatus = Awaited<ReturnType<typeof getAffineStatus>>;
+export type VaultStatus = Awaited<ReturnType<typeof getVault>>;
 
 /** Estado de Google Calendar para Ajustes (nunca tokens). */
 export async function getGoogleStatus() {
@@ -304,7 +309,7 @@ export async function getCourseDetail(slug: string) {
     upcoming,
     resources: d.resources.filter((r) => r.courseId === course.id),
     docs: d.recentDocs.filter((r) => r.courseId === course.id),
-    affine: await getAffineStatus(),
+    vault: await getVault(),
   };
 }
 
@@ -348,7 +353,7 @@ export async function getCalendarPage() {
 
 export type CalendarPageData = Awaited<ReturnType<typeof getCalendarPage>>;
 
-/* ───────────── Apuntes (AFFiNE) ───────────── */
+/* ───────────── Apuntes (Obsidian) ───────────── */
 
 export async function getNotesPage() {
   const d = await db();
@@ -360,12 +365,11 @@ export async function getNotesPage() {
   return {
     now: d.now,
     courses: d.courses,
-    lectures: d.lectures.filter((l) => toDate(l.date) <= now).sort((a, b) => +toDate(b.date) - +toDate(a.date)),
+    lectures: d.lectures.filter((l) => l.notePath && toDate(l.date) <= now).sort((a, b) => +toDate(b.date) - +toDate(a.date)),
     recentDocs: d.recentDocs,
     topics: d.topics,
     nextClasses,
-    affineBase: AFFINE_BASE,
-    affine: await getAffineStatus(),
+    vault: await getVault(),
   };
 }
 
@@ -439,9 +443,8 @@ export async function getSettings() {
     classesPerWeek: d.schedule.length,
     // Evaluaciones por período: un período con evaluaciones no se puede quitar
     periodUsage: Object.fromEntries(d.periods.map((p) => [p.id, d.assessments.filter((a) => a.periodId === p.id).length])) as Record<string, number>,
-    affineBase: AFFINE_BASE,
     account: hasDatabase() ? { email: (await getSession())?.user.email ?? "" } : null,
-    affine: await getAffineStatus(),
+    vault: await getVault(),
     google: await getGoogleStatus(),
   };
 }

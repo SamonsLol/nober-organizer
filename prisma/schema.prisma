@@ -35,7 +35,6 @@ model User {
   events        CalendarEvent[]
   goals         Goal[]
   quickNotes    QuickNote[]
-  recentDocs    RecentDoc[]
   focusSessions FocusSession[]
   resources     Resource[]
   uploads       Upload[]
@@ -199,10 +198,6 @@ model Settings {
   scaleMax      Float  @default(5)
   scalePassing  Float  @default(3)
   scaleDecimals Int    @default(1)
-  /// Espacio de AFFiNE propio (si no, NEXT_PUBLIC_AFFINE_WORKSPACE)
-  affineWorkspace String?
-  /// Token MCP de AFFiNE (aff_mcp_v1…), cifrado con AES-256-GCM (lib/crypto.ts). Nunca se envía al navegador.
-  affineToken     String?
   /// Google Calendar: sincronización activa, calendario propio de la app y estado de la última sincronización
   googleSync       Boolean   @default(false)
   googleCalendarId String?
@@ -237,7 +232,8 @@ model Course {
   teacher         String          @default("")
   room            String          @default("")
   code            String          @default("")
-  affineFolderUrl String?
+  /// Carpeta de apuntes en la bóveda de Obsidian (ruta relativa); vacía = «<raíz>/<nombre>»
+  notesFolder     String?
   position        Int             @default(0)
   createdAt       DateTime        @default(now())
   schedule        ClassSchedule[]
@@ -246,7 +242,6 @@ model Course {
   topics          Topic[]
   lectures        Lecture[]
   events          CalendarEvent[]
-  recentDocs      RecentDoc[]
   resources       Resource[]
 
   @@unique([userId, slug])
@@ -378,7 +373,7 @@ model Topic {
   @@index([courseId])
 }
 
-/// Una clase concreta (con su apunte de AFFiNE). Las clases futuras se generan del horario.
+/// Una clase concreta (con su apunte en Obsidian). Las clases futuras se generan del horario.
 model Lecture {
   id           String   @id @default(cuid())
   userId       String
@@ -390,7 +385,8 @@ model Lecture {
   emoji        String   @default("")
   topicId      String?
   topic        Topic?   @relation(fields: [topicId], references: [id], onDelete: SetNull)
-  affineDocUrl String?
+  /// Apunte en la bóveda de Obsidian (ruta relativa, p. ej. «Apuntes/Cálculo/2026-11-24 Límites.md»)
+  notePath     String?
 
   @@index([userId, date])
   @@index([courseId])
@@ -438,20 +434,6 @@ model QuickNote {
   createdAt DateTime @default(now())
 
   @@index([userId])
-}
-
-/// Referencia a un documento de AFFiNE editado hace poco (solo metadatos; el contenido vive en AFFiNE).
-model RecentDoc {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  courseId  String?
-  course    Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  url       String
-  updatedAt DateTime
-
-  @@index([userId, updatedAt])
 }
 
 model FocusSession {

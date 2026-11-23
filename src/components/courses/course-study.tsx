@@ -4,15 +4,16 @@ import { useEffect, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Loader2, NotebookPen, Pencil, Plus } from "lucide-react";
-import { AffineLink, openAffine } from "@/components/affine/affine";
+import { NoteLink, lectureDoc, openNote } from "@/components/notes/note-panel";
+import { useVault } from "@/components/notes/vault-context";
 import { GhostAdd, Section, Tag, cn } from "@/components/blocks/primitives";
 import { PREP, RESOURCE_KIND } from "@/components/blocks/shared";
 import { Dialog, DialogFooter, Field, TitleRow, inputCls } from "@/components/blocks/dialog";
 import { ResourceEditor } from "@/components/resources/resource-editor";
 import { toast } from "@/components/shell/toast";
 import { deleteLecture, deleteTopic, saveLecture, saveTopic } from "@/lib/actions/study";
-import { createLectureDoc } from "@/lib/actions/affine";
-import { AFFINE_HOME } from "@/lib/affine";
+import { createLectureNote } from "@/lib/actions/notes";
+import { courseFolder, parseNoteInput } from "@/lib/notes";
 import { capitalize, fmt, relativeAgo, toDate } from "@/lib/dates";
 import type { ClassSchedule, Course, Lecture, Preparation, Resource, Topic } from "@/lib/types";
 
@@ -160,14 +161,14 @@ function TopicEditor({ topic: t, courseId, onClose }: { topic?: Topic; courseId:
 
 /* ───────────── Clases ───────────── */
 
-export function LectureGrid({ course, lectures, topics, schedule, now, affineConnected }: {
+export function LectureGrid({ course, lectures, topics, schedule, now, canCreate }: {
   course: Course;
   lectures: Lecture[];
   topics: Topic[];
   schedule: ClassSchedule[];
   now: string;
-  /** Con AFFiNE conectado por MCP, las clases sin apunte ofrecen «Crear apunte». */
-  affineConnected?: boolean;
+  /** Con la bóveda de Obsidian disponible, las clases sin apunte ofrecen «Crear apunte». */
+  canCreate?: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<Lecture | "new" | null>(null);
@@ -175,10 +176,10 @@ export function LectureGrid({ course, lectures, topics, schedule, now, affineCon
 
   async function createDoc(l: Lecture) {
     setCreating(l.id);
-    const r = await createLectureDoc(l.id);
+    const r = await createLectureNote(l.id);
     setCreating(null);
     if (!r.ok) return toast(r.error);
-    openAffine({ url: r.data.url, title: l.title, meta: course.name, emoji: l.emoji || course.emoji, color: course.color });
+    openNote({ ...lectureDoc({ ...l, notePath: r.data.path }, course) });
     router.refresh();
   }
   const nowDate = new Date(now);
@@ -209,19 +210,15 @@ export function LectureGrid({ course, lectures, topics, schedule, now, affineCon
                     </div>
                     <div className="mt-2 text-[15px] font-medium leading-snug">{l.emoji} {l.title}</div>
                     {topic ? <div className="mt-1 text-[12px] text-muted">Tema: {topic.title}</div> : null}
-                    {l.affineDocUrl ? (
-                      <AffineLink
-                        href={l.affineDocUrl}
-                        title={l.title}
-                        meta={`${course.name} · ${capitalize(fmt(l.date, "EEE d MMM · HH:mm").replace(".", ""))}`}
-                        emoji={l.emoji}
-                        color={course.color}
+                    {l.notePath ? (
+                      <NoteLink
+                        {...lectureDoc(l, course)}
                         className="mt-4 inline-flex items-center gap-1.5 self-start rounded-full bg-pill px-3.5 py-1.5 text-[12px] hover:bg-pill-hover"
                       >
                         <NotebookPen className="size-3.5" />
                         {future ? "Preparar apunte" : "Abrir apunte"}
-                      </AffineLink>
-                    ) : affineConnected ? (
+                      </NoteLink>
+                    ) : canCreate ? (
                       <div className="mt-4 flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => createDoc(l)}
@@ -279,13 +276,14 @@ function LectureEditor({ lecture: l, course, topics, defaultDate, onClose }: {
   const [date, setDate] = useState(d ? format(d, "yyyy-MM-dd") : defaultDate.date);
   const [time, setTime] = useState(d ? format(d, "HH:mm") : defaultDate.time);
   const [topicId, setTopicId] = useState(l?.topicId ?? "");
-  const [doc, setDoc] = useState(l?.affineDocUrl ?? "");
+  const [doc, setDoc] = useState(l?.notePath ?? "");
+  const vault = useVault();
   const [busy, setBusy] = useState(false);
 
   async function save() {
     setBusy(true);
     const r = await saveLecture({
-      id: l?.id, courseId: course.id, title, emoji, topicId: topicId || null, affineDocUrl: doc.trim() || null,
+      id: l?.id, courseId: course.id, title, emoji, topicId: topicId || null, notePath: parseNoteInput(doc) || null,
       date: new Date(`${date}T${time || "07:00"}`).toISOString(),
     });
     setBusy(false);
@@ -299,7 +297,7 @@ function LectureEditor({ lecture: l, course, topics, defaultDate, onClose }: {
     const r = await deleteLecture(l.id);
     setBusy(false);
     if (!r.ok) return toast(r.error);
-    toast("Clase eliminada. El apunte en AFFiNE no se toca.", "ok");
+    toast("Clase eliminada. Su nota en Obsidian no se toca.", "ok");
     onClose();
     router.refresh();
   }
@@ -321,10 +319,13 @@ function LectureEditor({ lecture: l, course, topics, defaultDate, onClose }: {
           {topics.map((t) => <option key={t.id} value={t.id}>{t.emoji} {t.title}</option>)}
         </select>
       </Field>
-      <Field label="Apunte en AFFiNE (opcional)" className="mt-3">
-        <input inputMode="url" value={doc} onChange={(e) => setDoc(e.target.value)} placeholder={`${AFFINE_HOME.replace(/\/all$/, "")}/…`} className={inputCls} />
+      <Field label="Apunte en Obsidian (opcional)" className="mt-3">
+        <input value={doc} onChange={(e) => setDoc(e.target.value)} placeholder={`${courseFolder(course, vault.root)}/…`} className={inputCls} />
       </Field>
-      <p className="mt-2 text-[11.5px] text-faint">Copia el enlace del documento desde AFFiNE. En la Fase 4 el apunte se creará solo.</p>
+      <p className="mt-2 text-[11.5px] text-faint">
+        Para enlazar una nota que ya existe: ruta dentro de la bóveda o enlace de Obsidian («Copiar enlace de Obsidian»).
+        Para una nueva, deja esto vacío y usa «Crear apunte» en la tarjeta de la clase.
+      </p>
     </Dialog>
   );
 }

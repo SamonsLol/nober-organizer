@@ -4,8 +4,10 @@ import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { academicWeekStart, dayKey } from "@/lib/dates";
 import type { MockDB } from "@/lib/mock/seed";
+import { courseFolder, noteName } from "@/lib/notes";
+import { recentNotes, vaultInfo } from "@/lib/vault";
 import type {
-  Assessment, CalendarEvent, ClassSchedule, Course, FocusDay, Goal, Lecture, Period, Resource, Task, Topic,
+  Assessment, CalendarEvent, ClassSchedule, Course, FocusDay, Goal, Lecture, Period, RecentDoc, Resource, Task, Topic,
 } from "@/lib/types";
 
 /**
@@ -47,7 +49,7 @@ export async function loadUserDB(userId: string, now = new Date()): Promise<Mock
   const since = addDays(startOfDay(now), -6);
   const [
     user, settings, periods, courses, schedule, topics, lectures, tasks, assessments, events,
-    goals, quickNotes, recentDocs, focus, resources,
+    goals, quickNotes, focus, resources,
   ] = await Promise.all([
     prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true } }),
     prisma.settings.findUnique({ where: { userId } }),
@@ -61,7 +63,6 @@ export async function loadUserDB(userId: string, now = new Date()): Promise<Mock
     prisma.calendarEvent.findMany({ where: { userId }, orderBy: { start: "asc" } }),
     prisma.goal.findMany({ where: { userId }, orderBy: { position: "asc" } }),
     prisma.quickNote.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
-    prisma.recentDoc.findMany({ where: { userId }, orderBy: { updatedAt: "desc" }, take: 20 }),
     prisma.focusSession.findMany({ where: { userId, startedAt: { gte: since } } }),
     prisma.resource.findMany({ where: { userId } }),
   ]);
@@ -94,7 +95,7 @@ export async function loadUserDB(userId: string, now = new Date()): Promise<Mock
     periods: periods.map((p): Period => ({ id: p.id, name: p.name, start: dateOnly(p.start), end: dateOnly(p.end), weight: p.weight })),
     courses: courses.map((c): Course => ({
       id: c.id, slug: c.slug, name: c.name, emoji: c.emoji, color: c.color, cover: c.cover,
-      teacher: c.teacher, room: c.room, code: c.code, affineFolderUrl: opt(c.affineFolderUrl),
+      teacher: c.teacher, room: c.room, code: c.code, notesFolder: opt(c.notesFolder),
     })),
     schedule: schedule.map((s): ClassSchedule => ({
       id: s.id, courseId: s.courseId, weekday: s.weekday as ClassSchedule["weekday"], start: s.start, end: s.end, room: s.room,
@@ -105,7 +106,7 @@ export async function loadUserDB(userId: string, now = new Date()): Promise<Mock
     })),
     lectures: lectures.map((l): Lecture => ({
       id: l.id, courseId: l.courseId, date: iso(l.date), title: l.title, emoji: l.emoji,
-      topicId: opt(l.topicId), affineDocUrl: opt(l.affineDocUrl),
+      topicId: opt(l.topicId), notePath: opt(l.notePath),
     })),
     tasks: tasks.map(toTask),
     assessments: assessments.map((a): Assessment => ({
@@ -118,7 +119,10 @@ export async function loadUserDB(userId: string, now = new Date()): Promise<Mock
     })),
     goals: goals.map((g): Goal => ({ id: g.id, scope: g.scope, title: g.title, done: g.done })),
     quickNotes: quickNotes.map((q) => ({ id: q.id, text: q.text, done: q.done })),
-    recentDocs: recentDocs.map((r) => ({ id: r.id, title: r.title, courseId: opt(r.courseId), updatedAt: iso(r.updatedAt), url: r.url })),
+    // «Editados hace poco»: lo último que cambió en la carpeta de cada materia (en la app o en Obsidian)
+    recentDocs: (await recentNotes(courses.map((c) => ({ courseId: c.id, folder: courseFolder({ name: c.name, notesFolder: opt(c.notesFolder) }, vaultInfo().root) })))).map(
+      (n): RecentDoc => ({ id: n.rel, title: noteName(n.rel), courseId: n.courseId, updatedAt: iso(new Date(n.mtime)), path: n.rel }),
+    ),
     focusLog,
     resources: resources.map((r): Resource => ({
       id: r.id, courseId: r.courseId, kind: r.kind, origin: r.origin, title: r.title, url: r.url,

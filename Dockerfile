@@ -17,11 +17,6 @@ RUN npm ci
 # ── Compilación ──
 FROM base AS builder
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
-# AFFiNE se fija al compilar (variables NEXT_PUBLIC_*)
-ARG NEXT_PUBLIC_AFFINE_ORIGIN
-ARG NEXT_PUBLIC_AFFINE_WORKSPACE
-ENV NEXT_PUBLIC_AFFINE_ORIGIN=$NEXT_PUBLIC_AFFINE_ORIGIN \
-    NEXT_PUBLIC_AFFINE_WORKSPACE=$NEXT_PUBLIC_AFFINE_WORKSPACE
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate && npm run build
@@ -38,7 +33,8 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
     UPLOAD_DIR=/data/uploads
-# Archivos subidos: volumen montado aquí (el usuario node debe poder escribir)
+# Archivos subidos: volumen montado aquí (el usuario node debe poder escribir).
+# La bóveda de Obsidian se monta en /vault: el usuario node (uid 1000) debe poder escribir en ella.
 RUN mkdir -p /data/uploads && chown -R node:node /data
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static

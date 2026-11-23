@@ -1,6 +1,6 @@
 import { addDays, addWeeks, setHours, setMinutes, startOfDay, subWeeks, formatISO } from "date-fns";
 import { academicWeekStart } from "@/lib/dates";
-import { AFFINE_BASE, AFFINE_HOME } from "@/lib/affine";
+import { safeName } from "@/lib/notes";
 import type {
   Assessment, CalendarEvent, ClassSchedule, Course, Goal, GradingScale, Lecture, Period,
   Profile, QuickNote, RecentDoc, Resource, Task, Topic,
@@ -11,8 +11,6 @@ import type {
  * Todo se genera en relación con "hoy", así la app siempre se ve viva:
  * hay tareas para esta semana, entregas atrasadas, exámenes próximos, etc.
  */
-
-export { AFFINE_BASE };
 
 const iso = (d: Date) => formatISO(d);
 const day = (d: Date) => formatISO(d, { representation: "date" });
@@ -50,7 +48,8 @@ export function buildMock(now: Date = new Date()) {
     { id: "len", slug: "lengua", name: "Lengua castellana", emoji: "📖", color: "orange", cover: "literature", teacher: "Julián Pardo", room: "Aula 204", code: "LEN-11" },
     { id: "bio", slug: "biologia", name: "Biología", emoji: "🌿", color: "green", cover: "biology", teacher: "Sofía Herrera", room: "Lab. 1", code: "BIO-11" },
     { id: "fil", slug: "filosofia", name: "Filosofía", emoji: "💭", color: "yellow", cover: "philosophy", teacher: "Tomás Rincón", room: "Aula 110", code: "FIL-11" },
-  ].map((c) => ({ ...c, affineFolderUrl: AFFINE_HOME })) as Course[];
+  ] as Course[];
+  const folderOf = (courseId: string) => `Apuntes/${safeName(courses.find((c) => c.id === courseId)!.name)}`;
 
   // Horario semanal (bloques de colegio)
   const blocks = [["07:00", "07:55"], ["08:00", "08:55"], ["09:25", "10:20"], ["10:25", "11:20"], ["11:45", "12:40"]];
@@ -151,7 +150,7 @@ export function buildMock(now: Date = new Date()) {
         title: pick.title,
         emoji: pick.emoji,
         topicId: pick.topicId,
-        affineDocUrl: `${AFFINE_BASE}/doc-${s.courseId}-${w}-${wd}`,
+        notePath: `${folderOf(s.courseId)}/${day(date)} ${safeName(pick.title)}.md`,
       });
     }
   }
@@ -296,11 +295,11 @@ export function buildMock(now: Date = new Date()) {
   ];
 
   const recentDocs: RecentDoc[] = [
-    { id: "d1", title: "Regla de la cadena — apuntes", courseId: "mat", updatedAt: iso(addDays(now, -0.1)), url: `${AFFINE_BASE}/doc-mat-2` },
-    { id: "d2", title: "Energía en el MAS", courseId: "fis", updatedAt: iso(addDays(now, -0.6)), url: `${AFFINE_BASE}/doc-fis-2` },
-    { id: "d3", title: "Frente Nacional — mapa conceptual", courseId: "his", updatedAt: iso(addDays(now, -1.2)), url: `${AFFINE_BASE}/doc-his-1` },
-    { id: "d4", title: "Leyes de Mendel", courseId: "bio", updatedAt: iso(addDays(now, -2)), url: `${AFFINE_BASE}/doc-bio-2` },
-    { id: "d5", title: "Plan del ensayo", courseId: "len", updatedAt: iso(addDays(now, -3)), url: `${AFFINE_BASE}/doc-len-4` },
+    { id: "d1", title: "Regla de la cadena — apuntes", courseId: "mat", updatedAt: iso(addDays(now, -0.1)), path: `${folderOf("mat")}/Regla de la cadena — apuntes.md` },
+    { id: "d2", title: "Energía en el MAS", courseId: "fis", updatedAt: iso(addDays(now, -0.6)), path: `${folderOf("fis")}/Energía en el MAS.md` },
+    { id: "d3", title: "Frente Nacional — mapa conceptual", courseId: "his", updatedAt: iso(addDays(now, -1.2)), path: `${folderOf("his")}/Frente Nacional — mapa conceptual.md` },
+    { id: "d4", title: "Leyes de Mendel", courseId: "bio", updatedAt: iso(addDays(now, -2)), path: `${folderOf("bio")}/Leyes de Mendel.md` },
+    { id: "d5", title: "Plan del ensayo", courseId: "len", updatedAt: iso(addDays(now, -3)), path: `${folderOf("len")}/Plan del ensayo.md` },
   ];
 
   // Registro de sesiones de foco de los últimos 7 días (minutos)

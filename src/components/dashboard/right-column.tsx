@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, History, IdCard, NotebookPen, PanelRight, Pause, Play, RotateCcw } from "lucide-react";
-import { AffineLink } from "@/components/affine/affine";
+import { NoteLink } from "@/components/notes/note-panel";
 import Link from "next/link";
 import { EmptyHint, Section, Tag, ViewTabs, cn } from "@/components/blocks/primitives";
 import { PREP } from "@/components/blocks/shared";
@@ -203,7 +203,7 @@ export function FocusTimer() {
   );
 }
 
-/* ───────────── Recientes: temas y apuntes (AFFiNE) ───────────── */
+/* ───────────── Recientes: temas y apuntes (Obsidian) ───────────── */
 
 
 export function RecentPanel({ data }: { data: DashboardData }) {
@@ -221,7 +221,7 @@ export function RecentPanel({ data }: { data: DashboardData }) {
       {view === "topics" && data.topics.length === 0 ? (
         <EmptyHint>Los temas que estudies (desde la pestaña «Temas» de cada materia) aparecen aquí.</EmptyHint>
       ) : view === "docs" && data.recentDocs.length === 0 ? (
-        <EmptyHint>Los apuntes de AFFiNE editados hace poco aparecerán aquí.</EmptyHint>
+        <EmptyHint>Los apuntes de tus materias editados hace poco (aquí o en Obsidian) aparecerán aquí.</EmptyHint>
       ) : view === "topics" ? (
         <div className="flex flex-col gap-1.5">
           {data.topics.slice(0, 7).map((t) => {
@@ -248,9 +248,9 @@ export function RecentPanel({ data }: { data: DashboardData }) {
           {data.recentDocs.map((doc) => {
             const c = doc.courseId ? data.courseById[doc.courseId] : undefined;
             return (
-              <AffineLink
+              <NoteLink
                 key={doc.id}
-                href={doc.url}
+                path={doc.path}
                 title={doc.title}
                 meta={`${c ? `${c.name} · ` : ""}${capitalize(relativeAgo(doc.updatedAt))}`}
                 emoji={c?.emoji}
@@ -266,11 +266,11 @@ export function RecentPanel({ data }: { data: DashboardData }) {
                   </div>
                 </div>
                 <PanelRight className="mt-0.5 size-3.5 text-faint opacity-0 group-hover:opacity-100" />
-              </AffineLink>
+              </NoteLink>
             );
           })}
           <p className="mt-1.5 px-1.5 text-[11.5px] leading-snug text-faint">
-            Desde AFFiNE · en la Fase 4 esta lista vendrá de tu servidor.
+            De las carpetas de tus materias en Obsidian.
           </p>
         </div>
       )}
