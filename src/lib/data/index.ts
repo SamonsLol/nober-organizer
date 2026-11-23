@@ -8,6 +8,7 @@ import { googleAccount, googleConfigured, hasCalendarScope, maybeAutoSync } from
 import { loadUserDB } from "@/lib/data/source";
 import { folderNotes, folderTasks, vaultInfo } from "@/lib/vault";
 import { vaultAllowed } from "@/lib/vault-access";
+import { aiConfigured } from "@/lib/ai";
 import { noteName, projectFolder, type VaultInfo, type VaultTask } from "@/lib/notes";
 import { courseGrade, periodAverage, yearAverage } from "@/lib/grades";
 import { dayKey, toDate } from "@/lib/dates";
@@ -29,10 +30,12 @@ const db = cache(async (): Promise<MockDB> => {
  * Bóveda de Obsidian del servidor. `canWrite`: esta cuenta puede crear y editar apuntes
  * (hay bóveda, base de datos y, si OBSIDIAN_ALLOWED_EMAILS existe, el correo está en la lista).
  */
-export const getVault = cache(async (): Promise<VaultInfo & { canWrite: boolean }> => {
+export const getVault = cache(async (): Promise<VaultInfo & { canWrite: boolean; ai: boolean }> => {
   const v = vaultInfo();
-  if (!v.enabled || !hasDatabase()) return { ...v, canWrite: false };
-  return { ...v, canWrite: vaultAllowed((await getSession())?.user.email) };
+  if (!hasDatabase()) return { ...v, canWrite: false, ai: false };
+  const allowed = vaultAllowed((await getSession())?.user.email);
+  // `ai`: hay clave de IA y esta cuenta puede usarla (mismas cuentas que la bóveda)
+  return { ...v, canWrite: v.enabled && allowed, ai: aiConfigured() && allowed };
 });
 
 export type VaultStatus = Awaited<ReturnType<typeof getVault>>;

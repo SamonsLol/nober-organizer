@@ -3,11 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  BookOpen, CalendarPlus, Rocket, ClipboardCheck, CornerDownLeft, FilePlus2, Lightbulb, ListPlus, NotebookPen, Search,
+  BookOpen, CalendarPlus, Rocket, Sparkles, ClipboardCheck, CornerDownLeft, FilePlus2, Lightbulb, ListPlus, NotebookPen, Search,
   type LucideIcon,
 } from "lucide-react";
 import { NAV } from "@/components/shell/nav";
 import { useObsidianHome } from "@/components/notes/note-panel";
+import { useVault } from "@/components/notes/vault-context";
+import { openWeekPlan } from "@/components/ai/week-plan";
 import { cn } from "@/components/blocks/primitives";
 import { openCourseEditor } from "@/components/courses/course-editor";
 import { openAssessmentEditor } from "@/components/grades/assessment-editor";
@@ -61,6 +63,7 @@ interface Item {
 export function CommandMenu({ courses, projects = [] }: { courses: Course[]; projects?: Project[] }) {
   const router = useRouter();
   const obsidian = useObsidianHome();
+  const { ai } = useVault();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("all");
   const [q, setQ] = useState("");
@@ -114,6 +117,9 @@ export function CommandMenu({ courses, projects = [] }: { courses: Course[]; pro
     if (mode === "create") return create;
     return [
       ...create,
+      ...(ai
+        ? [{ id: "ai-week", group: "IA", label: "Plan de la semana", icon: Sparkles, run: () => { setOpen(false); openWeekPlan(); } }]
+        : []),
       ...NAV.map((n) => ({ id: `n-${n.href}`, group: "Ir a", label: n.label, icon: n.icon, run: go(n.href) })),
       {
         id: "obsidian",
@@ -130,7 +136,7 @@ export function CommandMenu({ courses, projects = [] }: { courses: Course[]; pro
       ...courses.map((c) => ({ id: `m-${c.id}`, group: "Materias", label: c.name, emoji: c.emoji, run: go(`/courses/${c.slug}`) })),
       ...projects.map((p) => ({ id: `p-${p.id}`, group: "Proyectos", label: p.name, emoji: p.emoji, run: go(`/projects/${p.slug}`) })),
     ];
-  }, [mode, courses, projects, router, obsidian.href, obsidian.external]);
+  }, [mode, courses, projects, router, obsidian.href, obsidian.external, ai]);
 
   const filtered = items.filter((i) => i.label.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").includes(q.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "")));
 

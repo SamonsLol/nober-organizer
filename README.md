@@ -67,6 +67,19 @@ Syncthing, git… La app solo lee y escribe archivos `.md`. Variables:
 
 Sin bóveda, la app funciona igual pero sin crear ni abrir apuntes.
 
+### IA (opcional)
+
+Con `AI_API_KEY` aparecen **Resumir**, **Preguntas de repaso** y **Convertir en tareas** en el panel de cada apunte, y
+**Plan de la semana** en Inicio, Tareas y ⌘K. Usa cualquier API compatible con OpenAI que admita respuestas con esquema
+JSON; por defecto [Groq](https://console.groq.com) con `openai/gpt-oss-120b`, que tiene capa gratuita. La IA solo
+propone: nada se escribe en tus notas ni se crean tareas sin confirmarlo. El contenido del apunte se envía al proveedor.
+
+| Variable | Qué es |
+| --- | --- |
+| `AI_API_KEY` | Clave del proveedor (vacía = sin IA) |
+| `AI_BASE_URL` | URL base compatible con OpenAI (por defecto `https://api.groq.com/openai/v1`) |
+| `AI_MODEL` | Modelo (por defecto `openai/gpt-oss-120b`) |
+
 ## Desarrollo
 
 Requisitos: Node 22 o superior y Docker (para PostgreSQL).

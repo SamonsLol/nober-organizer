@@ -1,6 +1,7 @@
 import { startOfDay } from "date-fns";
 import { PageHeader } from "@/components/shell/page-header";
 import { TasksView, type TasksViewId } from "@/components/tasks/tasks-view";
+import { WeekPlanButton } from "@/components/ai/week-plan";
 import { getTasksPage } from "@/lib/data";
 import { toDate } from "@/lib/dates";
 
@@ -24,6 +25,7 @@ export default async function TasksPage({
         emoji="✅"
         title="Tareas"
         subtitle={`${pending.length} pendientes${overdue ? ` · ${overdue} ${overdue === 1 ? "atrasada" : "atrasadas"}` : ""} · académicas, proyectos y personales`}
+        extra={<WeekPlanButton />}
       />
       <div className="mx-auto mt-6 w-full max-w-[1480px] px-4 sm:px-6">
         <TasksView
