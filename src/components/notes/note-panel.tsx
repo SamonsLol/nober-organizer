@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, ExternalLink, Loader2, Maximize2, Minimize2, PanelRight, PencilLine, RotateCw, X } from "lucide-react";
+import { BookOpen, ExternalLink, Loader2, Maximize2, Minimize2, PanelRight, PencilLine, RotateCw, Sparkles, X } from "lucide-react";
+import { NoteAi } from "@/components/ai/note-ai";
 import { cn } from "@/components/blocks/primitives";
 import { toast } from "@/components/shell/toast";
 import { Markdown, toggleTaskAt } from "@/components/notes/markdown";
@@ -241,6 +242,7 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
   const [mode, setMode] = useState<"read" | "edit">("read");
   const [draft, setDraft] = useState("");
   const [save, setSave] = useState<Save>("saved");
+  const [aiOpen, setAiOpen] = useState(false);
 
   // Referencias para guardar desde temporizadores y al desmontar con el último estado
   const state = useRef({ file, draft, save });
@@ -378,6 +380,16 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
         ) : null}
         <SaveState state={save} />
         <div className="ml-auto flex items-center gap-1">
+          {vault.ai && vault.canWrite ? (
+            <button
+              onClick={() => setAiOpen((v) => !v)}
+              aria-pressed={aiOpen}
+              title="IA: resumir, preguntas de repaso, convertir en tareas"
+              className={cn("flex h-7 items-center gap-1.5 rounded-full px-3 text-[12px]", aiOpen ? "bg-ink text-paper" : "bg-ink/[0.07] text-ink hover:bg-ink/[0.12]")}
+            >
+              <Sparkles className="size-3.5" /> IA
+            </button>
+          ) : null}
           <button onClick={() => load()} aria-label="Recargar" title="Recargar desde la bóveda" disabled={save === "dirty" || save === "saving"} className="grid size-7 place-items-center rounded-full text-ink/55 hover:bg-ink/[0.07] hover:text-ink disabled:opacity-40">
             <RotateCw className="size-3.5" />
           </button>
@@ -399,6 +411,10 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
           <button onClick={() => load()} className="h-7 rounded-full bg-ink/10 px-3 hover:bg-ink/15">Usar la de Obsidian</button>
           <button onClick={() => flush(true)} className="h-7 rounded-full bg-ink px-3 text-paper hover:bg-ink/85">Guardar la mía</button>
         </div>
+      ) : null}
+
+      {aiOpen && file ? (
+        <NoteAi path={file.path} getMtime={() => state.current.file?.mtime} flush={() => flush()} reload={() => load()} onClose={() => setAiOpen(false)} />
       ) : null}
 
       <div className="relative min-h-0 flex-1 overflow-y-auto">

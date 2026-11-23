@@ -199,6 +199,21 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
 - Tareas: filtro «Proyecto» y `?project=<id>` en `/tasks`; campo Proyecto en `TaskPeek`; `AreaTag` muestra materia,
   si no proyecto, si no «Personal». Barra lateral: «Mis proyectos» (no terminados); ⌘K: «Nuevo proyecto» y proyectos.
 
+## IA (capa gratuita por API)
+
+- `lib/ai.ts`: `aiJson({name, schema, system, user})` contra cualquier API compatible con OpenAI (`/chat/completions`,
+  `response_format: json_schema` estricto). Por defecto Groq + `openai/gpt-oss-120b` (gratis: ~1.000 solicitudes y
+  200.000 tokens/día, 8.000 tokens/min) con `reasoning_effort: low`. Sin SDK. Variables `AI_API_KEY`, `AI_BASE_URL`,
+  `AI_MODEL`, `AI_REASONING_EFFORT`. Errores 401/429/413 → mensajes en español (`AiError`).
+- Acciones en `lib/actions/ai.ts`: `summarizeNote`, `reviewQuestions`, `suggestTasks` + `createSuggestedTasks`
+  (materia/proyecto según la clase o la carpeta de la nota), `addSectionToNote` (llena «## Resumen en tres líneas» si
+  está vacío; si no, agrega sección; con control de `mtime`), `planWeek` + `savePlanToVault`
+  («<raíz>/Planes de estudio/Semana del …»). Apuntes de más de `AI_MAX_INPUT_CHARS` se rechazan con aviso (no se recortan).
+- La IA solo propone; escribir o crear tareas siempre lo confirma la persona. Mismas cuentas que la bóveda
+  (`vaultAllowed`). `getVault().ai` → botón «IA» en `NoteEditor` (`components/ai/note-ai.tsx`) y «Plan de la semana»
+  (`components/ai/week-plan.tsx`, `openWeekPlan()`, host en el layout; `PageHeader extra=`).
+- Gemini gratis (~20 solicitudes/día) y OpenRouter `:free` (50/día) se descartaron por sus límites (nov. 2026).
+
 ## Google Calendar (Fase 4)
 
 La app es la fuente de verdad. Envío a un calendario propio con el nombre de la app (eventos con id interno en

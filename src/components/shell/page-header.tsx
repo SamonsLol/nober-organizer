@@ -7,12 +7,14 @@ import { openCommandMenu } from "@/components/shell/command-menu";
 
 /** Encabezado de página: título grande, subtítulo y acciones en píldoras. */
 export function PageHeader({
-  emoji, title, subtitle, children, user, meta,
+  emoji, title, subtitle, children, extra, user, meta,
 }: {
   emoji?: string;
   title: string;
   subtitle?: ReactNode;
   children?: ReactNode;
+  /** Acciones adicionales antes de las principales (sin quitar «Nuevo»). */
+  extra?: ReactNode;
   user?: { name: string; detail: string };
   meta?: ReactNode;
   cover?: boolean;
@@ -48,6 +50,7 @@ export function PageHeader({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {extra}
           {children ?? <NewButton label="Nuevo" onClick={() => openCommandMenu("create")} />}
         </div>
       </div>
