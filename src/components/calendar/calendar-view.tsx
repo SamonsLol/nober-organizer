@@ -9,8 +9,7 @@ import {
 import { CalendarDays, CalendarRange, ChevronLeft, ChevronRight, List, MapPin, PanelRight, Plus } from "lucide-react";
 import { FilterMenu, ViewTabs, cn } from "@/components/blocks/primitives";
 import { openEventEditor } from "@/components/calendar/event-editor";
-import { AffineLink } from "@/components/affine/affine";
-import { isAffineUrl } from "@/lib/affine";
+import { NoteLink } from "@/components/notes/note-panel";
 import { CAL_KIND, expandClasses, type CalItem, type CalKind } from "@/lib/calendar";
 import { academicWeekStart, capitalize, dayKey, fmt, toDate } from "@/lib/dates";
 import type { CalendarPageData } from "@/lib/data";
@@ -204,18 +203,19 @@ function ItemLink({ item, className, style, children }: { item: CalItem; classNa
     );
   }
   if (!item.href) return <div className={className} style={style}>{children}</div>;
-  if (isAffineUrl(item.href)) {
-    // El apunte de la clase se abre embebido; el estilo de posición va en un envoltorio
+  if (item.note) {
+    // El apunte de la clase se abre en el panel; el estilo de posición va en un envoltorio
     const link = (
-      <AffineLink
-        href={item.href}
+      <NoteLink
+        path={item.note.path}
+        lectureId={item.note.lectureId}
         title={item.detail ?? item.title}
         meta={`${item.title} · ${capitalize(fmt(item.start, "EEE d MMM · HH:mm").replace(".", ""))}`}
         emoji={item.emoji}
         className={style ? "block size-full" : className}
       >
         {children}
-      </AffineLink>
+      </NoteLink>
     );
     return style ? <div className={className} style={style}>{link}</div> : link;
   }
@@ -485,7 +485,7 @@ function ItemRow({ item: i, courseById }: { item: CalItem; courseById: Record<st
           </div>
         </div>
         <span className={cn("tag hidden sm:inline-flex", strong(i) ? `tag-${color}` : "tag-gray")}>{i.event?.kind === "HOLIDAY" ? "Festivo" : CAL_KIND[i.kind].one}</span>
-        {isAffineUrl(i.href) ? <PanelRight className="size-3.5 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100" /> : null}
+        {i.note ? <PanelRight className="size-3.5 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100" /> : null}
       </ItemLink>
     </li>
   );

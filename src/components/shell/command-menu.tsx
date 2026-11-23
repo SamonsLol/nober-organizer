@@ -7,8 +7,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { NAV } from "@/components/shell/nav";
-import { openAffine } from "@/components/affine/affine";
-import { AFFINE_HOME } from "@/lib/affine";
+import { useObsidianHome } from "@/components/notes/note-panel";
 import { cn } from "@/components/blocks/primitives";
 import { openCourseEditor } from "@/components/courses/course-editor";
 import { openAssessmentEditor } from "@/components/grades/assessment-editor";
@@ -58,6 +57,7 @@ interface Item {
 
 export function CommandMenu({ courses }: { courses: Course[] }) {
   const router = useRouter();
+  const obsidian = useObsidianHome();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("all");
   const [q, setQ] = useState("");
@@ -113,28 +113,20 @@ export function CommandMenu({ courses }: { courses: Course[] }) {
       ...create,
       ...NAV.map((n) => ({ id: `n-${n.href}`, group: "Ir a", label: n.label, icon: n.icon, run: go(n.href) })),
       {
-        id: "affine",
+        id: "obsidian",
         group: "Ir a",
-        label: "AFFiNE (todos los apuntes)",
+        label: "Obsidian (todos los apuntes)",
         icon: NotebookPen,
         run: () => {
           setOpen(false);
-          openAffine({ url: AFFINE_HOME, title: "AFFiNE", meta: "Todos los documentos", size: "full" });
+          if (obsidian.external) window.open(obsidian.href, "_blank", "noopener");
+          else window.location.href = obsidian.href;
         },
       },
-      ...courses.map((c) => ({
-        id: `a-${c.id}`,
-        group: "Apuntes en AFFiNE",
-        label: `Carpeta de ${c.name}`,
-        emoji: c.emoji,
-        run: () => {
-          setOpen(false);
-          openAffine({ url: c.affineFolderUrl ?? AFFINE_HOME, title: `${c.name} — carpeta`, meta: "AFFiNE", emoji: c.emoji, color: c.color });
-        },
-      })),
+      ...courses.map((c) => ({ id: `a-${c.id}`, group: "Apuntes", label: `Apuntes de ${c.name}`, emoji: c.emoji, run: go(`/courses/${c.slug}?tab=apuntes`) })),
       ...courses.map((c) => ({ id: `m-${c.id}`, group: "Materias", label: c.name, emoji: c.emoji, run: go(`/courses/${c.slug}`) })),
     ];
-  }, [mode, courses, router]);
+  }, [mode, courses, router, obsidian.href, obsidian.external]);
 
   const filtered = items.filter((i) => i.label.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").includes(q.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "")));
 

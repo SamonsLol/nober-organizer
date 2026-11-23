@@ -53,7 +53,7 @@ async function main() {
   await prisma.course.createMany({
     data: m.courses.map((c, i) => ({
       ...user, id: id(c.id), slug: c.slug, name: c.name, emoji: c.emoji, color: c.color, cover: c.cover,
-      teacher: c.teacher, room: c.room, code: c.code, affineFolderUrl: c.affineFolderUrl, position: i,
+      teacher: c.teacher, room: c.room, code: c.code, position: i,
     })),
   });
   await prisma.classSchedule.createMany({
@@ -66,7 +66,7 @@ async function main() {
   });
   await prisma.lecture.createMany({
     data: m.lectures.map((l) => ({
-      ...user, courseId: id(l.courseId), date: new Date(l.date), title: l.title, emoji: l.emoji, topicId: ref(l.topicId), affineDocUrl: l.affineDocUrl,
+      ...user, courseId: id(l.courseId), date: new Date(l.date), title: l.title, emoji: l.emoji, topicId: ref(l.topicId),
     })),
   });
   await prisma.assessment.createMany({
@@ -96,9 +96,6 @@ async function main() {
   await prisma.goal.createMany({ data: m.goals.map((g, i) => ({ ...user, scope: g.scope, title: g.title, done: g.done, position: i })) });
   await prisma.quickNote.createMany({
     data: m.quickNotes.map((q, i) => ({ ...user, text: q.text, done: q.done, createdAt: new Date(Date.now() - (m.quickNotes.length - i) * 60_000) })),
-  });
-  await prisma.recentDoc.createMany({
-    data: m.recentDocs.map((r) => ({ ...user, title: r.title, courseId: ref(r.courseId), url: r.url, updatedAt: new Date(r.updatedAt) })),
   });
   // El registro de foco del mock es por día: se guarda como una sesión de foco y una de descanso a las 16:00
   await prisma.focusSession.createMany({

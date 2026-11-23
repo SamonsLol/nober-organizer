@@ -31,6 +31,8 @@ export interface CalItem {
   detail?: string;
   href?: string;
   external?: boolean;
+  /** Clase con apunte en Obsidian: se abre en el panel de apuntes. */
+  note?: { path: string; lectureId: string };
   done?: boolean;
   /** Evento original (los eventos se editan desde el calendario). */
   event?: CalendarEvent;
@@ -155,8 +157,8 @@ export function expandClasses({ schedule, courses, lectures, periods, holidays, 
         courseId: c.id,
         location: s.room,
         detail: lecture?.title,
-        href: lecture?.affineDocUrl ?? `/courses/${c.slug}?tab=clases`,
-        external: Boolean(lecture?.affineDocUrl),
+        href: `/courses/${c.slug}?tab=clases`,
+        note: lecture?.notePath ? { path: lecture.notePath, lectureId: lecture.id } : undefined,
       });
     }
   }

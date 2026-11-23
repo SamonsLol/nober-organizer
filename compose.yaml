@@ -27,9 +27,6 @@ services:
     build:
       context: .
       target: migrate
-      args: &affine
-        NEXT_PUBLIC_AFFINE_ORIGIN: ${NEXT_PUBLIC_AFFINE_ORIGIN:-https://app.affine.pro}
-        NEXT_PUBLIC_AFFINE_WORKSPACE: ${NEXT_PUBLIC_AFFINE_WORKSPACE:-}
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-nober}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-nober}
     depends_on:
@@ -41,14 +38,16 @@ services:
     build:
       context: .
       target: runner
-      args: *affine
     restart: unless-stopped
     env_file: .env.production
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-nober}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-nober}
       TZ: ${TZ:-America/Bogota}
+      # Bóveda de Obsidian: solo se activa si OBSIDIAN_VAULT_DIR está definido
+      OBSIDIAN_VAULT_PATH: ${OBSIDIAN_VAULT_DIR:+/vault}
     volumes:
       - uploads:/data/uploads
+      - ${OBSIDIAN_VAULT_DIR:-./.data/no-vault}:/vault
     ports:
       - "127.0.0.1:${APP_PORT:-3100}:3000"
     depends_on:

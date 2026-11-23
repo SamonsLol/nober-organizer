@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Maximize2, NotebookPen, PanelRight, User, MapPin, CalendarClock } from "lucide-react";
-import { AffineInline, AffineLink } from "@/components/affine/affine";
+import { NotebookPen, PanelRight, User, MapPin, CalendarClock } from "lucide-react";
+import { NoteInline, NoteLink } from "@/components/notes/note-panel";
+import { OpenObsidian } from "@/components/notes/open-obsidian";
 import cn from "clsx";
 import { Section, Tag, PillButton, GhostAdd, PillScroller } from "@/components/blocks/primitives";
 import { CourseCover } from "@/components/illustrations/course-cover";
@@ -9,7 +10,7 @@ import { capitalize, deadline, fmt, friendlyDay, relativeAgo, toDate } from "@/l
 import { formatGrade, gradeTone } from "@/lib/grades";
 import { AssessmentTable } from "@/components/grades/assessment-table";
 import { CourseResources, LectureGrid, TopicBoard } from "@/components/courses/course-study";
-import { AFFINE_HOME } from "@/lib/affine";
+import { courseFolder } from "@/lib/notes";
 import type { CourseDetail } from "@/lib/data";
 import type { Preparation } from "@/lib/types";
 
@@ -29,9 +30,10 @@ const WEEKDAY = ["", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sáb
 
 type LectureItem = CourseDetail["lectures"][number];
 
-/** Datos que muestra el panel de AFFiNE para el apunte de una clase. */
+/** Datos que muestra el panel de apuntes para el apunte de una clase. */
 function lectureMeta(d: CourseDetail, l: LectureItem) {
   return {
+    lectureId: l.id,
     title: l.title,
     meta: `${d.course.name} · ${capitalize(fmt(l.date, "EEE d MMM · HH:mm").replace(".", ""))}`,
     emoji: l.emoji,
@@ -39,9 +41,9 @@ function lectureMeta(d: CourseDetail, l: LectureItem) {
   };
 }
 
-/** Solo para clases con apunte (`affineDocUrl` definido). */
+/** Solo para clases con apunte (`notePath` definido). */
 function lectureDoc(d: CourseDetail, l: LectureItem) {
-  return { href: l.affineDocUrl ?? AFFINE_HOME, ...lectureMeta(d, l) };
+  return { path: l.notePath ?? "", ...lectureMeta(d, l) };
 }
 
 /* ───────────── Cabecera: portada + indicadores ───────────── */
@@ -237,18 +239,18 @@ function LectureList({ d, limit }: { d: CourseDetail; limit?: number }) {
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2 text-[15px]">{l.emoji}</span>
             <div className="min-w-0 flex-1">
               <div className="truncate text-[13px]">{l.title}</div>
-              <div className="text-[11.5px] text-faint">{capitalize(fmt(l.date, "EEE d MMM").replace(".", ""))}{l.affineDocUrl ? "" : " · sin apunte"}</div>
+              <div className="text-[11.5px] text-faint">{capitalize(fmt(l.date, "EEE d MMM").replace(".", ""))}{l.notePath ? "" : " · sin apunte"}</div>
             </div>
           </>
         );
         const cls = "group flex items-center gap-3 rounded-[14px] px-2 py-2 hover:bg-surface-hover";
         return (
           <li key={l.id}>
-            {l.affineDocUrl ? (
-              <AffineLink {...lectureDoc(d, l)} className={cls}>
+            {l.notePath ? (
+              <NoteLink {...lectureDoc(d, l)} className={cls}>
                 {row}
                 <PanelRight className="size-3.5 text-faint opacity-0 transition-opacity group-hover:opacity-100" />
-              </AffineLink>
+              </NoteLink>
             ) : (
               <Link href={`/courses/${d.course.slug}?tab=clases`} className={cls}>{row}</Link>
             )}
@@ -289,7 +291,7 @@ function PeriodBars({ d }: { d: CourseDetail }) {
 /* ───────────── Clases ───────────── */
 
 export function ClassesTab({ d }: { d: CourseDetail }) {
-  return <LectureGrid course={d.course} lectures={d.lectures} topics={d.topics} schedule={d.schedule} now={d.now} affineConnected={d.affine.connected} />;
+  return <LectureGrid course={d.course} lectures={d.lectures} topics={d.topics} schedule={d.schedule} now={d.now} canCreate={d.vault.canWrite} />;
 }
 
 /* ───────────── Temas ───────────── */
@@ -350,12 +352,13 @@ export function TasksTab({ d }: { d: CourseDetail }) {
   );
 }
 
-/* ───────────── Apuntes (AFFiNE) ───────────── */
+/* ───────────── Apuntes (Obsidian) ───────────── */
 
 export function NotesTab({ d }: { d: CourseDetail }) {
   const now = new Date(d.now);
   // Solo las clases que ya tienen su apunte enlazado
-  const past = d.lectures.filter((l) => l.affineDocUrl && toDate(l.date) <= now);
+  const past = d.lectures.filter((l) => l.notePath && toDate(l.date) <= now);
+  const folder = courseFolder(d.course, d.vault.root);
   const latest = past[0];
   return (
     <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -364,25 +367,28 @@ export function NotesTab({ d }: { d: CourseDetail }) {
           <Section
             title="Último apunte"
             action={
-              <AffineLink href={d.course.affineFolderUrl ?? AFFINE_HOME} title={`${d.course.name} — carpeta`} meta="AFFiNE" emoji={d.course.emoji} color={d.course.color} size="full" pill>
-                Carpeta en AFFiNE <Maximize2 className="size-3.5" />
-              </AffineLink>
+              <OpenObsidian folder={folder} pill />
             }
           >
-            <AffineInline doc={{ url: latest.affineDocUrl ?? AFFINE_HOME, ...lectureMeta(d, latest) }} />
+            <NoteInline doc={lectureDoc(d, latest)} />
           </Section>
         ) : null}
-        <Section title="Todos los apuntes de clase">
+        <Section title="Todos los apuntes de clase" action={latest ? undefined : <OpenObsidian folder={folder} pill />}>
+          {past.length === 0 ? (
+            <p className="py-4 text-center text-[13px] text-faint">
+              Aún no hay apuntes. En la pestaña «Clases», «Crear apunte» hace la nota en Obsidian con la plantilla de clase.
+            </p>
+          ) : null}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {past.map((l) => (
-              <AffineLink key={l.id} {...lectureDoc(d, l)} className="group flex items-center gap-3 rounded-[16px] bg-surface-2 p-3 hover:bg-surface-hover">
+              <NoteLink key={l.id} {...lectureDoc(d, l)} className="group flex items-center gap-3 rounded-[16px] bg-surface-2 p-3 hover:bg-surface-hover">
                 <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-surface text-[16px]">{l.emoji}</span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[13px]">{l.title}</div>
                   <div className="text-[11.5px] text-faint">{capitalize(fmt(l.date, "EEE d MMM").replace(".", ""))}</div>
                 </div>
                 <PanelRight className="size-3.5 text-faint opacity-0 group-hover:opacity-100" />
-              </AffineLink>
+              </NoteLink>
             ))}
           </div>
         </Section>
@@ -393,8 +399,8 @@ export function NotesTab({ d }: { d: CourseDetail }) {
             <ul className="flex flex-col gap-1">
               {d.docs.map((doc) => (
                 <li key={doc.id}>
-                  <AffineLink
-                    href={doc.url}
+                  <NoteLink
+                    path={doc.path}
                     title={doc.title}
                     meta={`${d.course.name} · ${capitalize(relativeAgo(doc.updatedAt))}`}
                     emoji={d.course.emoji}
@@ -403,7 +409,7 @@ export function NotesTab({ d }: { d: CourseDetail }) {
                   >
                     📝 <span className="flex-1 truncate">{doc.title}</span>
                     <span className="text-[11.5px] text-faint">{relativeAgo(doc.updatedAt)}</span>
-                  </AffineLink>
+                  </NoteLink>
                 </li>
               ))}
             </ul>
@@ -411,8 +417,9 @@ export function NotesTab({ d }: { d: CourseDetail }) {
         </Section>
         <div className="rounded-[24px] border border-dashed border-border-strong p-5 text-[12.5px] leading-relaxed text-muted">
           <div className="mb-1.5 flex items-center gap-2 text-[13px] font-medium text-text"><CalendarClock className="size-4" /> Cómo funciona</div>
-          Tus apuntes viven en AFFiNE y se abren aquí mismo, sin salir de la app. Ctrl + clic los abre en una
-          pestaña nueva. En la Fase 4 podrás crear el apunte de una clase nueva desde aquí.
+          Tus apuntes son notas de Obsidian en <span className="break-all font-mono text-[11.5px]">{folder}</span>.
+          Se leen y editan aquí mismo; Ctrl + clic los abre en la app de Obsidian. Crea el de cada clase desde
+          la pestaña «Clases».
         </div>
       </div>
     </div>

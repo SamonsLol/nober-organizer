@@ -7,7 +7,8 @@ import { cn } from "@/components/blocks/primitives";
 import { CourseCover } from "@/components/illustrations/course-cover";
 import { toast } from "@/components/shell/toast";
 import { courseUsage, deleteCourse, saveCourse } from "@/lib/actions/courses";
-import { AFFINE_ORIGIN } from "@/lib/affine";
+import { useVault } from "@/components/notes/vault-context";
+import { courseFolder } from "@/lib/notes";
 import type { ClassSchedule, Course, CoverKind, TagColor } from "@/lib/types";
 
 /* ───────────── Apertura desde cualquier parte ───────────── */
@@ -60,7 +61,8 @@ function CourseEditor({ init, onClose }: { init: Init; onClose: () => void }) {
   const [teacher, setTeacher] = useState(c?.teacher ?? "");
   const [room, setRoom] = useState(c?.room ?? "");
   const [code, setCode] = useState(c?.code ?? "");
-  const [folder, setFolder] = useState(c?.affineFolderUrl ?? "");
+  const [folder, setFolder] = useState(c?.notesFolder ?? "");
+  const vault = useVault();
   const seq = useRef(0);
   const [rows, setRows] = useState<Row[]>(() =>
     (init?.schedule ?? []).map((s) => ({ key: seq.current++, weekday: s.weekday, start: s.start, end: s.end, room: s.room === c?.room ? "" : s.room })),
@@ -88,7 +90,7 @@ function CourseEditor({ init, onClose }: { init: Init; onClose: () => void }) {
   async function save() {
     setBusy(true);
     const r = await saveCourse({
-      id: c?.id, name, emoji, color, cover, teacher, room, code, affineFolderUrl: folder,
+      id: c?.id, name, emoji, color, cover, teacher, room, code, notesFolder: folder,
       schedule: rows.map(({ weekday, start, end, room }) => ({ weekday, start, end, room })),
     });
     setBusy(false);
@@ -178,7 +180,7 @@ function CourseEditor({ init, onClose }: { init: Init; onClose: () => void }) {
             <Field label="Código"><Input value={code} onChange={setCode} placeholder="MAT-11" /></Field>
           </div>
           <div className="mt-3">
-            <Field label="Carpeta en AFFiNE (opcional)"><Input value={folder} onChange={setFolder} placeholder={`${AFFINE_ORIGIN}/workspace/…`} /></Field>
+            <Field label="Carpeta de apuntes en Obsidian (opcional)"><Input value={folder} onChange={setFolder} placeholder={courseFolder({ name: name || "Materia" }, vault.root)} /></Field>
           </div>
 
           <Group label="Horario semanal" right={<span className="text-[12px] text-faint">{rows.length} {rows.length === 1 ? "clase" : "clases"}</span>}>
@@ -243,7 +245,7 @@ function DeleteCourse({ course, onDeleted }: { course: Course; onDeleted: () => 
     setLoss(
       (parts.length ? `Se borrarán ${parts.join(", ")}.` : "No tiene evaluaciones ni clases registradas.") +
         (u.tasks ? ` Sus ${u.tasks} tareas quedarán como personales.` : "") +
-        " Los apuntes de AFFiNE no se tocan.",
+        " Sus notas en Obsidian no se tocan.",
     );
     setStep("confirm");
   }

@@ -3,14 +3,12 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
-import { AlertTriangle, CalendarDays, Check, Loader2, LogOut, Maximize2, Moon, Plus, Sun, Trash2 } from "lucide-react";
+import { AlertTriangle, CalendarDays, Check, Loader2, LogOut, Moon, Plus, Sun, Trash2 } from "lucide-react";
 import { toast } from "@/components/shell/toast";
 import { saveSettings } from "@/lib/actions/settings";
 import { signOut } from "@/lib/auth-client";
-import { AFFINE_HOME, AFFINE_HOST } from "@/lib/affine";
-import { AffineConnect } from "@/components/settings/affine-connect";
 import { GoogleConnect } from "@/components/settings/google-connect";
-import { AffineLink } from "@/components/affine/affine";
+import { OpenObsidian } from "@/components/notes/open-obsidian";
 import { Tag, cn } from "@/components/blocks/primitives";
 import { setTheme, useTheme } from "@/components/shell/theme";
 import { formatGrade } from "@/lib/grades";
@@ -189,18 +187,28 @@ export function SettingsView({ data }: { data: SettingsData }) {
         <Panel id="integraciones" title="Integraciones">
           <div className="flex flex-col gap-3">
             <Integration
-              name="AFFiNE"
+              name="Obsidian"
               emoji="📝"
-              status={<Tag color="green">{data.affine.connected ? "Conectado" : "Enlaces activos"}</Tag>}
+              status={
+                <Tag color={data.vault.canWrite ? "green" : data.vault.enabled ? "yellow" : "gray"}>
+                  {data.vault.canWrite ? "Conectado" : data.vault.enabled ? "Solo enlaces" : "Sin bóveda"}
+                </Tag>
+              }
               body={
                 <>
-                  <Row label="Servidor">{AFFINE_HOST}</Row>
-                  <Row label="Espacio">{data.affine.workspace ? <span className="break-all font-mono text-[11.5px]">{data.affine.workspace}</span> : <span className="text-warn">Sin configurar</span>}</Row>
-                  <Row label="Embebido">En toda la app (panel lateral, ancho o pantalla completa), en el mismo dominio que la app.</Row>
-                  <AffineConnect status={data.affine} enabled={Boolean(data.account)} />
+                  <Row label="Bóveda">{data.vault.name}</Row>
+                  <Row label="Apuntes"><span className="break-all font-mono text-[11.5px]">{data.vault.root || "(raíz de la bóveda)"}/&lt;materia&gt;/</span></Row>
+                  <Row label="Cómo">
+                    {data.vault.enabled
+                      ? "Cada clase crea su nota .md en la bóveda del servidor; se lee y edita aquí y tu sincronización de Obsidian la lleva a tus dispositivos."
+                      : "El servidor no tiene una bóveda montada (OBSIDIAN_VAULT_PATH). Mira deploy/README.md."}
+                  </Row>
+                  {data.vault.enabled && !data.vault.canWrite && data.account ? (
+                    <Row label="Acceso"><span className="text-warn">Esta cuenta no está en OBSIDIAN_ALLOWED_EMAILS.</span></Row>
+                  ) : null}
                 </>
               }
-              action={<AffineLink href={AFFINE_HOME} title="AFFiNE" meta="Todos los documentos" size="full" pill>Abrir <Maximize2 className="size-3.5" /></AffineLink>}
+              action={<OpenObsidian pill />}
             />
             <Integration
               name="Google Calendar"

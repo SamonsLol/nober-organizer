@@ -40,7 +40,8 @@ export interface Course {
   teacher: string;
   room: string;
   code: string;
-  affineFolderUrl?: string;
+  /** Carpeta de apuntes en la bóveda; vacía = «<raíz>/<nombre>» (`courseFolder()`). */
+  notesFolder?: string;
 }
 
 export interface ClassSchedule {
@@ -131,7 +132,8 @@ export interface Lecture {
   title: string;
   emoji: string;
   topicId?: string;
-  affineDocUrl?: string;
+  /** Ruta del apunte en la bóveda de Obsidian. */
+  notePath?: string;
 }
 
 export type EventKind = "CLASS" | "EXAM" | "DEADLINE" | "EVENT" | "IMPORTANT" | "HOLIDAY";
@@ -166,7 +168,8 @@ export interface RecentDoc {
   title: string;
   courseId?: string;
   updatedAt: string;
-  url: string;
+  /** Ruta de la nota en la bóveda de Obsidian. */
+  path: string;
 }
 
 export interface FocusDay {
