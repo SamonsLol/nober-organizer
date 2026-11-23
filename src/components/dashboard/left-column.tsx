@@ -23,10 +23,13 @@ export function TodayAgenda({ data }: { data: DashboardData }) {
 
   return (
     <Section icon={CalendarClock} title="Hoy" bodyClassName="p-2">
-      {today.tasks.length + today.events.length > 0 ? (
+      {today.tasks.length + today.events.length + today.google.length > 0 ? (
         <div className="mb-2 flex flex-col gap-1 border-b border-border pb-2">
           {today.events.map((e) => (
             <Row key={e.id} emoji={e.emoji} title={e.title} meta={e.allDay ? "Todo el día" : fmt(e.start, "HH:mm")} />
+          ))}
+          {today.google.map((e) => (
+            <Row key={e.id} emoji="calendar" title={e.title} meta={e.allDay ? e.calendarName : `${fmt(e.start, "HH:mm")} · ${e.calendarName}`} />
           ))}
           {today.tasks.map((t) => (
             <Row key={t.id} emoji={t.emoji} title={t.title} meta={t.allDay ? "Pendiente hoy" : `Vence ${fmt(t.dueAt, "HH:mm")}`} tone="warn" />

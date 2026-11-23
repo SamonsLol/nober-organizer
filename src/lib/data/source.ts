@@ -7,7 +7,7 @@ import type { MockDB } from "@/lib/mock/seed";
 import { courseFolder, noteName } from "@/lib/notes";
 import { recentNotes, vaultInfo } from "@/lib/vault";
 import type {
-  Assessment, CalendarEvent, ClassSchedule, Course, FocusDay, Goal, Lecture, Period, Project, RecentDoc, Resource, Task, Topic,
+  Assessment, CalendarEvent, ClassSchedule, Course, ExternalItem, FocusDay, Goal, Lecture, Period, Project, RecentDoc, Resource, Task, Topic,
 } from "@/lib/types";
 
 /**
@@ -49,7 +49,7 @@ export async function loadUserDB(userId: string, now = new Date()): Promise<Mock
   const since = addDays(startOfDay(now), -6);
   const [
     user, settings, periods, courses, schedule, topics, lectures, tasks, assessments, events,
-    goals, quickNotes, focus, resources, projects,
+    goals, quickNotes, focus, resources, projects, external,
   ] = await Promise.all([
     prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true } }),
     prisma.settings.findUnique({ where: { userId } }),
@@ -66,6 +66,7 @@ export async function loadUserDB(userId: string, now = new Date()): Promise<Mock
     prisma.focusSession.findMany({ where: { userId, startedAt: { gte: since } } }),
     prisma.resource.findMany({ where: { userId } }),
     prisma.project.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+    prisma.externalEvent.findMany({ where: { userId }, orderBy: { start: "asc" } }),
   ]);
 
   // Minutos de foco y descanso por día, últimos 7 días (incluye días en cero)
@@ -110,6 +111,10 @@ export async function loadUserDB(userId: string, now = new Date()): Promise<Mock
       topicId: opt(l.topicId), notePath: opt(l.notePath),
     })),
     tasks: tasks.map(toTask),
+    externalEvents: external.map((e): ExternalItem => ({
+      id: e.id, calendarName: e.calendarName, color: e.color as ExternalItem["color"], title: e.title, start: iso(e.start),
+      end: e.end ? iso(e.end) : undefined, allDay: e.allDay, location: opt(e.location), url: opt(e.htmlLink),
+    })),
     projects: projects.map((p): Project => ({
       id: p.id, slug: p.slug, name: p.name, emoji: p.emoji, color: p.color, description: p.description, status: p.status,
       dueDate: p.dueDate ? dayKey(p.dueDate) : undefined, notesFolder: opt(p.notesFolder),

@@ -32,6 +32,7 @@ model User {
   projects      Project[]
   pushSubscriptions PushSubscription[]
   reminderLogs  ReminderLog[]
+  externalEvents ExternalEvent[]
   assessments   Assessment[]
   topics        Topic[]
   lectures      Lecture[]
@@ -206,6 +207,11 @@ model Settings {
   googleCalendarId String?
   googleSyncedAt   DateTime?
   googleSyncError  String?
+  /// Leer otros calendarios de Google (solo lectura): activado y cuáles (ids de Google)
+  googleRead       Boolean   @default(false)
+  googleReadIds    String[]  @default([])
+  googleReadAt     DateTime?
+  googleReadError  String?
   /// Recordatorios push: cuándo avisar de tareas (DAY_BEFORE, SAME_DAY, TWO_HOURS) y de evaluaciones (THREE_DAYS, DAY_BEFORE, SAME_DAY)
   remindTasks      String[]  @default(["DAY_BEFORE", "SAME_DAY"])
   remindExams      String[]  @default(["THREE_DAYS", "DAY_BEFORE", "SAME_DAY"])
@@ -551,4 +557,26 @@ model ReminderLog {
 
   @@unique([userId, key])
   @@index([sentAt])
+}
+
+/// Copia (solo lectura) de un evento de otro calendario de Google, para mostrarlo en el calendario de la app.
+/// Se reemplaza entera en cada lectura (ventana: 30 días atrás a 4 meses adelante).
+model ExternalEvent {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calendarId   String
+  calendarName String
+  /// Color de la app más cercano al del calendario en Google (gray, blue, …)
+  color        String    @default("blue")
+  googleId     String
+  title        String
+  start        DateTime
+  end          DateTime?
+  allDay       Boolean   @default(false)
+  location     String?
+  htmlLink     String?
+
+  @@unique([userId, calendarId, googleId])
+  @@index([userId, start])
 }
