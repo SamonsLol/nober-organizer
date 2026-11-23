@@ -5,7 +5,7 @@ import type { VaultInfo } from "@/lib/notes";
 
 export type ClientVault = VaultInfo & { canWrite: boolean };
 
-const DEMO: ClientVault = { enabled: false, name: "Obsidian", root: "Apuntes", canWrite: false };
+const DEMO: ClientVault = { enabled: false, name: "Obsidian", root: "Apuntes", projectsRoot: "Proyectos", canWrite: false };
 const Ctx = createContext<ClientVault>(DEMO);
 
 /** Datos de la bóveda (del servidor) para los componentes cliente. Se monta en el layout de la app. */

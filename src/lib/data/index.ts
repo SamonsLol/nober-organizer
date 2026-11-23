@@ -6,12 +6,13 @@ import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { getSession, requireUserId } from "@/lib/session";
 import { googleAccount, googleConfigured, hasCalendarScope, maybeAutoSync } from "@/lib/google-calendar";
 import { loadUserDB } from "@/lib/data/source";
-import { vaultInfo } from "@/lib/vault";
-import type { VaultInfo } from "@/lib/notes";
+import { folderNotes, folderTasks, vaultInfo } from "@/lib/vault";
+import { vaultAllowed } from "@/lib/vault-access";
+import { noteName, projectFolder, type VaultInfo, type VaultTask } from "@/lib/notes";
 import { courseGrade, periodAverage, yearAverage } from "@/lib/grades";
 import { dayKey, toDate } from "@/lib/dates";
 import { buildItems, expandClasses, holidayKeys } from "@/lib/calendar";
-import type { Assessment, Course } from "@/lib/types";
+import type { Assessment, Course, Project } from "@/lib/types";
 
 /**
  * Capa de datos (repositorio).
@@ -31,9 +32,7 @@ const db = cache(async (): Promise<MockDB> => {
 export const getVault = cache(async (): Promise<VaultInfo & { canWrite: boolean }> => {
   const v = vaultInfo();
   if (!v.enabled || !hasDatabase()) return { ...v, canWrite: false };
-  const allowed = (process.env.OBSIDIAN_ALLOWED_EMAILS ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-  const email = (await getSession())?.user.email?.toLowerCase() ?? "";
-  return { ...v, canWrite: !allowed.length || allowed.includes(email) };
+  return { ...v, canWrite: vaultAllowed((await getSession())?.user.email) };
 });
 
 export type VaultStatus = Awaited<ReturnType<typeof getVault>>;
@@ -325,6 +324,7 @@ export async function getTasksPage() {
     week: d.week,
     tasks: [...d.tasks].sort((a, b) => +toDate(a.dueAt) - +toDate(b.dueAt)),
     courses: d.courses,
+    projects: d.projects,
     // Solo las evaluaciones vinculadas a alguna tarea (para mostrar peso y fecha en el panel)
     assessments: d.assessments.filter((a) => linked.has(a.id)),
     tags: [...new Set(d.tasks.flatMap((t) => t.tags))].sort((a, b) => a.localeCompare(b, "es")),
@@ -374,6 +374,66 @@ export async function getNotesPage() {
 }
 
 export type NotesPageData = Awaited<ReturnType<typeof getNotesPage>>;
+
+/* ───────────── Proyectos (fuera de lo académico) ───────────── */
+
+/** Tareas de la app y casillas de Obsidian de un proyecto. */
+async function projectObsidian(p: Project, vault: VaultStatus) {
+  const folder = projectFolder(p, vault.projectsRoot);
+  if (!vault.canWrite) return { folder, notes: [] as { path: string; title: string; updatedAt: string }[], vaultTasks: [] as VaultTask[] };
+  const [notes, vaultTasks] = await Promise.all([folderNotes(folder), folderTasks(folder)]);
+  return {
+    folder,
+    notes: notes.map((n) => ({ path: n.path, title: noteName(n.path), updatedAt: new Date(n.mtime).toISOString() })),
+    vaultTasks,
+  };
+}
+
+const byDue = (a: { dueAt: string }, b: { dueAt: string }) => +toDate(a.dueAt) - +toDate(b.dueAt);
+
+export async function getProjectsPage() {
+  const d = await db();
+  const vault = await getVault();
+  const cards = await Promise.all(
+    d.projects.map(async (p) => {
+      const tasks = d.tasks.filter((t) => t.projectId === p.id);
+      const pending = tasks.filter((t) => t.status !== "DONE").sort(byDue);
+      const obs = vault.canWrite ? (await folderTasks(projectFolder(p, vault.projectsRoot)).catch(() => [])) : [];
+      return {
+        project: p,
+        total: tasks.length + obs.length,
+        done: tasks.length - pending.length + obs.filter((t) => t.done).length,
+        next: pending[0],
+        obsidianPending: obs.filter((t) => !t.done).length,
+      };
+    }),
+  );
+  return {
+    now: d.now,
+    vault,
+    projects: cards,
+    // «Otras actividades»: tareas sin materia ni proyecto
+    personal: d.tasks.filter((t) => !t.courseId && !t.projectId && t.status !== "DONE").sort(byDue),
+  };
+}
+
+export type ProjectsPageData = Awaited<ReturnType<typeof getProjectsPage>>;
+
+export async function getProjectDetail(slug: string) {
+  const d = await db();
+  const project = d.projects.find((p) => p.slug === slug);
+  if (!project) return null;
+  const vault = await getVault();
+  const tasks = d.tasks.filter((t) => t.projectId === project.id).sort(byDue);
+  return { now: d.now, vault, project, tasks, ...(await projectObsidian(project, vault)) };
+}
+
+export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
+
+/** Proyectos para la barra lateral y ⌘K (los terminados no). */
+export async function getActiveProjects() {
+  return (await db()).projects.filter((p) => p.status !== "DONE");
+}
 
 /* ───────────── Calificaciones ───────────── */
 

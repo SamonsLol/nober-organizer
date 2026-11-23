@@ -63,6 +63,8 @@ export interface Task {
   emoji: string;
   description?: string;
   courseId?: string;
+  /** Proyecto personal. Sin materia ni proyecto = tarea personal. */
+  projectId?: string;
   type: TaskType;
   dueAt: string; // ISO datetime
   allDay: boolean;
@@ -189,4 +191,21 @@ export interface Resource {
   url: string;
   size?: string;
   addedAt: string;
+}
+
+export type ProjectStatus = "ACTIVE" | "PAUSED" | "DONE";
+
+/** Proyecto o actividad fuera de lo académico, con su carpeta de notas en Obsidian. */
+export interface Project {
+  id: string;
+  slug: string;
+  name: string;
+  emoji: string;
+  color: TagColor;
+  description: string;
+  status: ProjectStatus;
+  /** yyyy-MM-dd */
+  dueDate?: string;
+  /** Carpeta en la bóveda; vacía = «<raíz de proyectos>/<nombre>» (`projectFolder()`). */
+  notesFolder?: string;
 }

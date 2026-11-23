@@ -24,6 +24,7 @@ const taskPatch = z
     emoji: z.string().max(16),
     description: z.string().max(5000).nullable(),
     courseId: id.nullable(),
+    projectId: id.nullable(),
     type: z.enum(["TODO", "HOMEWORK", "PROJECT", "ESSAY", "LAB"]),
     dueAt: z.iso.datetime({ offset: true }),
     allDay: z.boolean(),
@@ -39,6 +40,7 @@ export type TaskPatch = z.input<typeof taskPatch>;
 const newTask = z.object({
   title: z.string().trim().min(1, "Escribe un título.").max(200),
   courseId: id.nullable().optional(),
+  projectId: id.nullable().optional(),
   status: status.optional(),
   dueAt: z.iso.datetime({ offset: true }),
   allDay: z.boolean().optional(),
@@ -48,6 +50,10 @@ const done = () => revalidatePath("/", "layout");
 
 async function assertCourse(userId: string, courseId: string | null | undefined) {
   if (courseId && !(await prisma.course.count({ where: { id: courseId, userId } }))) throw new UserError("Esa materia no existe.");
+}
+
+async function assertProject(userId: string, projectId: string | null | undefined) {
+  if (projectId && !(await prisma.project.count({ where: { id: projectId, userId } }))) throw new UserError("Ese proyecto no existe.");
 }
 
 async function assertTask(userId: string, taskId: string) {
@@ -61,17 +67,19 @@ export async function createTask(input: z.input<typeof newTask>): Promise<Result
     const data = newTask.parse(input);
     if (!hasDatabase()) {
       return {
-        id: randomUUID(), title: data.title, emoji: "", courseId: data.courseId ?? undefined, type: "TODO",
+        id: randomUUID(), title: data.title, emoji: "", courseId: data.courseId ?? undefined, projectId: data.projectId ?? undefined, type: "TODO",
         dueAt: data.dueAt, allDay: data.allDay ?? false, priority: "MEDIUM", status: data.status ?? "TODO", tags: [],
       };
     }
     const userId = await requireUserId();
     await assertCourse(userId, data.courseId);
+    await assertProject(userId, data.projectId);
     const row = await prisma.task.create({
       data: {
         userId,
         title: data.title,
         courseId: data.courseId ?? null,
+        projectId: data.projectId ?? null,
         type: data.courseId ? "HOMEWORK" : "TODO",
         status: data.status ?? "TODO",
         dueAt: new Date(data.dueAt),
@@ -92,6 +100,7 @@ export async function updateTask(taskId: string, patch: TaskPatch): Promise<Resu
     if (!hasDatabase()) return;
     const userId = await requireUserId();
     await assertCourse(userId, data.courseId);
+    await assertProject(userId, data.projectId);
     const { count } = await prisma.task.updateMany({
       where: { id: tid, userId },
       data: {

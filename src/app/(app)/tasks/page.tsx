@@ -11,9 +11,9 @@ const VIEWS: TasksViewId[] = ["lista", "tablero", "fecha"];
 export default async function TasksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; task?: string; course?: string; new?: string }>;
+  searchParams: Promise<{ view?: string; task?: string; course?: string; project?: string; new?: string }>;
 }) {
-  const [{ view, task, course, new: startNew }, data] = await Promise.all([searchParams, getTasksPage()]);
+  const [{ view, task, course, project, new: startNew }, data] = await Promise.all([searchParams, getTasksPage()]);
   const today = startOfDay(toDate(data.now));
   const pending = data.tasks.filter((t) => t.status !== "DONE");
   const overdue = pending.filter((t) => toDate(t.dueAt) < today).length;
@@ -23,7 +23,7 @@ export default async function TasksPage({
       <PageHeader
         emoji="✅"
         title="Tareas"
-        subtitle={`${pending.length} pendientes${overdue ? ` · ${overdue} ${overdue === 1 ? "atrasada" : "atrasadas"}` : ""} · académicas y personales`}
+        subtitle={`${pending.length} pendientes${overdue ? ` · ${overdue} ${overdue === 1 ? "atrasada" : "atrasadas"}` : ""} · académicas, proyectos y personales`}
       />
       <div className="mx-auto mt-6 w-full max-w-[1480px] px-4 sm:px-6">
         <TasksView
@@ -31,6 +31,7 @@ export default async function TasksPage({
           initialView={VIEWS.includes(view as TasksViewId) ? (view as TasksViewId) : "lista"}
           initialTask={data.tasks.some((t) => t.id === task) ? task : undefined}
           initialCourse={course}
+          initialProject={project}
           startNew={startNew === "1"}
         />
       </div>

@@ -56,6 +56,12 @@ async function main() {
       teacher: c.teacher, room: c.room, code: c.code, position: i,
     })),
   });
+  await prisma.project.createMany({
+    data: m.projects.map((p, i) => ({
+      ...user, id: id(p.id), slug: p.slug, name: p.name, emoji: p.emoji, color: p.color, description: p.description,
+      status: p.status, dueDate: p.dueDate ? new Date(`${p.dueDate}T00:00`) : undefined, position: i,
+    })),
+  });
   await prisma.classSchedule.createMany({
     data: m.schedule.map((s) => ({ ...user, courseId: id(s.courseId), weekday: s.weekday, start: s.start, end: s.end, room: s.room })),
   });
@@ -78,7 +84,7 @@ async function main() {
   for (const t of m.tasks) {
     await prisma.task.create({
       data: {
-        ...user, title: t.title, emoji: t.emoji, description: t.description, courseId: ref(t.courseId), type: t.type,
+        ...user, title: t.title, emoji: t.emoji, description: t.description, courseId: ref(t.courseId), projectId: ref(t.projectId), type: t.type,
         dueAt: new Date(t.dueAt), allDay: t.allDay, priority: t.priority, status: t.status, tags: t.tags, note: t.note,
         assessmentId: ref(t.assessmentId), completedAt: t.status === "DONE" ? new Date(t.dueAt) : undefined,
         steps: { create: (t.steps ?? []).map((s, i) => ({ title: s.title, done: s.done, position: i })) },

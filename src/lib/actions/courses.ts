@@ -6,6 +6,7 @@ import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { requireUserId } from "@/lib/session";
 import { UserError, run, type Result } from "@/lib/actions/result";
 import { trimSlashes } from "@/lib/notes";
+import { firstFree, slugify as toSlug } from "@/lib/slug";
 import { cleanPath } from "@/lib/vault";
 import { removeUploads } from "@/lib/storage";
 
@@ -37,17 +38,7 @@ const courseInput = z.object({
 
 export type CourseInput = z.input<typeof courseInput>;
 
-function slugify(name: string) {
-  return (
-    name
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 40) || "materia"
-  );
-}
+const slugify = (name: string) => toSlug(name, "materia");
 
 const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
 const overlaps = (a: { start: string; end: string }, b: { start: string; end: string }) =>
@@ -114,10 +105,7 @@ export async function saveCourse(input: CourseInput): Promise<Result<{ id: strin
 
 async function uniqueSlug(userId: string, base: string) {
   const taken = new Set((await prisma.course.findMany({ where: { userId, slug: { startsWith: base } }, select: { slug: true } })).map((c) => c.slug));
-  if (!taken.has(base)) return base;
-  let n = 2;
-  while (taken.has(`${base}-${n}`)) n++;
-  return `${base}-${n}`;
+  return firstFree(base, taken);
 }
 
 /** Lo que se perdería al eliminar (para el aviso de confirmación). */

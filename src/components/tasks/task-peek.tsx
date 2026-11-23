@@ -7,10 +7,10 @@ import { Check, ChevronDown, ExternalLink, Link2, Loader2, Plus, Trash2, Upload,
 import { Tag, cn } from "@/components/blocks/primitives";
 import { KIND, PRIORITY, RESOURCE_KIND, TASK_STATUS, TASK_TYPE, toneClass } from "@/components/blocks/shared";
 import { deadline, toDate } from "@/lib/dates";
-import type { Assessment, Course, Priority, Task, TaskStatus, TaskType } from "@/lib/types";
+import type { Assessment, Course, Priority, Project, Task, TaskStatus, TaskType } from "@/lib/types";
 
 /** Campos de una tarea que se editan desde el panel. */
-export type TaskEdit = Partial<Pick<Task, "title" | "emoji" | "description" | "courseId" | "type" | "dueAt" | "allDay" | "priority" | "status" | "tags" | "note">>;
+export type TaskEdit = Partial<Pick<Task, "title" | "emoji" | "description" | "courseId" | "projectId" | "type" | "dueAt" | "allDay" | "priority" | "status" | "tags" | "note">>;
 
 export interface TaskPeekActions {
   onEdit: (patch: TaskEdit) => void;
@@ -26,11 +26,13 @@ export interface TaskPeekActions {
 
 /** Panel lateral con el detalle de una tarea (estilo "side peek"). Todo se guarda al momento. */
 export function TaskPeek({
-  task: t, course, courses, assessment, now, onClose, ...act
+  task: t, course, courses, project, projects = [], assessment, now, onClose, ...act
 }: {
   task: Task;
   course?: Course;
   courses: Course[];
+  project?: Project;
+  projects?: Project[];
   assessment?: Assessment;
   now: Date;
   onClose: () => void;
@@ -111,6 +113,21 @@ export function TaskPeek({
                 <Link href={`/courses/${course.slug}?tab=tareas`} className="ml-1 text-[12px] text-faint hover:text-text">Ver</Link>
               ) : null}
             </Prop>
+            {projects.length || project ? (
+              <Prop label="Proyecto">
+                <PropSelect
+                  label="Proyecto"
+                  value={t.projectId ?? ""}
+                  onChange={(v) => act.onEdit({ projectId: v || undefined })}
+                  options={[{ value: "", label: "Ninguno" }, ...projects.map((p) => ({ value: p.id, label: `${p.emoji} ${p.name}` }))]}
+                >
+                  {project ? <ProjectTag project={project} /> : <Tag>Ninguno</Tag>}
+                </PropSelect>
+                {project ? (
+                  <Link href={`/projects/${project.slug}`} className="ml-1 text-[12px] text-faint hover:text-text">Ver</Link>
+                ) : null}
+              </Prop>
+            ) : null}
             <Prop label="Tipo">
               <PropSelect
                 label="Tipo"
@@ -239,6 +256,15 @@ export function TaskPeek({
       </aside>
     </>
   );
+}
+
+export function ProjectTag({ project }: { project: Project }) {
+  return <Tag color={project.color} className="max-w-full"><span className="truncate">{project.emoji} {project.name}</span></Tag>;
+}
+
+/** Materia, si no proyecto, si no «Personal». */
+export function AreaTag({ course, project }: { course?: Course; project?: Project }) {
+  return course || !project ? <CourseTag course={course} /> : <ProjectTag project={project} />;
 }
 
 export function CourseTag({ course }: { course?: Course }) {

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  BookOpen, CalendarPlus, ClipboardCheck, CornerDownLeft, FilePlus2, Lightbulb, ListPlus, NotebookPen, Search,
+  BookOpen, CalendarPlus, Rocket, ClipboardCheck, CornerDownLeft, FilePlus2, Lightbulb, ListPlus, NotebookPen, Search,
   type LucideIcon,
 } from "lucide-react";
 import { NAV } from "@/components/shell/nav";
@@ -13,7 +13,8 @@ import { openCourseEditor } from "@/components/courses/course-editor";
 import { openAssessmentEditor } from "@/components/grades/assessment-editor";
 import { openEventEditor } from "@/components/calendar/event-editor";
 import { toast } from "@/components/shell/toast";
-import type { Course } from "@/lib/types";
+import type { Course, Project } from "@/lib/types";
+import { openProjectEditor } from "@/components/projects/project-editor";
 
 type Mode = "all" | "create";
 const EVT = "nober:command";
@@ -29,6 +30,7 @@ export function openCommandMenu(mode: Mode = "all") {
 export function runCreateAction(id: string, push: (href: string) => void) {
   if (id === "task") push("/tasks?new=1");
   else if (id === "course") openCourseEditor();
+  else if (id === "project") openProjectEditor();
   else if (id === "assessment") openAssessmentEditor();
   else if (id === "event") openEventEditor();
   else {
@@ -44,6 +46,7 @@ export const CREATE_ACTIONS: { id: string; label: string; icon: LucideIcon }[] =
   { id: "event", label: "Nuevo evento", icon: CalendarPlus },
   { id: "topic", label: "Nuevo tema", icon: Lightbulb },
   { id: "course", label: "Nueva materia", icon: BookOpen },
+  { id: "project", label: "Nuevo proyecto", icon: Rocket },
 ];
 
 interface Item {
@@ -55,7 +58,7 @@ interface Item {
   run: () => void;
 }
 
-export function CommandMenu({ courses }: { courses: Course[] }) {
+export function CommandMenu({ courses, projects = [] }: { courses: Course[]; projects?: Project[] }) {
   const router = useRouter();
   const obsidian = useObsidianHome();
   const [open, setOpen] = useState(false);
@@ -125,8 +128,9 @@ export function CommandMenu({ courses }: { courses: Course[] }) {
       },
       ...courses.map((c) => ({ id: `a-${c.id}`, group: "Apuntes", label: `Apuntes de ${c.name}`, emoji: c.emoji, run: go(`/courses/${c.slug}?tab=apuntes`) })),
       ...courses.map((c) => ({ id: `m-${c.id}`, group: "Materias", label: c.name, emoji: c.emoji, run: go(`/courses/${c.slug}`) })),
+      ...projects.map((p) => ({ id: `p-${p.id}`, group: "Proyectos", label: p.name, emoji: p.emoji, run: go(`/projects/${p.slug}`) })),
     ];
-  }, [mode, courses, router, obsidian.href, obsidian.external]);
+  }, [mode, courses, projects, router, obsidian.href, obsidian.external]);
 
   const filtered = items.filter((i) => i.label.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").includes(q.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "")));
 
