@@ -10,10 +10,11 @@ import { openCommandMenu } from "@/components/shell/command-menu";
 import { openCourseEditor } from "@/components/courses/course-editor";
 import { NAV } from "@/components/shell/nav";
 import { setTheme, useTheme } from "@/components/shell/theme";
-import type { Course } from "@/lib/types";
+import type { Course, Project } from "@/lib/types";
+import { openProjectEditor } from "@/components/projects/project-editor";
 import { APP_NAME } from "@/lib/brand";
 
-export function Sidebar({ courses, subtitle }: { courses: Course[]; subtitle: string }) {
+export function Sidebar({ courses, projects, subtitle }: { courses: Course[]; projects: Project[]; subtitle: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -61,14 +62,14 @@ export function Sidebar({ courses, subtitle }: { courses: Course[]; subtitle: st
         ))}
       </nav>
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="-mr-1 flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
         <div className="flex items-center px-3.5 pb-1.5">
           <span className="text-[11.5px] font-medium text-faint">Mis materias</span>
           <button onClick={() => openCourseEditor()} className="ml-auto rounded-full p-1 text-faint hover:bg-surface-hover hover:text-muted" aria-label="Nueva materia">
             <Plus className="size-3.5" />
           </button>
         </div>
-        <div className="-mr-1 flex flex-col gap-0.5 overflow-y-auto pr-1">
+        <div className="flex flex-col gap-0.5">
           {courses.map((c) => {
             const href = `/courses/${c.slug}`;
             return (
@@ -82,6 +83,31 @@ export function Sidebar({ courses, subtitle }: { courses: Course[]; subtitle: st
               >
                 <span className={cn("size-2 shrink-0 rounded-full", `dot-${c.color}`)} />
                 <span className="truncate">{c.name}</span>
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center px-3.5 pb-1.5 pt-4">
+          <span className="text-[11.5px] font-medium text-faint">Mis proyectos</span>
+          <button onClick={() => openProjectEditor()} className="ml-auto rounded-full p-1 text-faint hover:bg-surface-hover hover:text-muted" aria-label="Nuevo proyecto">
+            <Plus className="size-3.5" />
+          </button>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          {projects.map((p) => {
+            const href = `/projects/${p.slug}`;
+            return (
+              <Link
+                key={p.id}
+                href={href}
+                className={cn(
+                  "flex h-8 shrink-0 items-center gap-2.5 rounded-full px-3.5 text-[12.5px] transition-colors",
+                  pathname === href ? "bg-surface-2 text-text" : "text-muted hover:bg-surface-hover hover:text-text",
+                )}
+              >
+                <span className="w-2 shrink-0 text-center text-[11px] leading-none">{p.emoji}</span>
+                <span className="truncate">{p.name}</span>
               </Link>
             );
           })}

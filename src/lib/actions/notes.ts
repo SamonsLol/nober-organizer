@@ -5,7 +5,7 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { capitalize, fmt } from "@/lib/dates";
 import { hasDatabase, prisma } from "@/lib/db/prisma";
-import { getSession, requireUserId } from "@/lib/session";
+import { vaultUser } from "@/lib/vault-access";
 import { UserError, run, type Result } from "@/lib/actions/result";
 import { courseFolder, safeName } from "@/lib/notes";
 import { VaultError, createNote, findByLectureId, findNote, readNote as readVault, vaultInfo, writeNote } from "@/lib/vault";
@@ -20,21 +20,6 @@ const id = z.string().min(1).max(64);
 const notePath = z.string().trim().min(1).max(500);
 
 const vaultError = (e: unknown) => (e instanceof VaultError ? new UserError(e.message) : e);
-
-/**
- * La bóveda es de la instancia (una persona). Con OBSIDIAN_ALLOWED_EMAILS solo esas cuentas la usan;
- * sin la variable, cualquier cuenta con sesión (cierra el registro después de crear la tuya).
- */
-async function vaultUser() {
-  const userId = await requireUserId();
-  const allowed = (process.env.OBSIDIAN_ALLOWED_EMAILS ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (allowed.length) {
-    const email = (await getSession())?.user.email?.toLowerCase();
-    if (!email || !allowed.includes(email)) throw new UserError("Tu cuenta no tiene acceso a la bóveda de Obsidian de este servidor.");
-  }
-  if (!vaultInfo().enabled) throw new UserError("No hay bóveda de Obsidian configurada en el servidor (OBSIDIAN_VAULT_PATH).");
-  return userId;
-}
 
 export interface NoteFile {
   path: string;

@@ -184,6 +184,21 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
 - `Markdown` preprocesa línea a línea sin cambiar el número de líneas: las casillas usan la línea de origen
   (`node.position` + líneas de las propiedades) para `toggleTaskAt`. Si se cambia el preproceso, mantenerlo así.
 
+## Proyectos (fuera de lo académico)
+
+- Modelo `Project` (nombre, emoji, color, descripción, estado ACTIVE/PAUSED/DONE, `dueDate` a medianoche local,
+  `notesFolder`). `Task.projectId` opcional: sin materia ni proyecto = actividad personal («Otras actividades»).
+- Rutas: `/projects` (galería por estado + «Otras actividades pendientes» con `QuickTasks`) y `/projects/[slug]`
+  (tareas, «Pendientes en Obsidian», notas de la carpeta). Editor en diálogo: `openProjectEditor()` /
+  `<ProjectEditorHost>` en el layout; la carpeta se elige de las existentes de la bóveda (`vaultFolders`).
+- Carpeta efectiva: `projectFolder(p, vault.projectsRoot)` (`OBSIDIAN_PROJECTS_ROOT`, en el VPS «🚀 Proyectos»).
+  Puede ser una carpeta que ya existe (p. ej. «🖥️ Servidores»): sus notas y casillas aparecen en el proyecto.
+- Casillas de Obsidian: `parseTasks` / `toggleTaskLine` (`lib/notes.ts`, formato del complemento Tasks: 📅 ⏳ ✅ y
+  prioridades 🔺⏫🔼🔽⏬). `setVaultTask` (`lib/vault.ts`) solo cambia la línea si sigue igual (la busca si se movió)
+  y añade/quita `✅ yyyy-MM-dd` como Tasks. Acceso a la bóveda: `vaultUser()` / `vaultAllowed()` en `lib/vault-access.ts`.
+- Tareas: filtro «Proyecto» y `?project=<id>` en `/tasks`; campo Proyecto en `TaskPeek`; `AreaTag` muestra materia,
+  si no proyecto, si no «Personal». Barra lateral: «Mis proyectos» (no terminados); ⌘K: «Nuevo proyecto» y proyectos.
+
 ## Google Calendar (Fase 4)
 
 La app es la fuente de verdad. Envío a un calendario propio con el nombre de la app (eventos con id interno en
@@ -221,6 +236,7 @@ src/
   components/calendar/      calendar-view (mes/semana/agenda + panel del día)
   components/notes|grades|resources|settings/  una vista cliente por pantalla
   components/shell/theme.ts useTheme/setTheme (tema sincronizado entre barra lateral y Ajustes)
+  components/projects/      ProjectsView, ProjectEditor (+Host), QuickTasks, VaultTaskList, ProjectNotes
   components/notes/         NotePanel (global), NoteLink, NoteInline, NoteEditor, Markdown, VaultProvider, OpenObsidian
   lib/vault.ts              disco de la bóveda (server-only); lib/notes.ts utilidades sin disco; lib/actions/notes.ts
   lib/calendar.ts           CalItem, buildItems (servidor), expandClasses (cliente)

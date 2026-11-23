@@ -7,7 +7,7 @@ import type { MockDB } from "@/lib/mock/seed";
 import { courseFolder, noteName } from "@/lib/notes";
 import { recentNotes, vaultInfo } from "@/lib/vault";
 import type {
-  Assessment, CalendarEvent, ClassSchedule, Course, FocusDay, Goal, Lecture, Period, RecentDoc, Resource, Task, Topic,
+  Assessment, CalendarEvent, ClassSchedule, Course, FocusDay, Goal, Lecture, Period, Project, RecentDoc, Resource, Task, Topic,
 } from "@/lib/types";
 
 /**
@@ -33,7 +33,7 @@ type TaskRow = Prisma.TaskGetPayload<{ include: typeof taskInclude }>;
 
 export function toTask(t: TaskRow): Task {
   return {
-    id: t.id, title: t.title, emoji: t.emoji, description: opt(t.description), courseId: opt(t.courseId),
+    id: t.id, title: t.title, emoji: t.emoji, description: opt(t.description), courseId: opt(t.courseId), projectId: opt(t.projectId),
     type: t.type, dueAt: iso(t.dueAt), allDay: t.allDay, priority: t.priority, status: t.status, tags: t.tags,
     note: opt(t.note), assessmentId: opt(t.assessmentId),
     steps: t.steps.length ? t.steps.map((s) => ({ id: s.id, title: s.title, done: s.done })) : undefined,
@@ -49,7 +49,7 @@ export async function loadUserDB(userId: string, now = new Date()): Promise<Mock
   const since = addDays(startOfDay(now), -6);
   const [
     user, settings, periods, courses, schedule, topics, lectures, tasks, assessments, events,
-    goals, quickNotes, focus, resources,
+    goals, quickNotes, focus, resources, projects,
   ] = await Promise.all([
     prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true } }),
     prisma.settings.findUnique({ where: { userId } }),
@@ -65,6 +65,7 @@ export async function loadUserDB(userId: string, now = new Date()): Promise<Mock
     prisma.quickNote.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
     prisma.focusSession.findMany({ where: { userId, startedAt: { gte: since } } }),
     prisma.resource.findMany({ where: { userId } }),
+    prisma.project.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
   ]);
 
   // Minutos de foco y descanso por día, últimos 7 días (incluye días en cero)
@@ -109,6 +110,10 @@ export async function loadUserDB(userId: string, now = new Date()): Promise<Mock
       topicId: opt(l.topicId), notePath: opt(l.notePath),
     })),
     tasks: tasks.map(toTask),
+    projects: projects.map((p): Project => ({
+      id: p.id, slug: p.slug, name: p.name, emoji: p.emoji, color: p.color, description: p.description, status: p.status,
+      dueDate: p.dueDate ? dayKey(p.dueDate) : undefined, notesFolder: opt(p.notesFolder),
+    })),
     assessments: assessments.map((a): Assessment => ({
       id: a.id, courseId: a.courseId, periodId: a.periodId, title: a.title, kind: a.kind,
       date: a.date ? iso(a.date) : undefined, weight: a.weight, score: opt(a.score), maxScore: opt(a.maxScore),

@@ -29,6 +29,7 @@ model User {
   courses       Course[]
   schedule      ClassSchedule[]
   tasks         Task[]
+  projects      Project[]
   assessments   Assessment[]
   topics        Topic[]
   lectures      Lecture[]
@@ -271,6 +272,9 @@ model Task {
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseId     String?
   course       Course?     @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  /// Proyecto personal (no académico). Sin materia ni proyecto = tarea personal.
+  projectId    String?
+  project      Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
   title        String
   emoji        String      @default("")
   description  String?
@@ -293,6 +297,36 @@ model Task {
 
   @@index([userId, dueAt])
   @@index([courseId])
+  @@index([projectId])
+}
+
+enum ProjectStatus {
+  ACTIVE
+  PAUSED
+  DONE
+}
+
+/// Proyecto o actividad fuera de lo académico. Sus notas viven en una carpeta de la bóveda de Obsidian.
+model Project {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug        String
+  name        String
+  emoji       String        @default("🚀")
+  color       TagColor      @default(purple)
+  description String        @default("")
+  status      ProjectStatus @default(ACTIVE)
+  /// Fecha objetivo (opcional), guardada a medianoche local
+  dueDate     DateTime?
+  /// Carpeta en la bóveda (ruta relativa); vacía = «<OBSIDIAN_PROJECTS_ROOT>/<nombre>»
+  notesFolder String?
+  position    Int           @default(0)
+  createdAt   DateTime      @default(now())
+  tasks       Task[]
+
+  @@unique([userId, slug])
+  @@index([userId])
 }
 
 model TaskStep {

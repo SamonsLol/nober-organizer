@@ -3,7 +3,7 @@ import { academicWeekStart } from "@/lib/dates";
 import { safeName } from "@/lib/notes";
 import type {
   Assessment, CalendarEvent, ClassSchedule, Course, Goal, GradingScale, Lecture, Period,
-  Profile, QuickNote, RecentDoc, Resource, Task, Topic,
+  Profile, Project, QuickNote, RecentDoc, Resource, Task, Topic,
 } from "@/lib/types";
 
 /**
@@ -206,6 +206,18 @@ export function buildMock(now: Date = new Date()) {
     { id: "k16", title: "Inscribirme a las pruebas Saber 11", emoji: "🎓", type: "TODO", dueAt: iso(addDays(week, 5)), allDay: true, priority: "HIGH", status: "IN_PROGRESS", tags: ["trámite"], links: [{ label: "Portal ICFES", url: "#" }], note: "Tener a mano el documento y el código del colegio." },
   ];
 
+  // Proyectos personales (fuera de lo académico)
+  const projects: Project[] = [
+    { id: "pj-web", slug: "pagina-web", name: "Página web personal", emoji: "🌐", color: "blue", status: "ACTIVE", description: "Portafolio con mis proyectos y un blog.", dueDate: day(addDays(today, 20)) },
+    { id: "pj-gym", slug: "rutina-gimnasio", name: "Rutina de gimnasio", emoji: "🏋️", color: "green", status: "ACTIVE", description: "Tres días por semana hasta diciembre." },
+    { id: "pj-viaje", slug: "viaje-vacaciones", name: "Viaje de vacaciones", emoji: "✈️", color: "orange", status: "PAUSED", description: "Planear presupuesto y fechas." },
+  ];
+  rawTasks.push(
+    { id: "tp1", title: "Elegir plantilla del portafolio", emoji: "🎨", projectId: "pj-web", type: "TODO", dueAt: iso(at(addDays(today, 2), 18)), allDay: false, priority: "MEDIUM", status: "IN_PROGRESS", tags: [] },
+    { id: "tp2", title: "Comprar dominio", emoji: "🌐", projectId: "pj-web", type: "TODO", dueAt: iso(at(addDays(today, 5), 18)), allDay: true, priority: "LOW", status: "TODO", tags: [] },
+    { id: "tp3", title: "Renovar pasaporte", emoji: "🛂", type: "TODO", dueAt: iso(at(addDays(today, 9), 9)), allDay: true, priority: "HIGH", status: "TODO", tags: ["trámites"] },
+  );
+
   const tasks: Task[] = rawTasks.map((t) => ({
     ...t,
     links: t.links?.map((l, i) => ({ ...l, id: `${t.id}-l${i + 1}` })),
@@ -338,7 +350,7 @@ export function buildMock(now: Date = new Date()) {
   return {
     resources,
     focusLog,
-    profile, scale, periods, courses, schedule, topics, lectures, tasks, assessments, events,
+    profile, scale, periods, courses, schedule, topics, lectures, tasks, assessments, events, projects,
     goals, quickNotes, recentDocs, week: iso(week), now: iso(now),
   };
 }

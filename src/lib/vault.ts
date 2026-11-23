@@ -1,7 +1,7 @@
 import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { trimSlashes, type VaultInfo } from "@/lib/notes";
+import { parseTasks, toggleTaskLine, trimSlashes, type VaultInfo, type VaultTask } from "@/lib/notes";
 
 /**
  * Acceso a la bóveda de Obsidian montada en el servidor (OBSIDIAN_VAULT_PATH).
@@ -21,6 +21,7 @@ export function vaultInfo(): VaultInfo {
     enabled: Boolean(dir),
     name: process.env.OBSIDIAN_VAULT_NAME?.trim() || path.basename(dir) || "Obsidian",
     root: trimSlashes(process.env.OBSIDIAN_NOTES_ROOT ?? "Apuntes"),
+    projectsRoot: trimSlashes(process.env.OBSIDIAN_PROJECTS_ROOT ?? "Proyectos"),
     webUrl: process.env.OBSIDIAN_WEB_URL?.trim() || undefined,
   };
 }
@@ -185,4 +186,63 @@ export async function findByLectureId(lectureId: string, near?: string) {
   };
   // Primero cerca (la carpeta de la materia), luego toda la bóveda
   return (near ? await scan(near, 3).catch(() => null) : null) ?? (await scan("", 12));
+}
+
+/* ───────────── Carpetas y tareas (proyectos) ───────────── */
+
+/** Carpetas de la bóveda (sin las ocultas), para elegir dónde viven las notas de un proyecto. */
+export async function listFolders(maxDepth = 2, limit = 400) {
+  const root = vaultDir();
+  const out: string[] = [];
+  async function go(rel: string, depth: number) {
+    const entries = await fs.readdir(path.join(root, rel), { withFileTypes: true }).catch(() => []);
+    for (const e of entries.sort((a, b) => a.name.localeCompare(b.name, "es"))) {
+      if (!e.isDirectory() || e.name.startsWith(".") || out.length >= limit) continue;
+      const child = (rel ? `${rel}/${e.name}` : e.name).normalize("NFC");
+      out.push(child);
+      if (depth < maxDepth) await go(child, depth + 1);
+    }
+  }
+  await go("", 1);
+  return out;
+}
+
+/** Notas de una carpeta (y sus subcarpetas), las más recientes primero. Carpeta inexistente = vacía. */
+export async function folderNotes(folder: string, limit = 200) {
+  const list = await walk(folder, 4, 2000).catch(() => [] as Entry[]);
+  return list.sort((a, b) => b.mtime - a.mtime).slice(0, limit).map((e) => ({ path: e.rel, mtime: e.mtime }));
+}
+
+/** Casillas `- [ ]` de las notas de una carpeta. */
+export async function folderTasks(folder: string): Promise<VaultTask[]> {
+  const root = vaultDir();
+  const notes = await walk(folder, 4, 2000).catch(() => [] as Entry[]);
+  const lists = await Promise.all(
+    notes.map(async (n) => {
+      const st = await fs.stat(path.join(root, n.rel)).catch(() => null);
+      if (!st || st.size > 1_000_000) return [];
+      return parseTasks(n.rel, await fs.readFile(path.join(root, n.rel), "utf8").catch(() => ""));
+    }),
+  );
+  return lists.flat();
+}
+
+/**
+ * Marca o desmarca una casilla. Solo si la línea sigue siendo exactamente la que se vio
+ * (si la nota cambió en Obsidian, se busca la misma línea en otra posición; si no está, no se toca nada).
+ */
+export async function setVaultTask(rel: string, line: number, raw: string, done: boolean, today: string) {
+  const { abs, rel: clean } = await resolve(rel);
+  const src = await fs.readFile(abs, "utf8").catch((e) => {
+    if (notFound(e)) throw new VaultError("Esa nota ya no está en la bóveda.", "missing");
+    throw e;
+  });
+  const lines = src.split("\n");
+  const at = lines[line] === raw ? line : lines.indexOf(raw);
+  if (at < 0) throw new VaultError("Esa casilla cambió en Obsidian. Recarga para ver la versión actual.", "missing");
+  const next = toggleTaskLine(raw, done, today);
+  if (next === null) throw new VaultError("Esa línea ya no es una casilla.");
+  lines[at] = next;
+  await fs.writeFile(abs, lines.join("\n"), "utf8");
+  return { path: clean, line: at, raw: next };
 }

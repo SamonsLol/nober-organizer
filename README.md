@@ -23,6 +23,9 @@ contributions to translate it are welcome.*
   Cada materia tiene resumen, clases, temas (tablero por nivel de preparación), tareas, apuntes, recursos y notas.
 - **Tareas**: lista, tablero (arrastrar y soltar) y por fecha; pasos, enlaces, etiquetas, prioridad y nota.
 - **Calendario**: mes, semana y agenda con clases, entregas, exámenes, eventos y **festivos** (quitan las clases).
+- **Proyectos**: proyectos personales o de trabajo (estado, fecha objetivo, progreso) con sus tareas y una carpeta de
+  notas en Obsidian; las casillas `- [ ]` de esas notas (formato del complemento Tasks) se ven y se marcan desde la app.
+  También «Otras actividades pendientes» para lo que no es de ninguna materia ni proyecto.
 - **Calificaciones**: escala configurable (1.0–5.0 por defecto, aprueba con 3.0), períodos con peso, notas «sobre»
   otra escala (85/100 → 4,3), nota necesaria para aprobar y simulador.
 - **Apuntes en Obsidian**: cada clase tiene su nota `.md` en tu bóveda (con plantilla y propiedades). Se lee y
@@ -58,6 +61,7 @@ Syncthing, git… La app solo lee y escribe archivos `.md`. Variables:
 | `OBSIDIAN_VAULT_DIR` | Ruta de la bóveda en el servidor (se monta en el contenedor; el uid 1000 debe poder escribir) |
 | `OBSIDIAN_VAULT_NAME` | Nombre de la bóveda en Obsidian, para los enlaces `obsidian://` (por defecto, el de la carpeta) |
 | `OBSIDIAN_NOTES_ROOT` | Carpeta de los apuntes: `<raíz>/<materia>/<fecha> <clase>.md` (por defecto `Apuntes`) |
+| `OBSIDIAN_PROJECTS_ROOT` | Carpeta de los proyectos: `<raíz>/<proyecto>/` (por defecto `Proyectos`) |
 | `OBSIDIAN_ALLOWED_EMAILS` | Cuentas que pueden usar la bóveda (vacío = todas las de la instancia) |
 | `OBSIDIAN_WEB_URL` | Opcional: Obsidian en el navegador, para el botón «Abrir Obsidian» |
 
