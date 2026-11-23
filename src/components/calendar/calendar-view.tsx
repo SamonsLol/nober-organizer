@@ -181,6 +181,7 @@ interface Ctx {
 }
 
 function colorOf(i: CalItem, courseById: Record<string, Course>): TagColor {
+  if (i.color) return i.color;
   if (i.courseId) return courseById[i.courseId]?.color ?? "gray";
   return i.kind === "IMPORTANT" ? "brown" : i.kind === "EXAM" ? "red" : "gray";
 }

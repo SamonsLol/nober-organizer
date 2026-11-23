@@ -147,7 +147,7 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
   Playwright contra la imagen de producción, una base temporal y una copia de la bóveda (crear, editar, tareas,
   [[enlaces]], conflicto, móvil). Ojo: con el navegador en UTC salen errores de hidratación #418 (fechas); en
   `America/Bogota` no hay ninguno.
-- Pendiente: recordatorios push; leer otros calendarios de Google.
+- Pendiente: nada de la Fase 4.
 
 ## Decisiones ya tomadas (no volver a preguntar)
 
@@ -213,6 +213,17 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
   (`vaultAllowed`). `getVault().ai` → botón «IA» en `NoteEditor` (`components/ai/note-ai.tsx`) y «Plan de la semana»
   (`components/ai/week-plan.tsx`, `openWeekPlan()`, host en el layout; `PageHeader extra=`).
 - Gemini gratis (~20 solicitudes/día) y OpenRouter `:free` (50/día) se descartaron por sus límites (nov. 2026).
+
+## Google Calendar: lectura
+
+- Permiso `calendar.readonly` (además de `calendar.app.created`); `linkSocial` pide ambos. `lib/google-scope.ts`.
+- `readGoogleCalendars()` (`lib/google-calendar.ts`): calendarios elegidos (`Settings.googleReadIds`), eventos con
+  `singleEvents=true` de −30 a +120 días, se **reemplaza** la copia en `ExternalEvent`. Todo el día: fin exclusivo de
+  Google → último día incluido. Color del calendario → color de la app más cercano (`nearestColor`).
+- `maybeAutoSync()` (Inicio y Calendario) envía y lee si pasaron 15 min. Errores en `googleSyncError`/`googleReadError`.
+- `CalKind` "GOOGLE" (`CalItem.color`, `href` externo a Google). `MockDB.externalEvents`; Inicio: `today.google` y
+  `calendar.google`. Ajustes: dos bloques (enviar / ver aquí) en `google-connect.tsx`.
+- Con `AUTH_DISABLE_SIGNUP=true`, Google tiene `disableSignUp` (no crea cuentas; vincular sí funciona).
 
 ## Recordatorios push
 

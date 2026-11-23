@@ -155,6 +155,7 @@ export function MonthCalendar({ data }: { data: DashboardData }) {
       emoji: a.kind === "EXAM" ? "target" : a.kind === "QUIZ" ? "clock" : "pin", color: color(a.courseId), kind: "assessment" as const,
     })),
     ...data.calendar.events.map((e) => ({ id: e.id, key: dayKey(e.start), label: e.title, emoji: e.emoji, color: (e.kind === "IMPORTANT" ? "brown" : e.kind === "EXAM" ? "red" : "gray") as TagColor, time: e.allDay ? undefined : fmt(e.start, "HH:mm"), kind: "event" as const })),
+    ...data.calendar.google.map((e) => ({ id: `g:${e.id}`, key: dayKey(e.start), label: `${e.title} · ${e.calendarName}`, emoji: "calendar", color: e.color, time: e.allDay ? undefined : fmt(e.start, "HH:mm"), kind: "event" as const })),
     ...data.calendar.lectures.map((l) => ({ id: l.id, key: dayKey(l.date), label: l.title, emoji: l.emoji, color: color(l.courseId), time: fmt(l.date, "HH:mm"), kind: "lecture" as const })),
   ];
 

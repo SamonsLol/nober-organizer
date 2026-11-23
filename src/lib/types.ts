@@ -209,3 +209,17 @@ export interface Project {
   /** Carpeta en la bóveda; vacía = «<raíz de proyectos>/<nombre>» (`projectFolder()`). */
   notesFolder?: string;
 }
+
+/** Evento de otro calendario de Google (solo lectura). */
+export interface ExternalItem {
+  id: string;
+  calendarName: string;
+  color: TagColor;
+  title: string;
+  start: string;
+  /** Fin (con hora) o último día incluido (todo el día). */
+  end?: string;
+  allDay: boolean;
+  location?: string;
+  url?: string;
+}

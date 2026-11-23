@@ -5,6 +5,7 @@ import { buildMock, type MockDB } from "@/lib/mock/seed";
 import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { getSession, requireUserId } from "@/lib/session";
 import { googleAccount, googleConfigured, hasCalendarScope, maybeAutoSync } from "@/lib/google-calendar";
+import { hasReadScope } from "@/lib/google-scope";
 import { loadUserDB } from "@/lib/data/source";
 import { folderNotes, folderTasks, vaultInfo } from "@/lib/vault";
 import { vaultAllowed } from "@/lib/vault-access";
@@ -45,18 +46,27 @@ export type VaultStatus = Awaited<ReturnType<typeof getVault>>;
 /** Estado de Google Calendar para Ajustes (nunca tokens). */
 export async function getGoogleStatus() {
   const configured = googleConfigured();
-  if (!hasDatabase()) return { configured, linked: false, enabled: false, syncedAt: null as string | null, error: null as string | null };
+  if (!hasDatabase()) return { configured, linked: false, sendScope: false, enabled: false, syncedAt: null as string | null, error: null as string | null, readScope: false, read: false, readCount: 0, readAt: null as string | null, readError: null as string | null };
   const userId = await requireUserId();
   const [acc, s] = await Promise.all([
     googleAccount(userId),
-    prisma.settings.findUnique({ where: { userId }, select: { googleSync: true, googleSyncedAt: true, googleSyncError: true } }),
+    prisma.settings.findUnique({ where: { userId }, select: { googleSync: true, googleSyncedAt: true, googleSyncError: true, googleRead: true, googleReadAt: true, googleReadError: true } }),
   ]);
+  const readCount = s?.googleRead ? await prisma.externalEvent.count({ where: { userId } }) : 0;
   return {
     configured,
-    linked: Boolean(acc && hasCalendarScope(acc.scope)),
+    linked: Boolean(acc && (hasCalendarScope(acc.scope) || hasReadScope(acc.scope))),
+    /** Puede enviar (calendario propio) */
+    sendScope: Boolean(acc && hasCalendarScope(acc.scope)),
     enabled: Boolean(s?.googleSync),
     syncedAt: s?.googleSyncedAt?.toISOString() ?? null,
     error: s?.googleSyncError ?? null,
+    /** Lectura de los demás calendarios */
+    readScope: Boolean(acc && hasReadScope(acc.scope)),
+    read: Boolean(s?.googleRead),
+    readCount,
+    readAt: s?.googleReadAt?.toISOString() ?? null,
+    readError: s?.googleReadError ?? null,
   };
 }
 
@@ -202,6 +212,7 @@ export async function getDashboard() {
     today: {
       classes: todayClasses,
       events: d.events.filter((e) => isTodayISO(e.start)),
+      google: d.externalEvents.filter((e) => isTodayISO(e.start) || (e.allDay && e.end && toDate(e.start) <= now && toDate(e.end) >= startOfDay(now))),
       tasks: d.tasks.filter((t) => isTodayISO(t.dueAt) && t.status !== "DONE"),
       next: { date: nextSchoolDay.toISOString(), classes: d.schedule.filter((s) => s.weekday === nextWd) },
     },
@@ -221,6 +232,7 @@ export async function getDashboard() {
       assessments: d.assessments.filter((a) => a.date && a.periodId === period.id),
       events: d.events,
       lectures: d.lectures,
+      google: d.externalEvents,
     },
   };
 }
@@ -342,6 +354,8 @@ export type TasksPageData = Awaited<ReturnType<typeof getTasksPage>>;
 
 export async function getCalendarPage() {
   const d = await db();
+  // Lee Google (envío y lectura) si pasaron más de 15 minutos; lo nuevo aparece en la próxima visita
+  if (hasDatabase()) maybeAutoSync(await requireUserId()).catch(() => {});
   const period = await getCurrentPeriod(toDate(d.now));
   return {
     now: d.now,
@@ -352,7 +366,7 @@ export async function getCalendarPage() {
     periods: d.periods,
     lectures: d.lectures,
     holidays: holidayKeys(d.events),
-    items: buildItems({ tasks: d.tasks, assessments: d.assessments, events: d.events, courses: d.courses }),
+    items: buildItems({ tasks: d.tasks, assessments: d.assessments, events: d.events, courses: d.courses, external: d.externalEvents }),
   };
 }
 

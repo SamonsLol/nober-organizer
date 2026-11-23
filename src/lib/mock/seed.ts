@@ -3,7 +3,7 @@ import { academicWeekStart } from "@/lib/dates";
 import { safeName } from "@/lib/notes";
 import type {
   Assessment, CalendarEvent, ClassSchedule, Course, Goal, GradingScale, Lecture, Period,
-  Profile, Project, QuickNote, RecentDoc, Resource, Task, Topic,
+  ExternalItem, Profile, Project, QuickNote, RecentDoc, Resource, Task, Topic,
 } from "@/lib/types";
 
 /**
@@ -352,6 +352,7 @@ export function buildMock(now: Date = new Date()) {
     focusLog,
     profile, scale, periods, courses, schedule, topics, lectures, tasks, assessments, events, projects,
     goals, quickNotes, recentDocs, week: iso(week), now: iso(now),
+    externalEvents: [] as ExternalItem[],
   };
 }
 

@@ -221,8 +221,10 @@ export function SettingsView({ data }: { data: SettingsData }) {
               name="Google Calendar"
               emoji="calendar-days"
               status={
-                <Tag color={data.google.enabled ? (data.google.error ? "red" : "green") : "gray"}>
-                  {data.google.enabled ? (data.google.error ? "Con errores" : "Sincronizando") : data.google.linked ? "Conectado" : "Desactivado"}
+                <Tag color={data.google.enabled || data.google.read ? (data.google.error || data.google.readError ? "red" : "green") : "gray"}>
+                  {data.google.enabled || data.google.read
+                    ? data.google.error || data.google.readError ? "Con errores" : "Activo"
+                    : data.google.linked ? "Conectado" : "Desactivado"}
                 </Tag>
               }
               body={<GoogleConnect status={data.google} />}
