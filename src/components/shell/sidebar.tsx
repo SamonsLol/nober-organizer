@@ -13,6 +13,7 @@ import { setTheme, useTheme } from "@/components/shell/theme";
 import type { Course, Project } from "@/lib/types";
 import { openProjectEditor } from "@/components/projects/project-editor";
 import { APP_NAME } from "@/lib/brand";
+import { Ico } from "@/components/blocks/icons";
 
 export function Sidebar({ courses, projects, subtitle }: { courses: Course[]; projects: Project[]; subtitle: string }) {
   const pathname = usePathname();
@@ -106,7 +107,7 @@ export function Sidebar({ courses, projects, subtitle }: { courses: Course[]; pr
                   pathname === href ? "bg-surface-2 text-text" : "text-muted hover:bg-surface-hover hover:text-text",
                 )}
               >
-                <span className="w-2 shrink-0 text-center text-[11px] leading-none">{p.emoji}</span>
+                <Ico value={p.emoji} fallback="rocket" className="mr-0 size-3.5 text-muted" />
                 <span className="truncate">{p.name}</span>
               </Link>
             );

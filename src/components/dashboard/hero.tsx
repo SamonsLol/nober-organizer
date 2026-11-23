@@ -5,6 +5,7 @@ import { EmptyHint, Section, PillButton, cn } from "@/components/blocks/primitiv
 import { openAssessmentEditor } from "@/components/grades/assessment-editor";
 import { capitalize, deadline, fmt } from "@/lib/dates";
 import type { DashboardData } from "@/lib/data";
+import { Ico } from "@/components/blocks/icons";
 
 /* ───────────── Lo más urgente (tarjetas pastel) ───────────── */
 
@@ -44,7 +45,7 @@ export function UrgentCards({ data }: { data: DashboardData }) {
               </div>
               <h3 className="mt-3 line-clamp-3 text-[21px] font-normal leading-[1.18] tracking-[-0.015em]">{t.title}</h3>
               <div className="mt-2 text-[12px] text-on-pastel-muted">
-                {c.emoji} {c.name} · {d.tone === "overdue" ? `vencía ${fmt(t.dueAt, "EEE d").replace(".", "")}` : `${capitalize(d.label.toLowerCase())}`}
+                <Ico value={c.emoji} fallback="book" />{c.name} · {d.tone === "overdue" ? `vencía ${fmt(t.dueAt, "EEE d").replace(".", "")}` : `${capitalize(d.label.toLowerCase())}`}
               </div>
               <div className="mt-auto flex items-center gap-3 pt-4">
                 <div className="h-[5px] flex-1 overflow-hidden rounded-full bg-black/10">

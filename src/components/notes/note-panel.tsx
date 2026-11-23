@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BookOpen, ExternalLink, Loader2, Maximize2, Minimize2, PanelRight, PencilLine, RotateCw, Sparkles, X } from "lucide-react";
 import { NoteAi } from "@/components/ai/note-ai";
+import { AppIcon } from "@/components/blocks/icons";
 import { cn } from "@/components/blocks/primitives";
 import { toast } from "@/components/shell/toast";
 import { Markdown, toggleTaskAt } from "@/components/notes/markdown";
@@ -203,9 +204,9 @@ export function NotePanel() {
 function DocIcon({ doc, small }: { doc: NoteDoc; small?: boolean }) {
   const cls = small ? "size-7 rounded-[9px] text-[13px]" : "size-8 rounded-[10px] text-[14px]";
   return doc.color ? (
-    <span className={cn("grid shrink-0 place-items-center text-on-pastel", cls, `pastel-${doc.color}`)}>{doc.emoji ?? "📝"}</span>
+    <span className={cn("grid shrink-0 place-items-center text-on-pastel", cls, `pastel-${doc.color}`)}><AppIcon value={doc.emoji} fallback="notebook-pen" /></span>
   ) : (
-    <span className={cn("grid shrink-0 place-items-center bg-surface-2", cls)}>{doc.emoji ?? "📝"}</span>
+    <span className={cn("grid shrink-0 place-items-center bg-surface-2", cls)}><AppIcon value={doc.emoji} fallback="notebook-pen" /></span>
   );
 }
 

@@ -3,6 +3,7 @@ import { addDays, addHours, differenceInCalendarDays, format, startOfDay } from 
 import { es } from "date-fns/locale";
 import { prisma } from "@/lib/db/prisma";
 import { pushConfigured, sendToUser, type PushPayload } from "@/lib/push";
+import { emojiFor } from "@/components/blocks/icons";
 
 /**
  * Recordatorios push de tareas y evaluaciones. `src/instrumentation.ts` llama cada 5 minutos a
@@ -57,7 +58,7 @@ async function dueReminders(userId: string, now: Date): Promise<Due[]> {
           out.push({ key: `${base}:${opt}`, fire, payload: { title, body: [area, timed ? `vence a las ${hour(t.dueAt)}` : "vence hoy"].filter(Boolean).join(" · "), url, tag: `task-${t.id}` } });
         }
       };
-      const emoji = t.emoji || (t.assessment ? "📌" : "📝");
+      const emoji = emojiFor(t.emoji) || (t.assessment ? "📌" : "📝");
       const dayBefore = at(addDays(t.dueAt, -1), evening);
       if (remindTasks.includes("DAY_BEFORE") && dayBefore < t.dueAt) {
         out.push({

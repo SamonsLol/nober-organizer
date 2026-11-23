@@ -15,13 +15,13 @@ export const toneClass: Record<DeadlineTone, string> = {
 
 export const gradeClass = { good: "text-success", ok: "text-text", risk: "text-danger" } as const;
 
-export const KIND: Record<AssessmentKind, { label: string; color: "red" | "purple" | "pink" | "green" | "gray" | "yellow"; emoji: string }> = {
-  EXAM: { label: "Examen", color: "red", emoji: "🎯" },
-  QUIZ: { label: "Quiz", color: "purple", emoji: "⏱️" },
-  HOMEWORK: { label: "Tarea", color: "pink", emoji: "📝" },
-  PROJECT: { label: "Proyecto", color: "green", emoji: "🧩" },
-  PARTICIPATION: { label: "Participación", color: "gray", emoji: "🙋" },
-  OTHER: { label: "Otra", color: "yellow", emoji: "📌" },
+export const KIND: Record<AssessmentKind, { label: string; color: "red" | "purple" | "pink" | "green" | "gray" | "yellow"; emoji: string /* clave de ícono */ }> = {
+  EXAM: { label: "Examen", color: "red", emoji: "target" },
+  QUIZ: { label: "Quiz", color: "purple", emoji: "clock" },
+  HOMEWORK: { label: "Tarea", color: "pink", emoji: "notebook-pen" },
+  PROJECT: { label: "Proyecto", color: "green", emoji: "puzzle" },
+  PARTICIPATION: { label: "Participación", color: "gray", emoji: "hand-heart" },
+  OTHER: { label: "Otra", color: "yellow", emoji: "pin" },
 };
 
 export const TASK_STATUS: Record<TaskStatus, { label: string; color: "gray" | "blue" | "green" }> = {
@@ -31,11 +31,11 @@ export const TASK_STATUS: Record<TaskStatus, { label: string; color: "gray" | "b
 };
 
 export const TASK_TYPE: Record<TaskType, { label: string; emoji: string }> = {
-  TODO: { label: "Pendiente", emoji: "☑️" },
-  HOMEWORK: { label: "Tarea", emoji: "📝" },
-  PROJECT: { label: "Proyecto", emoji: "🧩" },
-  ESSAY: { label: "Ensayo", emoji: "🖋️" },
-  LAB: { label: "Laboratorio", emoji: "🧪" },
+  TODO: { label: "Pendiente", emoji: "list-checks" },
+  HOMEWORK: { label: "Tarea", emoji: "notebook-pen" },
+  PROJECT: { label: "Proyecto", emoji: "puzzle" },
+  ESSAY: { label: "Ensayo", emoji: "pen-line" },
+  LAB: { label: "Laboratorio", emoji: "flask-conical" },
 };
 
 export const PRIORITY: Record<Priority, { label: string; rank: number; tone: string }> = {

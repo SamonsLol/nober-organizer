@@ -10,7 +10,7 @@ export default async function NotesPage() {
   const data = await getNotesPage();
   return (
     <div className="pb-16">
-      <PageHeader emoji="📝" title="Apuntes" subtitle={`${data.lectures.length} apuntes de clase · guardados en Obsidian`}>
+      <PageHeader emoji="notebook-pen" title="Apuntes" subtitle={`${data.lectures.length} apuntes de clase · guardados en Obsidian`}>
         <OpenObsidian pill />
         <NewButton />
       </PageHeader>

@@ -11,6 +11,8 @@ import { formatGrade, gradeTone } from "@/lib/grades";
 import type { DashboardData } from "@/lib/data";
 import type { Preparation } from "@/lib/types";
 import { Select } from "@/components/blocks/select";
+import { Ico } from "@/components/blocks/icons";
+import { AppIcon } from "@/components/blocks/icons";
 
 /* ───────────── Perfil ───────────── */
 
@@ -73,7 +75,7 @@ export function ProfileCard({ data }: { data: DashboardData }) {
             const c = data.courseById[a.courseId];
             return (
               <div key={a.id} className="flex items-center gap-2 py-1 text-[12.5px]">
-                <span className="w-4 text-center">{c.emoji}</span>
+                <span className="w-4 text-center"><Ico value={c.emoji} fallback="book" className="mr-0" /></span>
                 <span className="min-w-0 flex-1 truncate">{a.title}</span>
                 <span className={cn("tabular-nums", tone(a.score))}>{formatGrade(a.score, scale)}</span>
               </div>
@@ -227,12 +229,12 @@ export function RecentPanel({ data }: { data: DashboardData }) {
               <div key={t.id} className="rounded-md border border-border bg-surface-2 px-2.5 py-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="text-[13px] font-medium leading-snug">
-                    {t.emoji} {t.title}
+                    <Ico value={t.emoji} />{t.title}
                   </div>
                   <Tag color={p.color} className="shrink-0">{p.label}</Tag>
                 </div>
                 <div className="mt-1 flex items-center justify-between text-[11.5px] text-faint">
-                  <span>{c.emoji} {c.name}</span>
+                  <span><Ico value={c.emoji} fallback="book" />{c.name}</span>
                   <span>{t.lastStudiedAt ? relativeAgo(t.lastStudiedAt) : ""}</span>
                 </div>
               </div>
@@ -253,11 +255,11 @@ export function RecentPanel({ data }: { data: DashboardData }) {
                 color={c?.color}
                 className="group flex items-start gap-2 rounded-md px-1.5 py-1.5 hover:bg-surface-hover"
               >
-                <span className="mt-px w-4 text-center text-[13px]">📄</span>
+                <AppIcon value="file-text" className="mt-0.5 size-3.5 text-muted" />
                 <div className="min-w-0 flex-1 leading-tight">
                   <div className="truncate text-[13px]">{doc.title}</div>
                   <div className="mt-0.5 text-[11.5px] text-faint">
-                    {c ? `${c.emoji} ${c.name} · ` : ""}
+                    {c ? <><Ico value={c.emoji} fallback="book" />{c.name} · </> : null}
                     {capitalize(relativeAgo(doc.updatedAt))}
                   </div>
                 </div>

@@ -9,6 +9,7 @@ import { QuickTasks } from "@/components/projects/project-parts";
 import { deadline, fmt } from "@/lib/dates";
 import type { ProjectsPageData } from "@/lib/data";
 import type { ProjectStatus } from "@/lib/types";
+import { Ico } from "@/components/blocks/icons";
 
 export function ProjectsView({ data }: { data: ProjectsPageData }) {
   const now = useMemo(() => new Date(data.now), [data.now]);
@@ -36,7 +37,7 @@ export function ProjectsView({ data }: { data: ProjectsPageData }) {
               return (
                 <Link key={p.id} href={`/projects/${p.slug}`} className={cn("group flex min-h-[150px] flex-col rounded-[20px] p-4 text-on-pastel transition-transform hover:-translate-y-0.5", `pastel-${p.color}`)}>
                   <div className="flex items-start gap-2.5">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-white/45 text-[19px]">{p.emoji}</span>
+                    <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-white/45 text-[19px]"><Ico value={p.emoji} fallback="rocket" className="mr-0" /></span>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[15px] font-semibold leading-tight">{p.name}</div>
                       {p.description ? <div className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-on-pastel-muted">{p.description}</div> : null}

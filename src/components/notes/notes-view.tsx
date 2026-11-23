@@ -13,6 +13,8 @@ import { courseFolder, obsidianUri } from "@/lib/notes";
 import { capitalize, fmt, friendlyDay, relativeAgo } from "@/lib/dates";
 import type { NotesPageData } from "@/lib/data";
 import type { Course } from "@/lib/types";
+import { Ico } from "@/components/blocks/icons";
+import { AppIcon } from "@/components/blocks/icons";
 
 type Lecture = NotesPageData["lectures"][number];
 
@@ -124,7 +126,7 @@ export function NotesView({ data }: { data: NotesPageData }) {
               };
               return (
                 <li key={c.id} className="flex items-center gap-3 rounded-[14px] bg-surface-2 px-3 py-2.5">
-                  <span className={cn("grid size-9 shrink-0 place-items-center rounded-[11px] text-[15px] text-on-pastel", `pastel-${course.color}`)}>{course.emoji}</span>
+                  <span className={cn("grid size-9 shrink-0 place-items-center rounded-[11px] text-[15px] text-on-pastel", `pastel-${course.color}`)}><Ico value={course.emoji} fallback="book" className="mr-0" /></span>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[13px]">{course.name}</div>
                     <div className="text-[11.5px] text-faint">{capitalize(friendlyDay(c.start, now))} · {fmt(c.start, "HH:mm")}</div>
@@ -157,7 +159,7 @@ export function NotesView({ data }: { data: NotesPageData }) {
               return (
                 <li key={doc.id}>
                   <button onClick={() => open(d)} className={cn("flex w-full items-center gap-2.5 rounded-[12px] px-2 py-2 text-left hover:bg-surface-hover", current === doc.path && "bg-surface-hover")}>
-                    <span className="text-[14px]">📝</span>
+                    <AppIcon value="notebook-pen" className="size-4 text-muted" />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[13px]">{doc.title}</div>
                       <div className="truncate text-[11.5px] text-faint">{d.meta}</div>
@@ -207,7 +209,7 @@ function ByDate({ vault, lectures, courseById, topicById, current, onOpen }: {
                 <li key={l.id} className="border-t border-border first:border-t-0">
                   <div className={cn("group flex items-center gap-2.5 rounded-[14px] px-2 py-2 hover:bg-surface-hover", active && "bg-accent-soft hover:bg-accent-soft")}>
                     <button onClick={() => onOpen(l)} aria-current={active || undefined} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-2 text-[14px]">{l.emoji}</span>
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-2 text-[14px]"><Ico value={l.emoji} className="mr-0" /></span>
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-[13px]">{l.title}</div>
                         <div className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-faint">
@@ -239,7 +241,7 @@ function ByCourse({ lectures, courses, root, current, onOpen }: { lectures: Lect
         return (
           <div key={c.id} className="flex flex-col rounded-[18px] bg-surface-2 p-2.5">
             <div className="mb-1 flex items-center gap-2 px-1">
-              <span className={cn("grid size-7 place-items-center rounded-[9px] text-[13px] text-on-pastel", `pastel-${c.color}`)}>{c.emoji}</span>
+              <span className={cn("grid size-7 place-items-center rounded-[9px] text-[13px] text-on-pastel", `pastel-${c.color}`)}><Ico value={c.emoji} fallback="book" className="mr-0" /></span>
               <span className="text-[13.5px] font-medium">{c.name}</span>
               <span className="text-[12px] text-faint">{list.length}</span>
               <OpenObsidian folder={courseFolder(c, root)} className="ml-auto rounded-full px-2 py-1 text-[11.5px] text-muted hover:bg-pill hover:text-text">
@@ -250,7 +252,7 @@ function ByCourse({ lectures, courses, root, current, onOpen }: { lectures: Lect
               {list.slice(0, 5).map((l) => (
                 <li key={l.id}>
                   <button onClick={() => onOpen(l)} className={cn("flex w-full items-center gap-2.5 rounded-[12px] px-2 py-1.5 text-left hover:bg-surface-hover", current === l.notePath && "bg-accent-soft hover:bg-accent-soft")}>
-                    <span className="text-[13px]">{l.emoji}</span>
+                    <span className="text-[13px]"><Ico value={l.emoji} className="mr-0" /></span>
                     <span className="min-w-0 flex-1 truncate text-[13px]">{l.title}</span>
                     <span className="shrink-0 text-[11.5px] text-faint">{fmt(l.date, "d MMM").replace(".", "")}</span>
                   </button>

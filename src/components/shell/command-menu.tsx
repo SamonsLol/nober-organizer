@@ -17,6 +17,7 @@ import { openEventEditor } from "@/components/calendar/event-editor";
 import { toast } from "@/components/shell/toast";
 import type { Course, Project } from "@/lib/types";
 import { openProjectEditor } from "@/components/projects/project-editor";
+import { Ico } from "@/components/blocks/icons";
 
 type Mode = "all" | "create";
 const EVT = "nober:command";
@@ -191,7 +192,7 @@ export function CommandMenu({ courses, projects = [] }: { courses: Course[]; pro
                         n === idx ? "bg-surface-hover text-text" : "text-muted",
                       )}
                     >
-                      {Icon ? <Icon className="size-4" /> : <span className="w-4 text-center">{i.emoji}</span>}
+                      {Icon ? <Icon className="size-4" /> : <span className="w-4 text-center"><Ico value={i.emoji} className="mr-0" /></span>}
                       {i.label}
                       {n === idx ? <CornerDownLeft className="ml-auto size-3.5 text-faint" /> : null}
                     </button>

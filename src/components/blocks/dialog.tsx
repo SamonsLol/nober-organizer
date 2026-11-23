@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Loader2, Trash2, X } from "lucide-react";
 import { cn } from "@/components/blocks/primitives";
+import { IconPicker } from "@/components/blocks/icon-picker";
 
 /** Ventana modal: hoja desde abajo en móvil, centrada en escritorio. Esc o clic fuera la cierran. */
 export function Dialog({ title, onClose, footer, children, width = 500 }: {
@@ -85,8 +86,8 @@ export function Field({ label, children, className }: { label: string; children:
   );
 }
 
-/** Emoji + título grande, como en los demás editores. */
-export function TitleRow({ emoji, onEmoji, title, onTitle, placeholder, emojiPlaceholder = "🙂" }: {
+/** Ícono (Lucide) + título grande, como en los demás editores. `emojiPlaceholder`: ícono si no se elige uno. */
+export function TitleRow({ emoji, onEmoji, title, onTitle, placeholder, emojiPlaceholder = "circle-help" }: {
   emoji: string;
   onEmoji: (v: string) => void;
   title: string;
@@ -96,14 +97,7 @@ export function TitleRow({ emoji, onEmoji, title, onTitle, placeholder, emojiPla
 }) {
   return (
     <div className="flex items-center gap-2">
-      <input
-        value={emoji}
-        onChange={(e) => onEmoji(e.target.value)}
-        placeholder={emojiPlaceholder}
-        aria-label="Emoji"
-        maxLength={8}
-        className="size-11 shrink-0 rounded-[12px] border border-border bg-surface-2 text-center text-[20px] outline-none placeholder:opacity-50 focus:border-accent"
-      />
+      <IconPicker value={emoji} onChange={onEmoji} fallback={emojiPlaceholder} />
       <input
         autoFocus
         value={title}

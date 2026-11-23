@@ -15,6 +15,7 @@ import { academicWeekStart, capitalize, dayKey, fmt, toDate } from "@/lib/dates"
 import type { CalendarPageData } from "@/lib/data";
 import type { Course, TagColor } from "@/lib/types";
 import { APP_NAME } from "@/lib/brand";
+import { Ico } from "@/components/blocks/icons";
 
 export type CalViewId = "mes" | "semana" | "agenda";
 
@@ -241,7 +242,7 @@ function Chip({ item, courseById }: { item: CalItem; courseById: Record<string, 
       {!item.allDay && item.kind !== "TASK" && item.kind !== "DEADLINE" ? (
         <span className={cn("shrink-0 text-[10.5px]", strong(item) ? "text-on-pastel-muted" : "text-faint")}>{fmt(item.start, "HH:mm")}</span>
       ) : null}
-      <span className={cn("truncate", item.done && "line-through")}>{item.emoji} {item.title}</span>
+      <span className={cn("truncate", item.done && "line-through")}><Ico value={item.emoji} />{item.title}</span>
     </div>
   );
 }
@@ -393,7 +394,7 @@ function WeekGrid({ from, now, courseById, byDay, selected, onPick }: Ctx & { fr
                       i.kind === "CLASS" || strong(i) ? `pastel-${color} text-on-pastel` : "border border-border-strong bg-panel-strong",
                     )}
                   >
-                    <div className="truncate font-medium">{i.emoji} {i.title}</div>
+                    <div className="truncate font-medium"><Ico value={i.emoji} />{i.title}</div>
                     {h >= 36 ? (
                       <div className={cn("truncate", i.kind === "CLASS" || strong(i) ? "text-on-pastel-muted" : "text-faint")}>
                         {i.detail ?? `${fmt(i.start, "HH:mm")}${i.location ? ` · ${i.location}` : ""}`}
@@ -476,7 +477,7 @@ function ItemRow({ item: i, courseById }: { item: CalItem; courseById: Record<st
       <ItemLink item={i} className="group flex items-center gap-3 rounded-[14px] px-2 py-2 hover:bg-surface-hover">
         <span className={cn("h-8 w-1 shrink-0 rounded-full", `dot-${color}`)} />
         <div className="min-w-0 flex-1">
-          <div className={cn("truncate text-[13.5px]", i.done && "text-faint line-through")}>{i.emoji} {i.title}</div>
+          <div className={cn("truncate text-[13.5px]", i.done && "text-faint line-through")}><Ico value={i.emoji} />{i.title}</div>
           <div className="flex flex-wrap gap-x-2 text-[11.5px] text-faint">
             <span>{timeLabel(i)}</span>
             {i.location ? <span className="flex items-center gap-0.5"><MapPin className="size-3" />{i.location}</span> : null}

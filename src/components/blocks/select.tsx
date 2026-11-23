@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/components/blocks/primitives";
 import type { TagColor } from "@/lib/types";
+import { Ico } from "@/components/blocks/icons";
 
 /**
  * Menú desplegable con el estilo de la app (reemplaza al <select> nativo, que en modo oscuro salía con
@@ -166,7 +167,7 @@ export function Select<T extends string | number>({
         {children ?? (
           <span className={cn("flex min-w-0 flex-1 items-center gap-2", !current && "text-faint")}>
             {current?.color ? <span className={cn("size-2 shrink-0 rounded-full", `dot-${current.color}`)} /> : null}
-            {current?.emoji ? <span className="shrink-0">{current.emoji}</span> : null}
+            {current?.emoji ? <span className="shrink-0"><Ico value={current.emoji} className="mr-0" /></span> : null}
             <span className="truncate">{current?.label ?? placeholder}</span>
           </span>
         )}
@@ -200,7 +201,7 @@ export function Select<T extends string | number>({
                     )}
                   >
                     {o.color ? <span className={cn("size-2 shrink-0 rounded-full", `dot-${o.color}`)} /> : null}
-                    {o.emoji ? <span className="w-5 shrink-0 text-center">{o.emoji}</span> : null}
+                    {o.emoji ? <span className="w-5 shrink-0 text-center"><Ico value={o.emoji} className="mr-0" /></span> : null}
                     <span className={cn("min-w-0 flex-1 truncate", isSel && "font-medium")}>{o.label}</span>
                     {o.hint ? <span className="shrink-0 text-[11.5px] text-faint">{o.hint}</span> : null}
                     <Check className={cn("size-3.5 shrink-0 text-accent-text", !isSel && "invisible")} />

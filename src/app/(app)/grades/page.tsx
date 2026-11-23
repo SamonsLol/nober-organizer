@@ -9,7 +9,7 @@ export default async function GradesPage() {
   const data = await getGradesPage();
   return (
     <div className="pb-16">
-      <PageHeader emoji="🎓" title="Calificaciones" subtitle={`${data.period.name} en curso · ${data.rows.length} materias`}>
+      <PageHeader emoji="graduation-cap" title="Calificaciones" subtitle={`${data.period.name} en curso · ${data.rows.length} materias`}>
         <NewAssessmentButton />
       </PageHeader>
       <div className="mx-auto mt-6 w-full max-w-[1480px] px-4 sm:px-6">

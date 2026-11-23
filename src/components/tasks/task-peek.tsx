@@ -9,6 +9,8 @@ import { KIND, PRIORITY, RESOURCE_KIND, TASK_STATUS, TASK_TYPE, toneClass } from
 import { deadline, toDate } from "@/lib/dates";
 import type { Assessment, Course, Priority, Project, Task, TaskStatus, TaskType } from "@/lib/types";
 import { Select, type SelectOption } from "@/components/blocks/select";
+import { IconPicker } from "@/components/blocks/icon-picker";
+import { Ico } from "@/components/blocks/icons";
 
 /** Campos de una tarea que se editan desde el panel. */
 export type TaskEdit = Partial<Pick<Task, "title" | "emoji" | "description" | "courseId" | "projectId" | "type" | "dueAt" | "allDay" | "priority" | "status" | "tags" | "note">>;
@@ -78,7 +80,7 @@ export function TaskPeek({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-6 pt-5">
-          <EmojiField value={t.emoji} onSave={(emoji) => act.onEdit({ emoji })} />
+          <EmojiField value={t.emoji} fallback={TASK_TYPE[t.type].emoji} onSave={(emoji) => act.onEdit({ emoji })} />
           <TitleField value={t.title} done={t.status === "DONE"} onSave={(title) => act.onEdit({ title })} />
 
           {/* Estado */}
@@ -136,7 +138,7 @@ export function TaskPeek({
                 onChange={(v) => act.onEdit({ type: v as TaskType })}
                 options={(Object.keys(TASK_TYPE) as TaskType[]).map((k) => ({ value: k, label: TASK_TYPE[k].label, emoji: TASK_TYPE[k].emoji }))}
               >
-                {TASK_TYPE[t.type].emoji} {TASK_TYPE[t.type].label}
+                <Ico value={TASK_TYPE[t.type].emoji} />{TASK_TYPE[t.type].label}
               </PropSelect>
             </Prop>
             <Prop label="Prioridad">
@@ -260,7 +262,7 @@ export function TaskPeek({
 }
 
 export function ProjectTag({ project }: { project: Project }) {
-  return <Tag color={project.color} className="max-w-full"><span className="truncate">{project.emoji} {project.name}</span></Tag>;
+  return <Tag color={project.color} className="max-w-full"><span className="truncate"><Ico value={project.emoji} fallback="rocket" />{project.name}</span></Tag>;
 }
 
 /** Materia, si no proyecto, si no «Personal». */
@@ -270,7 +272,7 @@ export function AreaTag({ course, project }: { course?: Course; project?: Projec
 
 export function CourseTag({ course }: { course?: Course }) {
   return course ? (
-    <Tag color={course.color} className="max-w-full"><span className="truncate">{course.emoji} {course.name}</span></Tag>
+    <Tag color={course.color} className="max-w-full"><span className="truncate"><Ico value={course.emoji} fallback="book" />{course.name}</span></Tag>
   ) : (
     <Tag>Personal</Tag>
   );
@@ -371,20 +373,8 @@ function TagsField({ tags, onSave }: { tags: string[]; onSave: (tags: string[]) 
   );
 }
 
-function EmojiField({ value, onSave }: { value: string; onSave: (v: string) => void }) {
-  const [draft, setDraft] = useState(value);
-  return (
-    <input
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => draft.trim() !== value && onSave(draft.trim())}
-      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-      placeholder="🙂"
-      aria-label="Emoji"
-      maxLength={8}
-      className="-ml-1 w-16 rounded-[12px] bg-transparent px-1 text-[34px] leading-none outline-none transition-colors placeholder:opacity-30 hover:bg-surface-hover focus:bg-surface-2"
-    />
-  );
+function EmojiField({ value, fallback, onSave }: { value: string; fallback: string; onSave: (v: string) => void }) {
+  return <IconPicker value={value} fallback={fallback} onChange={(v) => v !== value && onSave(v)} label="Ícono de la tarea" className="size-12 rounded-[14px] [&_svg]:size-6" />;
 }
 
 function TitleField({ value, done, onSave }: { value: string; done: boolean; onSave: (v: string) => void }) {

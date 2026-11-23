@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Check, FilePlus2, Loader2, NotebookPen, Plus } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, Equal, FilePlus2, Loader2, NotebookPen, Plus } from "lucide-react";
 import { cn } from "@/components/blocks/primitives";
 import { toneClass } from "@/components/blocks/shared";
 import { NoteLink, openNote } from "@/components/notes/note-panel";
@@ -14,6 +14,8 @@ import { createProjectNote, toggleVaultTask } from "@/lib/actions/projects";
 import { capitalize, deadline, fmt, relativeAgo } from "@/lib/dates";
 import { noteName, type VaultTask } from "@/lib/notes";
 import type { Project, Task } from "@/lib/types";
+import { Ico } from "@/components/blocks/icons";
+import { AppIcon } from "@/components/blocks/icons";
 
 /** Fin del día elegido (o de hoy): las actividades sin hora vencen a las 23:59. */
 function endOfDay(day?: string) {
@@ -99,7 +101,7 @@ function TaskRow({ t, now, onToggle }: { t: Task; now: Date; onToggle: (t: Task)
     <li className="group flex items-center gap-2.5 rounded-[12px] px-1.5 py-1.5 hover:bg-surface-hover">
       <Box done={isDone} onClick={() => onToggle(t)} label={isDone ? "Marcar como pendiente" : "Marcar como hecha"} />
       <Link href={`/tasks?task=${t.id}`} className={cn("min-w-0 flex-1 truncate text-[13px]", isDone && "text-faint line-through")}>
-        {t.emoji ? `${t.emoji} ` : ""}{t.title}
+        <Ico value={t.emoji} />{t.title}
       </Link>
       <span className={cn("shrink-0 text-[11.5px] tabular-nums", toneClass[dl.tone])}>{isDone ? "" : dl.label}</span>
     </li>
@@ -125,7 +127,19 @@ function Box({ done, onClick, label, disabled }: { done: boolean; onClick: () =>
 
 /* ───────────── Casillas de Obsidian ───────────── */
 
-const PRIO: Record<NonNullable<VaultTask["priority"]>, string> = { highest: "🔺", high: "⏫", medium: "🔼", low: "🔽", lowest: "⏬" };
+/** Prioridades del complemento Tasks (🔺⏫🔼🔽⏬ en la nota) como íconos. */
+const PRIO: Record<NonNullable<VaultTask["priority"]>, { icon: typeof ChevronUp; cls: string; label: string }> = {
+  highest: { icon: ChevronsUp, cls: "text-danger", label: "Prioridad máxima" },
+  high: { icon: ChevronUp, cls: "text-danger", label: "Prioridad alta" },
+  medium: { icon: Equal, cls: "text-warn", label: "Prioridad media" },
+  low: { icon: ChevronDown, cls: "text-muted", label: "Prioridad baja" },
+  lowest: { icon: ChevronsDown, cls: "text-faint", label: "Prioridad mínima" },
+};
+
+function PrioIcon({ p }: { p: NonNullable<VaultTask["priority"]> }) {
+  const { icon: Icon, cls, label } = PRIO[p];
+  return <Icon className={cn("mr-1 inline-block size-3.5 align-[-0.15em]", cls)} aria-label={label} role="img" />;
+}
 
 /** Casillas `- [ ]` de las notas del proyecto, agrupadas por nota. Marcarlas cambia la nota en Obsidian. */
 export function VaultTaskList({ tasks: initial, now, project }: { tasks: VaultTask[]; now: string; project: Pick<Project, "emoji" | "color" | "name"> }) {
@@ -169,10 +183,10 @@ export function VaultTaskList({ tasks: initial, now, project }: { tasks: VaultTa
                 <li key={`${t.path}:${t.line}`} className="flex items-center gap-2.5 rounded-[12px] px-1.5 py-1.5 hover:bg-surface-hover">
                   <Box done={t.done} onClick={() => toggle(t)} disabled={busy === `${t.path}:${t.line}`} label={t.done ? "Marcar como pendiente" : "Marcar como hecha"} />
                   <span className={cn("min-w-0 flex-1 text-[13px] leading-snug", t.done && "text-faint line-through")}>
-                    {t.priority ? <span className="mr-1">{PRIO[t.priority]}</span> : null}
+                    {t.priority ? <PrioIcon p={t.priority} /> : null}
                     {t.text}
                   </span>
-                  {dl ? <span className={cn("shrink-0 text-[11.5px] tabular-nums", toneClass[dl.tone])} title={`📅 ${t.due}`}>{t.done ? fmt(`${t.due}T12:00`, "d MMM") : dl.label}</span> : null}
+                  {dl ? <span className={cn("shrink-0 text-[11.5px] tabular-nums", toneClass[dl.tone])} title={`Fecha: ${t.due}`}>{t.done ? fmt(`${t.due}T12:00`, "d MMM") : dl.label}</span> : null}
                 </li>
               );
             })}
@@ -215,7 +229,7 @@ export function ProjectNotes({ project, notes }: { project: Project; notes: { pa
         {notes.slice(0, 30).map((n) => (
           <li key={n.path}>
             <NoteLink path={n.path} title={n.title} meta={`${project.name} · ${capitalize(relativeAgo(n.updatedAt))}`} emoji={project.emoji} color={project.color} className="flex items-center gap-2.5 rounded-[12px] px-1.5 py-1.5 hover:bg-surface-hover">
-              <span className="text-[14px]">📝</span>
+              <AppIcon value="notebook-pen" className="size-4 text-muted" />
               <span className="min-w-0 flex-1 truncate text-[13px]">{n.title}</span>
               <span className="shrink-0 text-[11.5px] text-faint">{relativeAgo(n.updatedAt)}</span>
             </NoteLink>

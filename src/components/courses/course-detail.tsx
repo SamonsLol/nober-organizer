@@ -13,6 +13,7 @@ import { CourseResources, LectureGrid, TopicBoard } from "@/components/courses/c
 import { courseFolder } from "@/lib/notes";
 import type { CourseDetail } from "@/lib/data";
 import type { Preparation } from "@/lib/types";
+import { Ico } from "@/components/blocks/icons";
 
 export const TABS = [
   { id: "resumen", label: "Resumen" },
@@ -183,14 +184,14 @@ function UpcomingList({ d, now, limit }: { d: CourseDetail; now: Date; limit?: n
       .filter((t) => t.status !== "DONE" && !t.assessmentId)
       .map((t) => ({ id: t.id, title: t.title, date: t.dueAt, kind: { label: "Tarea", color: "pink" as const, emoji: t.emoji }, weight: "" })),
   ].sort((a, b) => +toDate(a.date) - +toDate(b.date)).slice(0, limit);
-  if (!rows.length) return <p className="py-4 text-[13px] text-faint">Nada pendiente. 🎉</p>;
+  if (!rows.length) return <p className="py-4 text-[13px] text-faint">Nada pendiente.</p>;
   return (
     <ul className="flex flex-col">
       {rows.map((r) => {
         const dl = deadline(r.date, false, now);
         return (
           <li key={r.id} className="flex items-center gap-3 border-t border-border py-2.5 first:border-t-0">
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2 text-[15px]">{r.kind.emoji}</span>
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2 text-[15px]"><Ico value={r.kind.emoji} className="mr-0" /></span>
             <div className="min-w-0 flex-1">
               <div className="truncate text-[13.5px]">{r.title}</div>
               <div className="text-[11.5px] text-faint">{capitalize(fmt(r.date, "EEEE d 'de' MMMM"))}</div>
@@ -213,7 +214,7 @@ function TopicList({ d }: { d: CourseDetail }) {
         return (
           <li key={t.id} className="rounded-[14px] bg-surface-2 px-3.5 py-2.5">
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-[13px]">{t.emoji} {t.title}</span>
+              <span className="truncate text-[13px]"><Ico value={t.emoji} />{t.title}</span>
               <Tag color={p.color}>{p.label}</Tag>
             </div>
             <div className="mt-2 flex gap-1">
@@ -236,7 +237,7 @@ function LectureList({ d, limit }: { d: CourseDetail; limit?: number }) {
       {list.map((l) => {
         const row = (
           <>
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2 text-[15px]">{l.emoji}</span>
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2 text-[15px]"><Ico value={l.emoji} className="mr-0" /></span>
             <div className="min-w-0 flex-1">
               <div className="truncate text-[13px]">{l.title}</div>
               <div className="text-[11.5px] text-faint">{capitalize(fmt(l.date, "EEE d MMM").replace(".", ""))}{l.notePath ? "" : " · sin apunte"}</div>
@@ -325,7 +326,7 @@ export function TasksTab({ d }: { d: CourseDetail }) {
                 return (
                   <tr key={t.id} className="border-t border-border">
                     <td className="px-2 py-2.5">
-                      <Link href={`/tasks?task=${t.id}`} className={cn("hover:underline", t.status === "DONE" && "text-faint line-through")}>{t.emoji} {t.title}</Link>
+                      <Link href={`/tasks?task=${t.id}`} className={cn("hover:underline", t.status === "DONE" && "text-faint line-through")}><Ico value={t.emoji} />{t.title}</Link>
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-faint">
                         <span className="sm:hidden"><Tag color={st.color}>{st.label}</Tag></span>
                         <span className="sm:hidden">{capitalize(fmt(t.dueAt, "EEE d MMM").replace(".", ""))}</span>
@@ -382,7 +383,7 @@ export function NotesTab({ d }: { d: CourseDetail }) {
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {past.map((l) => (
               <NoteLink key={l.id} {...lectureDoc(d, l)} className="group flex items-center gap-3 rounded-[16px] bg-surface-2 p-3 hover:bg-surface-hover">
-                <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-surface text-[16px]">{l.emoji}</span>
+                <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-surface text-[16px]"><Ico value={l.emoji} className="mr-0" /></span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[13px]">{l.title}</div>
                   <div className="text-[11.5px] text-faint">{capitalize(fmt(l.date, "EEE d MMM").replace(".", ""))}</div>
@@ -407,7 +408,7 @@ export function NotesTab({ d }: { d: CourseDetail }) {
                     color={d.course.color}
                     className="flex items-center gap-2 rounded-[12px] px-2 py-2 text-[13px] hover:bg-surface-hover"
                   >
-                    📝 <span className="flex-1 truncate">{doc.title}</span>
+                    <Ico value="notebook-pen" /><span className="flex-1 truncate">{doc.title}</span>
                     <span className="text-[11.5px] text-faint">{relativeAgo(doc.updatedAt)}</span>
                   </NoteLink>
                 </li>
