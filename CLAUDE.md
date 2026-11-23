@@ -237,6 +237,13 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
 - Exámenes = `Assessment` sin nota y que no sea HOMEWORK/PROJECT (esas avisan como tarea) + eventos EXAM.
 - `public/sw.js` (v2) maneja `push` y `notificationclick`. UI: Ajustes → Recordatorios (`push-settings.tsx`).
 
+## Mantenimiento
+
+- Respaldo diario: `deploy/backup.sh` (base + volumen uploads, gzip, 14 de cada uno en `~/backups/nober`), en el crontab
+  del servidor a las 08:30 UTC (3:30 Bogotá). Probado restaurando en un Postgres temporal.
+- Dependencias: `npm audit` limpio salvo KaTeX (baja, sin arreglo compatible). `overrides.effect` fuerza la versión
+  corregida que usa el CLI de Prisma. Al subir Prisma, actualizar también `allowScripts` (versión exacta).
+
 ## Menús desplegables
 
 - No usar `<select>` nativo (en oscuro salía blanco con letra gris): `Select` de `components/blocks/select.tsx`

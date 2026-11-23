@@ -16,15 +16,15 @@
   },
   "dependencies": {
     "@fontsource/poppins": "^5.3.0",
-    "@prisma/adapter-pg": "^7.10.0",
-    "@prisma/client": "^7.10.0",
-    "better-auth": "^1.7.7",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "better-auth": "^1.7.27",
     "clsx": "^2.1.1",
     "date-fns": "^4.3.3",
     "geist": "^1.7.2",
     "katex": "^0.19.1",
     "lucide-react": "^1.48.0",
-    "next": "^16.3.6",
+    "next": "^16.4.6",
     "pg": "^8.23.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -34,7 +34,7 @@
     "remark-math": "^6.0.0",
     "server-only": "^0.0.1",
     "web-push": "^4.0.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
@@ -44,16 +44,19 @@
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
     "dotenv": "^18.0.5",
-    "prisma": "^7.10.0",
+    "prisma": "^7.10.1",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^5.6"
   },
   "allowScripts": {
     "esbuild@0.28.2": true,
-    "prisma@7.10.0": true,
-    "@prisma/engines@7.10.0": true
+    "prisma@7.10.1": true,
+    "@prisma/engines@7.10.1": true
   },
   "license": "MIT",
-  "description": "Organizador académico personal y de código abierto: materias, tareas, calendario, notas y apuntes en Obsidian."
+  "description": "Organizador académico personal y de código abierto: materias, tareas, calendario, notas y apuntes en Obsidian.",
+  "overrides": {
+    "effect": "^3.22.5"
+  }
 }
