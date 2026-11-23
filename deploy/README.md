@@ -130,6 +130,19 @@ docker run --rm -v nober_uploads:/data -v ~/backups:/backup alpine \
   tar -czf /backup/nober-archivos-$(date +%F).tar.gz -C /data .
 ```
 
+
+### Respaldo automático
+
+`deploy/backup.sh` guarda la base (`pg_dump`) y los archivos subidos, comprimidos, en `~/backups/nober` y conserva los
+últimos 14 de cada uno (`BACKUP_DIR`, `BACKUP_KEEP`). Para programarlo cada noche (hora del servidor):
+
+```bash
+crontab -e
+30 3 * * * /ruta/a/nober/deploy/backup.sh >> ~/backups/nober/backup.log 2>&1
+```
+
+Restaurar la base (con la app detenida): `gunzip -c nober-db-….sql.gz | docker compose --env-file .env.production exec -T db psql -U <usuario> <base>`.
+
 ## Problemas comunes
 
 - **502 Bad Gateway**: la app no está arriba → `docker compose --env-file .env.production logs app`.
