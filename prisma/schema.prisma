@@ -30,6 +30,8 @@ model User {
   schedule      ClassSchedule[]
   tasks         Task[]
   projects      Project[]
+  pushSubscriptions PushSubscription[]
+  reminderLogs  ReminderLog[]
   assessments   Assessment[]
   topics        Topic[]
   lectures      Lecture[]
@@ -204,6 +206,12 @@ model Settings {
   googleCalendarId String?
   googleSyncedAt   DateTime?
   googleSyncError  String?
+  /// Recordatorios push: cuándo avisar de tareas (DAY_BEFORE, SAME_DAY, TWO_HOURS) y de evaluaciones (THREE_DAYS, DAY_BEFORE, SAME_DAY)
+  remindTasks      String[]  @default(["DAY_BEFORE", "SAME_DAY"])
+  remindExams      String[]  @default(["THREE_DAYS", "DAY_BEFORE", "SAME_DAY"])
+  /// Hora de los avisos «el día anterior» y «el mismo día» (HH:mm, hora local del servidor)
+  remindEvening    String    @default("19:00")
+  remindMorning    String    @default("07:00")
 }
 
 model Period {
@@ -516,4 +524,31 @@ model Upload {
   resource  Resource?
 
   @@index([userId])
+}
+
+/// Dispositivo suscrito a notificaciones push (Web Push). Se borra solo si el navegador la invalida.
+model PushSubscription {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  userAgent  String    @default("")
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  @@index([userId])
+}
+
+/// Recordatorio ya enviado (evita repetirlo). La clave incluye la fecha de entrega: si cambia, se vuelve a avisar.
+model ReminderLog {
+  id     String   @id @default(cuid())
+  userId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key    String
+  sentAt DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([sentAt])
 }

@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Check, ChevronDown, ExternalLink, Link2, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { Check, ExternalLink, Link2, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
 import { Tag, cn } from "@/components/blocks/primitives";
 import { KIND, PRIORITY, RESOURCE_KIND, TASK_STATUS, TASK_TYPE, toneClass } from "@/components/blocks/shared";
 import { deadline, toDate } from "@/lib/dates";
 import type { Assessment, Course, Priority, Project, Task, TaskStatus, TaskType } from "@/lib/types";
+import { Select, type SelectOption } from "@/components/blocks/select";
 
 /** Campos de una tarea que se editan desde el panel. */
 export type TaskEdit = Partial<Pick<Task, "title" | "emoji" | "description" | "courseId" | "projectId" | "type" | "dueAt" | "allDay" | "priority" | "status" | "tags" | "note">>;
@@ -105,7 +106,7 @@ export function TaskPeek({
                 label="Materia"
                 value={t.courseId ?? ""}
                 onChange={(v) => act.onEdit({ courseId: v || undefined })}
-                options={[{ value: "", label: "Personal" }, ...courses.map((c) => ({ value: c.id, label: `${c.emoji} ${c.name}` }))]}
+                options={[{ value: "", label: "Personal" }, ...courses.map((c) => ({ value: c.id, label: c.name, emoji: c.emoji, color: c.color }))]}
               >
                 <CourseTag course={course} />
               </PropSelect>
@@ -119,7 +120,7 @@ export function TaskPeek({
                   label="Proyecto"
                   value={t.projectId ?? ""}
                   onChange={(v) => act.onEdit({ projectId: v || undefined })}
-                  options={[{ value: "", label: "Ninguno" }, ...projects.map((p) => ({ value: p.id, label: `${p.emoji} ${p.name}` }))]}
+                  options={[{ value: "", label: "Ninguno" }, ...projects.map((p) => ({ value: p.id, label: p.name, emoji: p.emoji, color: p.color }))]}
                 >
                   {project ? <ProjectTag project={project} /> : <Tag>Ninguno</Tag>}
                 </PropSelect>
@@ -133,7 +134,7 @@ export function TaskPeek({
                 label="Tipo"
                 value={t.type}
                 onChange={(v) => act.onEdit({ type: v as TaskType })}
-                options={(Object.keys(TASK_TYPE) as TaskType[]).map((k) => ({ value: k, label: `${TASK_TYPE[k].emoji} ${TASK_TYPE[k].label}` }))}
+                options={(Object.keys(TASK_TYPE) as TaskType[]).map((k) => ({ value: k, label: TASK_TYPE[k].label, emoji: TASK_TYPE[k].emoji }))}
               >
                 {TASK_TYPE[t.type].emoji} {TASK_TYPE[t.type].label}
               </PropSelect>
@@ -286,27 +287,26 @@ function Prop({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** Valor que se ve como texto y se cambia con un <select> nativo superpuesto (accesible y cómodo en móvil). */
+/** Valor que se ve como etiqueta y se cambia con el menú desplegable de la app. */
 function PropSelect({ label, value, options, onChange, children }: {
   label: string;
   value: string;
-  options: { value: string; label: string }[];
+  options: SelectOption<string>[];
   onChange: (v: string) => void;
   children: ReactNode;
 }) {
   return (
-    <span className="relative inline-flex min-w-0 max-w-full items-center gap-1 rounded-[10px] px-2 py-1 transition-colors focus-within:bg-surface-hover hover:bg-surface-hover">
+    <Select
+      label={label}
+      variant="bare"
+      value={value}
+      onChange={onChange}
+      options={options}
+      menuWidth={220}
+      className="max-w-full gap-1 rounded-[10px] px-2 py-1 hover:bg-surface-hover focus-visible:bg-surface-hover"
+    >
       <span className="flex min-w-0 items-center">{children}</span>
-      <ChevronDown className="size-3 shrink-0 text-faint" />
-      <select
-        aria-label={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="absolute inset-0 cursor-pointer appearance-none opacity-0"
-      >
-        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    </span>
+    </Select>
   );
 }
 

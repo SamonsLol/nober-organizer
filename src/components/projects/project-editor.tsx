@@ -10,6 +10,7 @@ import { useVault } from "@/components/notes/vault-context";
 import { deleteProject, saveProject, vaultFolders } from "@/lib/actions/projects";
 import { projectFolder } from "@/lib/notes";
 import type { Project, ProjectStatus, TagColor } from "@/lib/types";
+import { Select } from "@/components/blocks/select";
 
 /* ───────────── Apertura desde cualquier parte ───────────── */
 
@@ -110,9 +111,7 @@ function ProjectEditor({ project: p, onClose }: { project?: Project; onClose: ()
 
       <div className="mt-3 grid grid-cols-2 gap-3">
         <Field label="Estado">
-          <select value={status} onChange={(e) => setStatus(e.target.value as ProjectStatus)} className={inputCls}>
-            {(Object.keys(PROJECT_STATUS) as ProjectStatus[]).map((k) => <option key={k} value={k}>{PROJECT_STATUS[k].label}</option>)}
-          </select>
+          <Select<ProjectStatus> label="Estado" value={status} onChange={setStatus} options={(Object.keys(PROJECT_STATUS) as ProjectStatus[]).map((k) => ({ value: k, label: PROJECT_STATUS[k].label, color: PROJECT_STATUS[k].color }))} />
         </Field>
         <Field label="Fecha objetivo (opcional)">
           <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={cn(inputCls, "[color-scheme:inherit]")} />

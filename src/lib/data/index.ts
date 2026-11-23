@@ -9,6 +9,8 @@ import { loadUserDB } from "@/lib/data/source";
 import { folderNotes, folderTasks, vaultInfo } from "@/lib/vault";
 import { vaultAllowed } from "@/lib/vault-access";
 import { aiConfigured } from "@/lib/ai";
+import { pushConfigured, pushPublicKey } from "@/lib/push";
+import { upcomingReminders } from "@/lib/reminders";
 import { noteName, projectFolder, type VaultInfo, type VaultTask } from "@/lib/notes";
 import { courseGrade, periodAverage, yearAverage } from "@/lib/grades";
 import { dayKey, toDate } from "@/lib/dates";
@@ -509,6 +511,27 @@ export async function getSettings() {
     account: hasDatabase() ? { email: (await getSession())?.user.email ?? "" } : null,
     vault: await getVault(),
     google: await getGoogleStatus(),
+    push: await getPushStatus(),
+  };
+}
+
+/** Notificaciones push para Ajustes: dispositivos, preferencias y próximos avisos. */
+async function getPushStatus() {
+  const configured = pushConfigured();
+  const defaults = { remindTasks: ["DAY_BEFORE", "SAME_DAY"], remindExams: ["THREE_DAYS", "DAY_BEFORE", "SAME_DAY"], remindMorning: "07:00", remindEvening: "19:00" };
+  if (!hasDatabase()) return { configured, publicKey: pushPublicKey(), devices: [], prefs: defaults, upcoming: [] };
+  const userId = await requireUserId();
+  const [devices, s, upcoming] = await Promise.all([
+    prisma.pushSubscription.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, select: { endpoint: true, userAgent: true, createdAt: true } }),
+    prisma.settings.findUnique({ where: { userId }, select: { remindTasks: true, remindExams: true, remindMorning: true, remindEvening: true } }),
+    configured ? upcomingReminders(userId) : Promise.resolve([]),
+  ]);
+  return {
+    configured,
+    publicKey: pushPublicKey(),
+    devices: devices.map((d) => ({ endpoint: d.endpoint, userAgent: d.userAgent, createdAt: d.createdAt.toISOString() })),
+    prefs: s ?? defaults,
+    upcoming,
   };
 }
 

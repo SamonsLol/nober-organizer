@@ -8,6 +8,7 @@ import { toast } from "@/components/shell/toast";
 import { saveSettings } from "@/lib/actions/settings";
 import { signOut } from "@/lib/auth-client";
 import { GoogleConnect } from "@/components/settings/google-connect";
+import { PushSettings } from "@/components/settings/push-settings";
 import { OpenObsidian } from "@/components/notes/open-obsidian";
 import { Tag, cn } from "@/components/blocks/primitives";
 import { setTheme, useTheme } from "@/components/shell/theme";
@@ -19,6 +20,7 @@ const SECTIONS = [
   { id: "perfil", label: "Perfil" },
   { id: "anio", label: "Año académico" },
   { id: "horario", label: "Horario" },
+  { id: "recordatorios", label: "Recordatorios" },
   { id: "integraciones", label: "Integraciones" },
   { id: "apariencia", label: "Apariencia" },
 ];
@@ -182,6 +184,10 @@ export function SettingsView({ data }: { data: SettingsData }) {
             </div>
             <Link href="/courses" className="flex h-8 items-center rounded-full bg-pill px-4 text-[12.5px] hover:bg-pill-hover">Ver horario</Link>
           </div>
+        </Panel>
+
+        <Panel id="recordatorios" title="Recordatorios" hint="Notificaciones en el celular o el computador antes de cada entrega y cada evaluación.">
+          {data.account ? <PushSettings push={data.push} /> : <p className="text-[12.5px] text-faint">Los recordatorios necesitan una cuenta (base de datos).</p>}
         </Panel>
 
         <Panel id="integraciones" title="Integraciones">

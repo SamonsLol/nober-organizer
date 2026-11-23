@@ -214,6 +214,23 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
   (`components/ai/week-plan.tsx`, `openWeekPlan()`, host en el layout; `PageHeader extra=`).
 - Gemini gratis (~20 solicitudes/día) y OpenRouter `:free` (50/día) se descartaron por sus límites (nov. 2026).
 
+## Recordatorios push
+
+- Web Push con `web-push` (`lib/push.ts`, VAPID en `.env.production`). `PushSubscription` por dispositivo (se borra con
+  404/410), `ReminderLog` con clave única `task|exam:<id>:<fecha ISO>:<opción>` (si cambia la fecha, se vuelve a avisar).
+  Preferencias en `Settings.remindTasks` (DAY_BEFORE, SAME_DAY, TWO_HOURS), `remindExams` (THREE_DAYS, DAY_BEFORE,
+  SAME_DAY), `remindEvening`/`remindMorning` (HH:mm, hora del servidor).
+- Programador: `src/instrumentation.ts` (sin imports `server-only`) hace POST cada 5 min a `/api/reminders` con un token
+  aleatorio del proceso en `globalThis`; la ruta corre `runReminders()` (`lib/reminders.ts`). Avisos con más de 90 min de
+  retraso se descartan. La clave se reserva en `ReminderLog` antes de enviar (sin duplicados).
+- Exámenes = `Assessment` sin nota y que no sea HOMEWORK/PROJECT (esas avisan como tarea) + eventos EXAM.
+- `public/sw.js` (v2) maneja `push` y `notificationclick`. UI: Ajustes → Recordatorios (`push-settings.tsx`).
+
+## Menús desplegables
+
+- No usar `<select>` nativo (en oscuro salía blanco con letra gris): `Select` de `components/blocks/select.tsx`
+  (portal con posición fija, teclado, opciones con emoji/color/hint; variantes `field`, `pill`, `bare`).
+
 ## Google Calendar (Fase 4)
 
 La app es la fuente de verdad. Envío a un calendario propio con el nombre de la app (eventos con id interno en
