@@ -8,6 +8,7 @@ import { cn } from "@/components/blocks/primitives";
 import { toast } from "@/components/shell/toast";
 import { deleteEvent, saveEvent } from "@/lib/actions/events";
 import type { CalendarEvent, Course, EventKind } from "@/lib/types";
+import { Select } from "@/components/blocks/select";
 
 /* ───────────── Apertura desde cualquier parte ───────────── */
 
@@ -190,10 +191,7 @@ function EventEditor({ init, courses, onClose }: { init: EventEditorInit; course
               <input value={location} onChange={(ev) => setLocation(ev.target.value)} placeholder="Coliseo" className={cn(inputCls, "placeholder:text-faint")} />
             </Field>
             <Field label="Materia (opcional)">
-              <select value={courseId} onChange={(ev) => setCourseId(ev.target.value)} className={inputCls}>
-                <option value="">General</option>
-                {courses.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
-              </select>
+              <Select label="Materia" value={courseId} onChange={setCourseId} options={[{ value: "", label: "General" }, ...courses.map((c) => ({ value: c.id, label: c.name, emoji: c.emoji, color: c.color }))]} />
             </Field>
           </div>
         </div>

@@ -10,6 +10,7 @@ import { toast } from "@/components/shell/toast";
 import { deleteResource, saveResource } from "@/lib/actions/study";
 import { uploadFile } from "@/lib/upload-client";
 import type { Course, Resource, ResourceKind } from "@/lib/types";
+import { Select } from "@/components/blocks/select";
 
 /** Adivina el tipo por el enlace (se puede cambiar a mano). */
 function guessKind(url: string): ResourceKind | undefined {
@@ -158,15 +159,10 @@ export function ResourceEditor({ resource: r, courses, courseId, origin, onClose
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <Field label="Materia">
-          <select value={course} onChange={(e) => setCourse(e.target.value)} className={inputCls}>
-            {courses.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
-          </select>
+          <Select label="Materia" value={course} onChange={setCourse} options={courses.map((c) => ({ value: c.id, label: c.name, emoji: c.emoji, color: c.color }))} />
         </Field>
         <Field label="De dónde viene">
-          <select value={from} onChange={(e) => setFrom(e.target.value as Resource["origin"])} className={inputCls}>
-            <option value="TEACHER">Del profesor</option>
-            <option value="OWN">Mío</option>
-          </select>
+          <Select<Resource["origin"]> label="De dónde viene" value={from} onChange={setFrom} options={[{ value: "TEACHER", label: "Del profesor", emoji: "🧑‍🏫" }, { value: "OWN", label: "Mío", emoji: "🙋" }]} />
         </Field>
       </div>
           </Dialog>

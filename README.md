@@ -67,6 +67,13 @@ Syncthing, git… La app solo lee y escribe archivos `.md`. Variables:
 
 Sin bóveda, la app funciona igual pero sin crear ni abrir apuntes.
 
+### Recordatorios push (opcional)
+
+Con `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` (cómo generarlas en `.env.production.example`), en **Ajustes →
+Recordatorios** cada dispositivo activa notificaciones: tareas el día anterior, el mismo día o 2 horas antes, y
+evaluaciones 3 días antes, el día anterior y el mismo día (horas configurables). El servidor revisa cada 5 minutos.
+En iPhone/iPad funcionan con la app instalada en la pantalla de inicio (iOS 16.4 o superior).
+
 ### IA (opcional)
 
 Con `AI_API_KEY` aparecen **Resumir**, **Preguntas de repaso** y **Convertir en tareas** en el panel de cada apunte, y

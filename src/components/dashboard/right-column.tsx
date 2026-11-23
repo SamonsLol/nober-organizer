@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, History, IdCard, NotebookPen, PanelRight, Pause, Play, RotateCcw } from "lucide-react";
+import { History, IdCard, NotebookPen, PanelRight, Pause, Play, RotateCcw } from "lucide-react";
 import { NoteLink } from "@/components/notes/note-panel";
 import Link from "next/link";
 import { EmptyHint, Section, Tag, ViewTabs, cn } from "@/components/blocks/primitives";
@@ -10,6 +10,7 @@ import { capitalize, relativeAgo } from "@/lib/dates";
 import { formatGrade, gradeTone } from "@/lib/grades";
 import type { DashboardData } from "@/lib/data";
 import type { Preparation } from "@/lib/types";
+import { Select } from "@/components/blocks/select";
 
 /* ───────────── Perfil ───────────── */
 
@@ -145,19 +146,14 @@ export function FocusTimer() {
     <div className="relative overflow-hidden rounded-[24px] border border-panel-border text-white shadow-[var(--shadow-panel)]" style={{ background: MOODS[mood].bg }}>
       <div className="absolute inset-0 backdrop-blur-[2px]" />
       <div className="relative flex flex-col items-center gap-3 px-4 pb-4 pt-3">
-        <label className="relative flex items-center">
-          <select
-            value={mood}
-            onChange={(e) => setMood(e.target.value as keyof typeof MOODS)}
-            className="h-7 appearance-none rounded-full bg-white/15 pl-3 pr-7 text-[12.5px] text-white outline-none backdrop-blur"
-            aria-label="Ambiente del temporizador"
-          >
-            {Object.entries(MOODS).map(([k, v]) => (
-              <option key={k} value={k} className="text-black">{v.label}</option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2 size-3.5 opacity-80" />
-        </label>
+        <Select<keyof typeof MOODS>
+          label="Ambiente del temporizador"
+          variant="bare"
+          className="h-7 rounded-full bg-white/15 pl-3 pr-2.5 text-[12.5px] text-white backdrop-blur hover:bg-white/25"
+          value={mood}
+          onChange={setMood}
+          options={(Object.keys(MOODS) as (keyof typeof MOODS)[]).map((k) => ({ value: k, label: MOODS[k].label }))}
+        />
 
         <div className="text-[44px] font-semibold leading-none tabular-nums tracking-tight drop-shadow-sm" aria-live="polite">
           {mm}:{ss}

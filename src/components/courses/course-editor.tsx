@@ -10,6 +10,7 @@ import { courseUsage, deleteCourse, saveCourse } from "@/lib/actions/courses";
 import { useVault } from "@/components/notes/vault-context";
 import { courseFolder } from "@/lib/notes";
 import type { ClassSchedule, Course, CoverKind, TagColor } from "@/lib/types";
+import { Select } from "@/components/blocks/select";
 
 /* ───────────── Apertura desde cualquier parte ───────────── */
 
@@ -187,9 +188,7 @@ function CourseEditor({ init, onClose }: { init: Init; onClose: () => void }) {
             <div className="flex flex-col gap-2">
               {rows.map((r) => (
                 <div key={r.key} className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_32px] items-center gap-2 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]">
-                  <select aria-label="Día" value={r.weekday} onChange={(e) => editRow(r.key, { weekday: Number(e.target.value) })} className={inputCls}>
-                    {DAYS.map((d) => <option key={d.n} value={d.n}>{d.label}</option>)}
-                  </select>
+                  <Select<number> label="Día" value={r.weekday} onChange={(weekday) => editRow(r.key, { weekday })} options={DAYS.map((d) => ({ value: d.n, label: d.label }))} />
                   <input aria-label="Empieza" type="time" value={r.start} onChange={(e) => editRow(r.key, { start: e.target.value })} className={cn(inputCls, "[color-scheme:inherit]")} />
                   <input aria-label="Termina" type="time" value={r.end} onChange={(e) => editRow(r.key, { end: e.target.value })} className={cn(inputCls, "[color-scheme:inherit]")} />
                   <input aria-label="Aula de esta clase" value={r.room} onChange={(e) => editRow(r.key, { room: e.target.value })} placeholder={room || "Aula"} className={cn(inputCls, "max-sm:col-span-3 max-sm:row-start-2")} />

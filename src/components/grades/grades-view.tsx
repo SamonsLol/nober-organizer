@@ -3,13 +3,14 @@
 import { openCourseEditor } from "@/components/courses/course-editor";
 import { useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ChevronDown } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Section, Tag, cn } from "@/components/blocks/primitives";
 import { KIND, gradeClass, toneClass } from "@/components/blocks/shared";
 import { capitalize, deadline, fmt } from "@/lib/dates";
 import { courseGrade, formatGrade, gradeTone } from "@/lib/grades";
 import type { GradesPageData } from "@/lib/data";
 import type { GradingScale } from "@/lib/types";
+import { Select } from "@/components/blocks/select";
 
 const tone = (v: number | undefined, scale: GradingScale) => (v === undefined ? "text-faint" : gradeClass[gradeTone(v, scale)!]);
 
@@ -222,24 +223,19 @@ function Simulator({ data }: { data: GradesPageData }) {
 
   return (
     <Section title="Simulador" strong>
-      <label className="relative mb-4 flex items-center">
-        <select
+      <div className="mb-4">
+        <Select
+          label="Materia"
+          variant="pill"
+          className="w-full"
           value={courseId}
-          onChange={(e) => {
-            setCourseId(e.target.value);
+          onChange={(v) => {
+            setCourseId(v);
             setGuesses({});
           }}
-          aria-label="Materia"
-          className="h-9 w-full appearance-none rounded-full bg-pill pl-4 pr-9 text-[13px] outline-none hover:bg-pill-hover"
-        >
-          {data.rows.map((r) => (
-            <option key={r.course.id} value={r.course.id} className="bg-panel-strong text-text">
-              {r.course.emoji} {r.course.name}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-3.5 size-4 text-muted" />
-      </label>
+          options={data.rows.map((r) => ({ value: r.course.id, label: r.course.name, emoji: r.course.emoji, color: r.course.color }))}
+        />
+      </div>
 
       <div className="flex items-end justify-between">
         <div>

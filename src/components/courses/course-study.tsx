@@ -16,6 +16,7 @@ import { createLectureNote } from "@/lib/actions/notes";
 import { courseFolder, parseNoteInput } from "@/lib/notes";
 import { capitalize, fmt, relativeAgo, toDate } from "@/lib/dates";
 import type { ClassSchedule, Course, Lecture, Preparation, Resource, Topic } from "@/lib/types";
+import { Select } from "@/components/blocks/select";
 
 /** Copia local que se resincroniza cuando el servidor manda datos nuevos (tras guardar). */
 function useSynced<T>(value: T) {
@@ -314,10 +315,7 @@ function LectureEditor({ lecture: l, course, topics, defaultDate, onClose }: {
         <Field label="Hora"><input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={cn(inputCls, "[color-scheme:inherit]")} /></Field>
       </div>
       <Field label="Tema (opcional)" className="mt-3">
-        <select value={topicId} onChange={(e) => setTopicId(e.target.value)} className={inputCls}>
-          <option value="">Sin tema</option>
-          {topics.map((t) => <option key={t.id} value={t.id}>{t.emoji} {t.title}</option>)}
-        </select>
+        <Select label="Tema" value={topicId} onChange={setTopicId} options={[{ value: "", label: "Sin tema" }, ...topics.map((t) => ({ value: t.id, label: t.title, emoji: t.emoji }))]} />
       </Field>
       <Field label="Apunte en Obsidian (opcional)" className="mt-3">
         <input value={doc} onChange={(e) => setDoc(e.target.value)} placeholder={`${courseFolder(course, vault.root)}/…`} className={inputCls} />
