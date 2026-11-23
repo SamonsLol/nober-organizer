@@ -17,6 +17,7 @@ import { courseFolder, parseNoteInput } from "@/lib/notes";
 import { capitalize, fmt, relativeAgo, toDate } from "@/lib/dates";
 import type { ClassSchedule, Course, Lecture, Preparation, Resource, Topic } from "@/lib/types";
 import { Select } from "@/components/blocks/select";
+import { Ico } from "@/components/blocks/icons";
 
 /** Copia local que se resincroniza cuando el servidor manda datos nuevos (tras guardar). */
 function useSynced<T>(value: T) {
@@ -82,7 +83,7 @@ export function TopicBoard({ courseId, topics: initial }: { courseId: string; to
                   onClick={() => setEditing(t)}
                   className="rounded-[14px] border border-border bg-surface p-3 text-left transition-colors hover:border-border-strong active:cursor-grabbing"
                 >
-                  <div className="text-[13.5px]">{t.emoji} {t.title}</div>
+                  <div className="text-[13.5px]"><Ico value={t.emoji} />{t.title}</div>
                   <div className="mt-1 text-[11.5px] text-faint">{t.lastStudiedAt ? `Estudiado ${relativeAgo(t.lastStudiedAt)}` : "Aún no estudiado"}</div>
                 </button>
               ))}
@@ -129,7 +130,7 @@ function TopicEditor({ topic: t, courseId, onClose }: { topic?: Topic; courseId:
       onClose={onClose}
       footer={<DialogFooter busy={busy} canSave={!!title.trim()} saveLabel={t ? "Guardar" : "Crear"} onSave={save} onCancel={onClose} onDelete={t ? remove : undefined} />}
     >
-      <TitleRow emoji={emoji} onEmoji={setEmoji} title={title} onTitle={setTitle} placeholder="Tema (p. ej. Derivadas)" emojiPlaceholder="💡" />
+      <TitleRow emoji={emoji} onEmoji={setEmoji} title={title} onTitle={setTitle} placeholder="Tema (p. ej. Derivadas)" emojiPlaceholder="lightbulb" />
       <div className="mt-4 text-[12px] text-muted">¿Qué tan preparado estás?</div>
       <div className="mt-1.5 grid grid-cols-2 gap-1.5 sm:grid-cols-4" role="radiogroup" aria-label="Preparación">
         {LEVELS.map((l) => (
@@ -209,7 +210,7 @@ export function LectureGrid({ course, lectures, topics, schedule, now, canCreate
                         <Pencil className="size-3.5" />
                       </button>
                     </div>
-                    <div className="mt-2 text-[15px] font-medium leading-snug">{l.emoji} {l.title}</div>
+                    <div className="mt-2 text-[15px] font-medium leading-snug"><Ico value={l.emoji} />{l.title}</div>
                     {topic ? <div className="mt-1 text-[12px] text-muted">Tema: {topic.title}</div> : null}
                     {l.notePath ? (
                       <NoteLink

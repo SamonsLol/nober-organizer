@@ -162,7 +162,7 @@ export function ResourceEditor({ resource: r, courses, courseId, origin, onClose
           <Select label="Materia" value={course} onChange={setCourse} options={courses.map((c) => ({ value: c.id, label: c.name, emoji: c.emoji, color: c.color }))} />
         </Field>
         <Field label="De dónde viene">
-          <Select<Resource["origin"]> label="De dónde viene" value={from} onChange={setFrom} options={[{ value: "TEACHER", label: "Del profesor", emoji: "🧑‍🏫" }, { value: "OWN", label: "Mío", emoji: "🙋" }]} />
+          <Select<Resource["origin"]> label="De dónde viene" value={from} onChange={setFrom} options={[{ value: "TEACHER", label: "Del profesor", emoji: "school" }, { value: "OWN", label: "Mío", emoji: "user" }]} />
         </Field>
       </div>
           </Dialog>

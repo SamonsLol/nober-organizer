@@ -11,6 +11,7 @@ import { deleteAssessment, saveAssessment } from "@/lib/actions/assessments";
 import { formatGrade } from "@/lib/grades";
 import type { Assessment, AssessmentKind, Course, GradingScale, Period } from "@/lib/types";
 import { Select } from "@/components/blocks/select";
+import { Ico } from "@/components/blocks/icons";
 
 /* ───────────── Apertura desde cualquier parte ───────────── */
 
@@ -175,7 +176,7 @@ function AssessmentEditor({
             onClick={() => setKind(k)}
             className={cn("tag h-7 px-3 text-[12.5px] transition", `tag-${KIND[k].color}`, kind === k ? "ring-2 ring-accent" : "opacity-70 hover:opacity-100")}
           >
-            {KIND[k].emoji} {KIND[k].label}
+            <Ico value={KIND[k].emoji} />{KIND[k].label}
           </button>
         ))}
       </div>

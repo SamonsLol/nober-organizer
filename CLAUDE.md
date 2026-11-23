@@ -231,6 +231,18 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
 - No usar `<select>` nativo (en oscuro salía blanco con letra gris): `Select` de `components/blocks/select.tsx`
   (portal con posición fija, teclado, opciones con emoji/color/hint; variantes `field`, `pill`, `bare`).
 
+## Íconos (Lucide)
+
+- Todo ícono de la interfaz es de Lucide. Catálogo en `components/blocks/icons.tsx` (sin "use client"): `ICONS`
+  (clave kebab → componente, etiqueta y palabras en español para buscar), `AppIcon` (ícono suelto), `Ico` (en línea con
+  texto; sin valor ni `fallback` no pinta nada) y `emojiFor()` (texto plano: notificaciones, Google Calendar).
+- Los campos `emoji` de la base (materia, tarea, tema, clase, evento, proyecto) guardan la **clave** del ícono. Emojis
+  antiguos se traducen al vuelo con el mapa `EMOJI` (o caen al `fallback`): no hace falta migrar datos.
+- Elegir ícono: `IconPicker` (`components/blocks/icon-picker.tsx`), también dentro de `TitleRow` (`emojiPlaceholder` =
+  clave de respaldo). No volver a poner emojis en la interfaz; para uno nuevo, agregarlo al catálogo.
+- Excepciones a propósito: los símbolos del complemento Tasks en las notas (📅 ⏳ ✅ 🔺…), que son formato de Obsidian.
+  En el lector, los avisos (callouts) se marcan `⟦clave⟧` al preprocesar y `strong`/`em` los pintan con `AppIcon`.
+
 ## Google Calendar (Fase 4)
 
 La app es la fuente de verdad. Envío a un calendario propio con el nombre de la app (eventos con id interno en

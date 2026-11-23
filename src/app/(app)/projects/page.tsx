@@ -11,7 +11,7 @@ export default async function ProjectsPage() {
   const active = data.projects.filter((p) => p.project.status === "ACTIVE").length;
   return (
     <div className="pb-16">
-      <PageHeader emoji="🚀" title="Proyectos" subtitle={`${active} ${active === 1 ? "activo" : "activos"} · ${data.personal.length} otras actividades pendientes`}>
+      <PageHeader emoji="rocket" title="Proyectos" subtitle={`${active} ${active === 1 ? "activo" : "activos"} · ${data.personal.length} otras actividades pendientes`}>
         {data.vault.canWrite ? <OpenObsidian folder={data.vault.projectsRoot} pill /> : null}
         <NewProjectButton />
       </PageHeader>

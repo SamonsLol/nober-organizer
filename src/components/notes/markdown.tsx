@@ -6,18 +6,33 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+import { AppIcon } from "@/components/blocks/icons";
 
 /**
  * Markdown de Obsidian en modo lectura: propiedades, [[enlaces]], incrustaciones, avisos (callouts),
  * tareas que se marcan con un clic y fórmulas ($…$). No se interpreta HTML crudo (seguro por defecto).
  */
 
+/** Tipo de aviso de Obsidian → ícono de la app (Lucide). */
 const CALLOUT: Record<string, string> = {
-  note: "📝", info: "ℹ️", tip: "💡", hint: "💡", important: "❗", success: "✅", check: "✅", done: "✅",
-  question: "❓", help: "❓", faq: "❓", warning: "⚠️", caution: "⚠️", attention: "⚠️", failure: "❌", fail: "❌",
-  missing: "❌", danger: "⛔", error: "⛔", bug: "🐞", example: "🧪", quote: "💬", cite: "💬", abstract: "📋",
-  summary: "📋", tldr: "📋", todo: "☑️",
+  note: "notebook-pen", info: "info", tip: "lightbulb", hint: "lightbulb", important: "flag", success: "circle-check",
+  check: "circle-check", done: "circle-check", question: "circle-help", help: "circle-help", faq: "circle-help",
+  warning: "triangle-alert", caution: "triangle-alert", attention: "triangle-alert", failure: "triangle-alert",
+  fail: "triangle-alert", missing: "triangle-alert", danger: "zap", error: "triangle-alert", bug: "bug", example: "flask-conical",
+  quote: "quote", cite: "quote", abstract: "clipboard-list", summary: "clipboard-list", tldr: "clipboard-list", todo: "list-checks",
 };
+
+/** Marca de ícono que deja el preprocesador («⟦clave⟧ texto») y que `strong`/`em` pintan con Lucide. */
+const ICON_MARK = /^⟦([\w-]+)⟧\s?/;
+
+function withIcon(children: ReactNode): ReactNode {
+  const list = Array.isArray(children) ? children : [children];
+  const first = list[0];
+  if (typeof first !== "string") return children;
+  const m = first.match(ICON_MARK);
+  if (!m) return children;
+  return [<AppIcon key="i" value={m[1]} fallback="pin" className="mr-1.5 inline-block size-4 align-[-0.2em]" />, first.slice(m[0].length), ...list.slice(1)];
+}
 
 export interface Frontmatter { tags: string[]; props: [string, string][] }
 
@@ -65,13 +80,13 @@ function obsidianToMarkdown(body: string) {
         .replace(/^(\s*(?:>\s*)+)\[!(\w+)\][+-]?\s*(.*)$/, (_, q: string, type: string, title: string) => {
           const t = type.toLowerCase();
           // Dos espacios al final: salto de línea, el texto del aviso va debajo del título
-          return `${q}**${CALLOUT[t] ?? "📌"} ${title || t[0].toUpperCase() + t.slice(1)}**  `;
+          return `${q}**⟦${CALLOUT[t] ?? "pin"}⟧ ${title || t[0].toUpperCase() + t.slice(1)}**  `;
         })
         // Tarea vacía («- [ ] »): Obsidian la pinta como casilla; GFM solo si tiene texto
         .replace(/^(\s*(?:>\s*)*(?:[-*+]|\d+[.)])\s+\[[ xX]\])\s*$/, "$1 ​")
         .replace(/!\[\[([^\]]+)\]\]/g, (_, t: string) => {
           const name = t.split("|")[0];
-          return /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(name) ? `*🖼️ ${name}*` : `[↪ ${name}](wikilink:${encodeTarget(name)})`;
+          return /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(name) ? `*⟦camera⟧ ${name}*` : `[↪ ${name}](wikilink:${encodeTarget(name)})`;
         })
         .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, t: string, alias?: string) => `[${(alias ?? t.split("#")[0]).replace(/[[\]]/g, "")}](wikilink:${encodeTarget(t)})`);
     })
@@ -123,6 +138,8 @@ export function Markdown({ source, onToggleTask, onWikilink, className }: {
         }
         return <a href={href} target="_blank" rel="noreferrer">{children}</a>;
       },
+      strong: ({ children }) => <strong>{withIcon(children)}</strong>,
+      em: ({ children }) => <em>{withIcon(children)}</em>,
       li: ({ node, className: cls, children }) => {
         const line = node?.position?.start.line;
         const isTask = typeof cls === "string" && cls.includes("task-list-item");
@@ -133,7 +150,7 @@ export function Markdown({ source, onToggleTask, onWikilink, className }: {
         );
       },
       input: (props) => (props.type === "checkbox" ? <TaskBox checked={Boolean(props.checked)} onToggle={onToggleTask} /> : <input {...props} />),
-      img: ({ src, alt }) => (typeof src === "string" && /^https?:/.test(src) ? <img src={src} alt={alt ?? ""} loading="lazy" /> : <em>🖼️ {alt || String(src ?? "")}</em>),
+      img: ({ src, alt }) => (typeof src === "string" && /^https?:/.test(src) ? <img src={src} alt={alt ?? ""} loading="lazy" /> : <em><AppIcon value="camera" className="mr-1 inline-block size-4 align-[-0.2em]" />{alt || String(src ?? "")}</em>),
     }),
     [offset, onToggleTask, onWikilink],
   );

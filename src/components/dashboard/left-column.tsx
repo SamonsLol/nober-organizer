@@ -10,6 +10,7 @@ import { toast } from "@/components/shell/toast";
 import { addQuickNote, deleteQuickNote, setQuickNoteDone } from "@/lib/actions/study";
 import { capitalize, fmt, friendlyDay } from "@/lib/dates";
 import type { DashboardData } from "@/lib/data";
+import { Ico } from "@/components/blocks/icons";
 
 /* ───────────── Hoy ───────────── */
 
@@ -67,7 +68,7 @@ export function TodayAgenda({ data }: { data: DashboardData }) {
               <span className={cn("mt-[5px] size-1.5 shrink-0 rounded-full", `dot-${c.color}`)} />
               <div className="min-w-0 leading-tight">
                 <div className="truncate text-[13px]">
-                  {c.emoji} {c.name}
+                  <Ico value={c.emoji} fallback="book" />{c.name}
                 </div>
                 <div className="mt-0.5 flex items-center gap-1 text-[11.5px] text-faint">
                   <MapPin className="size-3" />
@@ -86,7 +87,7 @@ export function TodayAgenda({ data }: { data: DashboardData }) {
 function Row({ emoji, title, meta, tone }: { emoji: string; title: string; meta: string; tone?: "warn" }) {
   return (
     <div className="flex items-center gap-2 rounded-md px-1.5 py-1">
-      <span className="w-4 text-center text-[13px]">{emoji}</span>
+      <span className="grid w-4 place-items-center text-[13px]"><Ico value={emoji} fallback="circle-check" className="mr-0" /></span>
       <span className="min-w-0 flex-1 truncate text-[13px]">{title}</span>
       <span className={cn("shrink-0 text-[11.5px]", tone === "warn" ? "text-warn" : "text-faint")}>{meta}</span>
     </div>
@@ -133,7 +134,7 @@ export function ImportantDates({ data }: { data: DashboardData }) {
             </div>
             <div className="min-w-0 leading-tight">
               <div className="truncate text-[13px]">
-                {e.emoji} {e.title}
+                <Ico value={e.emoji} />{e.title}
               </div>
               <div className="mt-0.5 text-[11.5px] text-faint">{friendlyDay(e.start, now)}</div>
             </div>

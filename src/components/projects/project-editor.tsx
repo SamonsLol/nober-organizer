@@ -59,7 +59,7 @@ function ProjectEditor({ project: p, onClose }: { project?: Project; onClose: ()
   const router = useRouter();
   const vault = useVault();
   const [name, setName] = useState(p?.name ?? "");
-  const [emoji, setEmoji] = useState(p?.emoji ?? "");
+  const [emoji, setEmoji] = useState(p?.emoji ?? "rocket");
   const [color, setColor] = useState<TagColor>(p?.color ?? "purple");
   const [status, setStatus] = useState<ProjectStatus>(p?.status ?? "ACTIVE");
   const [description, setDescription] = useState(p?.description ?? "");
@@ -103,7 +103,7 @@ function ProjectEditor({ project: p, onClose }: { project?: Project; onClose: ()
       width={540}
       footer={<DialogFooter busy={busy} canSave={!!name.trim()} saveLabel={p ? "Guardar" : "Crear"} onSave={save} onCancel={onClose} onDelete={p ? remove : undefined} />}
     >
-      <TitleRow emoji={emoji} onEmoji={setEmoji} title={name} onTitle={setName} placeholder="Nombre del proyecto o actividad" emojiPlaceholder="🚀" />
+      <TitleRow emoji={emoji} onEmoji={setEmoji} title={name} onTitle={setName} placeholder="Nombre del proyecto o actividad" emojiPlaceholder="rocket" />
 
       <Field label="Descripción (opcional)" className="mt-4">
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="De qué se trata, qué significa terminarlo…" className={cn(inputCls, "h-auto py-2 leading-relaxed")} />

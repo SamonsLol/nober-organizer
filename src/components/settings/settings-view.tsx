@@ -10,6 +10,7 @@ import { signOut } from "@/lib/auth-client";
 import { GoogleConnect } from "@/components/settings/google-connect";
 import { PushSettings } from "@/components/settings/push-settings";
 import { OpenObsidian } from "@/components/notes/open-obsidian";
+import { AppIcon } from "@/components/blocks/icons";
 import { Tag, cn } from "@/components/blocks/primitives";
 import { setTheme, useTheme } from "@/components/shell/theme";
 import { formatGrade } from "@/lib/grades";
@@ -194,7 +195,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
           <div className="flex flex-col gap-3">
             <Integration
               name="Obsidian"
-              emoji="📝"
+              emoji="notebook-pen"
               status={
                 <Tag color={data.vault.canWrite ? "green" : data.vault.enabled ? "yellow" : "gray"}>
                   {data.vault.canWrite ? "Conectado" : data.vault.enabled ? "Solo enlaces" : "Sin bóveda"}
@@ -218,7 +219,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
             />
             <Integration
               name="Google Calendar"
-              emoji="🗓️"
+              emoji="calendar-days"
               status={
                 <Tag color={data.google.enabled ? (data.google.error ? "red" : "green") : "gray"}>
                   {data.google.enabled ? (data.google.error ? "Con errores" : "Sincronizando") : data.google.linked ? "Conectado" : "Desactivado"}
@@ -347,7 +348,7 @@ function Integration({ name, emoji, status, body, action }: { name: string; emoj
   return (
     <div className="rounded-[18px] bg-surface-2 p-4">
       <div className="mb-3 flex items-center gap-3">
-        <span className="grid size-9 place-items-center rounded-[11px] bg-surface text-[16px]">{emoji}</span>
+        <span className="grid size-9 place-items-center rounded-[11px] bg-surface text-text"><AppIcon value={emoji} className="size-[18px]" /></span>
         <span className="text-[14px] font-medium">{name}</span>
         {status}
         <div className="ml-auto">{action}</div>

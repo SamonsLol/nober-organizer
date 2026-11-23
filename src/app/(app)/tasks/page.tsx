@@ -22,7 +22,7 @@ export default async function TasksPage({
   return (
     <div className="pb-16">
       <PageHeader
-        emoji="✅"
+        emoji="list-checks"
         title="Tareas"
         subtitle={`${pending.length} pendientes${overdue ? ` · ${overdue} ${overdue === 1 ? "atrasada" : "atrasadas"}` : ""} · académicas, proyectos y personales`}
         extra={<WeekPlanButton />}

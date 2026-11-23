@@ -52,7 +52,7 @@ export function GettingStarted({ data, compact }: { data: DashboardData; compact
       ) : null}
       <div className="flex flex-wrap items-end gap-x-6 gap-y-2 pr-8">
         <div>
-          <h2 className="text-[19px] font-medium tracking-[-0.01em]">{doneCount === 0 ? `Hola, ${data.profile.name.split(" ")[0]} 👋` : "Primeros pasos"}</h2>
+          <h2 className="text-[19px] font-medium tracking-[-0.01em]">{doneCount === 0 ? `Hola, ${data.profile.name.split(" ")[0]}` : "Primeros pasos"}</h2>
           <p className="mt-0.5 text-[13px] text-muted">
             {doneCount === 0 ? "En cinco pasos tu espacio queda listo. Puedes hacerlos en cualquier orden." : `Vas ${doneCount} de ${steps.length}. Sigue con «${next.title.toLowerCase()}».`}
           </p>

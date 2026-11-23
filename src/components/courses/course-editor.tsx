@@ -11,6 +11,7 @@ import { useVault } from "@/components/notes/vault-context";
 import { courseFolder } from "@/lib/notes";
 import type { ClassSchedule, Course, CoverKind, TagColor } from "@/lib/types";
 import { Select } from "@/components/blocks/select";
+import { IconPicker } from "@/components/blocks/icon-picker";
 
 /* ───────────── Apertura desde cualquier parte ───────────── */
 
@@ -56,7 +57,7 @@ function CourseEditor({ init, onClose }: { init: Init; onClose: () => void }) {
   const router = useRouter();
   const c = init?.course;
   const [name, setName] = useState(c?.name ?? "");
-  const [emoji, setEmoji] = useState(c?.emoji ?? "📘");
+  const [emoji, setEmoji] = useState(c?.emoji ?? "book");
   const [color, setColor] = useState<TagColor>(c?.color ?? "blue");
   const [cover, setCover] = useState<CoverKind>(c?.cover ?? "math");
   const [teacher, setTeacher] = useState(c?.teacher ?? "");
@@ -114,18 +115,12 @@ function CourseEditor({ init, onClose }: { init: Init; onClose: () => void }) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-5 pt-4">
-          {/* Vista previa de la portada con nombre y emoji */}
+          {/* Vista previa de la portada con nombre e ícono */}
           <div className={cn("relative h-[96px] overflow-hidden rounded-[18px]", `pastel-${color}`)}>
             <CourseCover kind={cover} tint={color} className="absolute inset-0 size-full" />
           </div>
           <div className="-mt-6 px-3">
-            <input
-              value={emoji}
-              onChange={(e) => setEmoji(e.target.value)}
-              aria-label="Emoji"
-              maxLength={8}
-              className="relative size-12 shrink-0 rounded-[14px] border border-border bg-panel-strong text-center text-[24px] outline-none focus:border-accent"
-            />
+            <IconPicker value={emoji} onChange={setEmoji} fallback="book" label="Ícono de la materia" className="relative size-12 rounded-[14px] bg-panel-strong" />
           </div>
           <div className="mt-2">
             <input

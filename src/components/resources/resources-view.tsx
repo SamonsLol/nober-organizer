@@ -8,6 +8,7 @@ import { RESOURCE_KIND } from "@/components/blocks/shared";
 import { capitalize, relativeAgo } from "@/lib/dates";
 import type { ResourcesPageData } from "@/lib/data";
 import type { Course, Resource, ResourceKind } from "@/lib/types";
+import { Ico } from "@/components/blocks/icons";
 
 const ORIGIN = { TEACHER: "Del profesor", OWN: "Míos" } as const;
 type Origin = keyof typeof ORIGIN;
@@ -89,7 +90,7 @@ export function ResourcesView({ data }: { data: ResourcesPageData }) {
               <div key={c.id}>
                 <div className="mb-2 flex items-center gap-2 px-1">
                   <span className={cn("size-2 rounded-full", `dot-${c.color}`)} />
-                  <h3 className="text-[14px] font-medium">{c.emoji} {c.name}</h3>
+                  <h3 className="text-[14px] font-medium"><Ico value={c.emoji} fallback="book" />{c.name}</h3>
                   <span className="text-[12px] text-faint">{items.length}</span>
                 </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -124,7 +125,7 @@ export function ResourcesView({ data }: { data: ResourcesPageData }) {
                         <span className="truncate">{r.title}</span>
                       </a>
                     </td>
-                    <td className="px-2 py-2"><Tag color={c.color}>{c.emoji} {c.name}</Tag></td>
+                    <td className="px-2 py-2"><Tag color={c.color}><Ico value={c.emoji} fallback="book" />{c.name}</Tag></td>
                     <td className="px-2 py-2 text-muted">{K.label}{r.size ? <span className="text-faint"> · {r.size}</span> : null}</td>
                     <td className="px-2 py-2 text-muted">{ORIGIN[r.origin]}</td>
                     <td className="whitespace-nowrap px-2 py-2 text-right text-muted">{capitalize(relativeAgo(r.addedAt))}</td>

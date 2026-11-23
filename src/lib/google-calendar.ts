@@ -7,6 +7,7 @@ import { holidayKeys } from "@/lib/calendar";
 import { APP_NAME } from "@/lib/brand";
 import { dayKey, toDate } from "@/lib/dates";
 import { GOOGLE_CALENDAR_SCOPE } from "@/lib/google-scope";
+import { emojiFor } from "@/components/blocks/icons";
 
 /**
  * Google Calendar (solo envío): la app es la fuente de verdad y escribe en un calendario propio.
@@ -126,7 +127,7 @@ export async function desiredEvents(userId: string): Promise<Map<string, GEvent>
         .filter((k) => ((new Date(`${k}T12:00:00`).getDay() + 6) % 7) + 1 === s.weekday)
         .map((k) => `${k.replace(/-/g, "")}T${s.start.replace(":", "")}00`);
       out.set(`class:${s.id}`, {
-        summary: `${c.emoji} ${c.name}`.trim(),
+        summary: `${emojiFor(c.emoji)} ${c.name}`.trim(),
         location: s.room || c.room || undefined,
         description: [c.teacher && `Profesor/a: ${c.teacher}`, "Clase"].filter(Boolean).join(" · ") + link(`/courses/${c.slug}?tab=clases`),
         start: at(start),
@@ -143,7 +144,7 @@ export async function desiredEvents(userId: string): Promise<Map<string, GEvent>
     const due = toDate(t.dueAt);
     const c = t.courseId ? course[t.courseId] : undefined;
     out.set(`task:${t.id}`, {
-      summary: `${t.emoji ? `${t.emoji} ` : ""}${t.title}`,
+      summary: `${emojiFor(t.emoji) ? `${emojiFor(t.emoji)} ` : ""}${t.title}`,
       description: [c ? c.name : "Personal", t.assessmentId ? "Entrega con nota" : "Tarea"].join(" · ") + link(`/tasks?task=${t.id}`),
       ...(t.allDay ? allDay(due) : { start: at(addMinutes(due, -30)), end: at(due) }),
     });
@@ -165,7 +166,7 @@ export async function desiredEvents(userId: string): Promise<Map<string, GEvent>
   for (const e of d.events) {
     const start = toDate(e.start);
     out.set(`event:${e.id}`, {
-      summary: `${e.emoji ? `${e.emoji} ` : ""}${e.title}`,
+      summary: `${emojiFor(e.emoji) ? `${emojiFor(e.emoji)} ` : ""}${e.title}`,
       location: e.location,
       description: e.kind === "HOLIDAY" ? "Sin clases" : undefined,
       ...(e.allDay ? allDay(start, e.end ? toDate(e.end) : start) : { start: at(start), end: at(e.end ? toDate(e.end) : addMinutes(start, 60)) }),

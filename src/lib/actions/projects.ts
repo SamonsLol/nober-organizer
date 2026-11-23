@@ -48,7 +48,7 @@ export async function saveProject(input: ProjectInput): Promise<Result<{ id: str
     if (!hasDatabase()) return { id: data.id ?? "nuevo", slug: slugify(data.name, "proyecto") };
     const userId = await requireUserId();
     const fields = {
-      name: data.name, emoji: data.emoji || "🚀", color: data.color, description: data.description, status: data.status,
+      name: data.name, emoji: data.emoji || "rocket", color: data.color, description: data.description, status: data.status,
       dueDate: data.dueDate ? new Date(`${data.dueDate}T00:00`) : null, notesFolder: folder,
     };
     if (data.id) {

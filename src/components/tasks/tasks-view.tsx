@@ -16,6 +16,7 @@ import { uploadFile } from "@/lib/upload-client";
 import { capitalize, deadline, fmt, toDate } from "@/lib/dates";
 import type { TasksPageData } from "@/lib/data";
 import type { Course, Priority, Project, Task, TaskStatus, TaskType } from "@/lib/types";
+import { Ico } from "@/components/blocks/icons";
 
 export type TasksViewId = "lista" | "tablero" | "fecha";
 
@@ -457,7 +458,7 @@ function ListView({ tasks, onCreate, startNew, ...p }: RowProps & { tasks: Task[
         <span className="text-right">Plazo</span>
       </div>
       {pending.map((t) => <ListRow key={t.id} t={t} {...p} />)}
-      {pending.length === 0 ? <p className="border-t border-border py-4 text-center text-[13px] text-faint">Nada pendiente. 🎉</p> : null}
+      {pending.length === 0 ? <p className="border-t border-border py-4 text-center text-[13px] text-faint">Nada pendiente.</p> : null}
       <NewTask onCreate={onCreate} autoFocus={startNew} className="my-1.5" />
       {done.length ? (
         <>
@@ -489,7 +490,7 @@ function ListRow({ t, now, courseById, projectById, openId, onOpen, onToggle }: 
     >
       <CheckButton task={t} onToggle={onToggle} />
       <div className="min-w-0">
-        <div className={cn("truncate text-[13.5px]", done && "text-faint line-through")}>{t.emoji} {t.title}</div>
+        <div className={cn("truncate text-[13.5px]", done && "text-faint line-through")}><Ico value={t.emoji} />{t.title}</div>
         <Meta t={t} />
         <div className="mt-1 md:hidden"><AreaTag course={t.courseId ? courseById[t.courseId] : undefined} project={t.projectId ? projectById[t.projectId] : undefined} /></div>
       </div>
@@ -575,7 +576,7 @@ function BoardCard({ t, now, courseById, projectById, openId, onOpen, onToggle }
       </div>
       <div className="flex items-start gap-2.5">
         <CheckButton task={t} onToggle={onToggle} />
-        <div className={cn("-mt-0.5 text-[14px] leading-snug", done && "text-faint line-through")}>{t.emoji} {t.title}</div>
+        <div className={cn("-mt-0.5 text-[14px] leading-snug", done && "text-faint line-through")}><Ico value={t.emoji} />{t.title}</div>
       </div>
       {t.subtasks ? (
         <div className="flex items-center gap-2.5">
@@ -634,7 +635,7 @@ function DateView({ tasks, week, onCreate, ...p }: RowProps & { tasks: Task[]; w
           </div>
         );
       })}
-      {groups.size === 0 ? <p className="py-4 text-center text-[13px] text-faint">Nada pendiente. 🎉</p> : null}
+      {groups.size === 0 ? <p className="py-4 text-center text-[13px] text-faint">Nada pendiente.</p> : null}
       <NewTask onCreate={onCreate} />
       {done.length ? (
         <div>
@@ -669,7 +670,7 @@ function DateRow({ t, now, courseById, projectById, openId, onOpen, onToggle }: 
         <div className="text-faint">{t.allDay ? "Todo el día" : fmt(t.dueAt, "HH:mm")}</div>
       </div>
       <div className="min-w-0 flex-1">
-        <div className={cn("truncate text-[13.5px]", done && "text-faint line-through")}>{t.emoji} {t.title}</div>
+        <div className={cn("truncate text-[13.5px]", done && "text-faint line-through")}><Ico value={t.emoji} />{t.title}</div>
         <Meta t={t} />
       </div>
       <div className="hidden max-w-[180px] sm:block"><AreaTag course={t.courseId ? courseById[t.courseId] : undefined} project={t.projectId ? projectById[t.projectId] : undefined} /></div>

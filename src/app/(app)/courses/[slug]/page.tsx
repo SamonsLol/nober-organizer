@@ -8,6 +8,7 @@ import {
   type TabId,
 } from "@/components/courses/course-detail";
 import { getCourseDetail } from "@/lib/data";
+import { Ico } from "@/components/blocks/icons";
 
 export const dynamic = "force-dynamic";
 

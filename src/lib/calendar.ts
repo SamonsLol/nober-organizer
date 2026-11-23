@@ -10,12 +10,12 @@ import type { Assessment, CalendarEvent, ClassSchedule, Course, Lecture, Period,
 export type CalKind = "CLASS" | "TASK" | "EXAM" | "DEADLINE" | "EVENT" | "IMPORTANT";
 
 export const CAL_KIND: Record<CalKind, { label: string; one: string; emoji: string }> = {
-  CLASS: { label: "Clases", one: "Clase", emoji: "🏫" },
-  TASK: { label: "Tareas", one: "Tarea", emoji: "📝" },
-  EXAM: { label: "Exámenes", one: "Examen", emoji: "🎯" },
-  DEADLINE: { label: "Entregas", one: "Entrega", emoji: "📦" },
-  EVENT: { label: "Eventos", one: "Evento", emoji: "🎉" },
-  IMPORTANT: { label: "Fechas importantes", one: "Importante", emoji: "📌" },
+  CLASS: { label: "Clases", one: "Clase", emoji: "school" },
+  TASK: { label: "Tareas", one: "Tarea", emoji: "notebook-pen" },
+  EXAM: { label: "Exámenes", one: "Examen", emoji: "target" },
+  DEADLINE: { label: "Entregas", one: "Entrega", emoji: "package" },
+  EVENT: { label: "Eventos", one: "Evento", emoji: "party-popper" },
+  IMPORTANT: { label: "Fechas importantes", one: "Importante", emoji: "pin" },
 };
 
 export interface CalItem {
@@ -84,7 +84,7 @@ export function buildItems({ tasks, assessments, events, courses }: {
       id: a.id,
       kind: a.kind === "EXAM" || a.kind === "QUIZ" ? "EXAM" : "DEADLINE",
       title: a.title,
-      emoji: a.kind === "EXAM" ? "🎯" : a.kind === "QUIZ" ? "⏱️" : "📦",
+      emoji: a.kind === "EXAM" ? "target" : a.kind === "QUIZ" ? "clock" : "package",
       start: a.date!,
       allDay: true,
       courseId: a.courseId,
