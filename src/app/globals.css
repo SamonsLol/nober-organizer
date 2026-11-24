@@ -217,12 +217,18 @@
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     min-height: 100dvh;
+    /* Palabras o enlaces largos se parten en vez de salirse de su tarjeta (también en filas flex/grid). */
+    overflow-wrap: anywhere;
     background:
       radial-gradient(900px 600px at 8% -10%, var(--glow-1), transparent 70%),
       radial-gradient(700px 500px at 100% 10%, var(--glow-2), transparent 70%),
       radial-gradient(900px 700px at 60% 110%, var(--glow-3), transparent 70%),
       var(--bg);
     background-attachment: fixed;
+  }
+  /* Las tablas ya se desplazan en horizontal: ahí no partir palabras a mitad. */
+  table {
+    overflow-wrap: break-word;
   }
   ::selection {
     background: var(--accent-soft);
