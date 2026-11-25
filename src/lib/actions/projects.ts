@@ -10,6 +10,8 @@ import { projectFolder, safeName, trimSlashes } from "@/lib/notes";
 import { firstFree, slugify } from "@/lib/slug";
 import { VaultError, cleanPath, createNote, listFolders, setVaultTask, vaultInfo } from "@/lib/vault";
 import { vaultUser } from "@/lib/vault-access";
+import { formatBytes, kindOfMime, removeUploads } from "@/lib/storage";
+import type { ProjectFile } from "@/lib/types";
 
 /**
  * Proyectos y actividades fuera de lo académico. Sus notas son una carpeta de la bóveda de Obsidian;
@@ -69,13 +71,15 @@ export async function saveProject(input: ProjectInput): Promise<Result<{ id: str
   });
 }
 
-/** Borra el proyecto. Sus tareas quedan como personales y sus notas en Obsidian no se tocan. */
+/** Borra el proyecto y sus archivos. Sus tareas quedan como personales y sus notas en Obsidian no se tocan. */
 export async function deleteProject(projectId: string): Promise<Result> {
   return run(async () => {
     const pid = id.parse(projectId);
     if (!hasDatabase()) return;
     const userId = await requireUserId();
-    await prisma.project.deleteMany({ where: { id: pid, userId } });
+    const files = await prisma.projectFile.findMany({ where: { projectId: pid, project: { userId } }, select: { uploadId: true } });
+    const { count } = await prisma.project.deleteMany({ where: { id: pid, userId } });
+    if (count) await removeUploads(userId, files.map((f) => f.uploadId));
     done();
   });
 }
@@ -89,6 +93,41 @@ export async function setProjectStatus(projectId: string, status: "ACTIVE" | "PA
     const userId = await requireUserId();
     const { count } = await prisma.project.updateMany({ where: { id: pid, userId }, data: { status: st } });
     if (!count) throw new UserError("Ese proyecto no existe.");
+    done();
+  });
+}
+
+/* ───────────── Archivos ───────────── */
+
+/** Adjunta al proyecto un archivo ya subido con POST /api/files. */
+export async function attachProjectFile(projectId: string, uploadId: string): Promise<Result<ProjectFile>> {
+  return run(async () => {
+    const pid = id.parse(projectId);
+    const uid = id.parse(uploadId);
+    if (!hasDatabase()) throw new UserError("Subir archivos necesita la base de datos.");
+    const userId = await requireUserId();
+    if (!(await prisma.project.count({ where: { id: pid, userId } }))) throw new UserError("Ese proyecto no existe.");
+    const up = await prisma.upload.findFirst({ where: { id: uid, userId }, include: { taskFile: true, resource: true, projectFile: true } });
+    if (!up) throw new UserError("Ese archivo no existe. Vuelve a subirlo.");
+    if (up.taskFile || up.resource || up.projectFile) throw new UserError("Ese archivo ya está adjunto en otro lugar.");
+    const last = await prisma.projectFile.aggregate({ where: { projectId: pid }, _max: { position: true } });
+    const row = await prisma.projectFile.create({
+      data: { projectId: pid, name: up.name, kind: kindOfMime(up.mime), size: formatBytes(up.size), uploadId: up.id, position: (last._max.position ?? -1) + 1 },
+    });
+    done();
+    return { id: row.id, name: row.name, kind: row.kind, size: row.size ?? undefined, url: `/api/files/${up.id}`, createdAt: row.createdAt.toISOString() };
+  });
+}
+
+/** Quita un archivo del proyecto y lo borra del disco. */
+export async function deleteProjectFile(fileId: string): Promise<Result> {
+  return run(async () => {
+    const fid = id.parse(fileId);
+    if (!hasDatabase()) return;
+    const userId = await requireUserId();
+    const row = await prisma.projectFile.findFirst({ where: { id: fid, project: { userId } }, select: { uploadId: true } });
+    if (!row) throw new UserError("Ese archivo no existe.");
+    await removeUploads(userId, [row.uploadId]);
     done();
   });
 }

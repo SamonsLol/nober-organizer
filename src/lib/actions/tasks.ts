@@ -138,9 +138,9 @@ export async function attachTaskFile(taskId: string, uploadId: string): Promise<
     if (!hasDatabase()) throw new UserError("Subir archivos necesita la base de datos.");
     const userId = await requireUserId();
     await assertTask(userId, tid);
-    const up = await prisma.upload.findFirst({ where: { id: uid, userId }, include: { taskFile: true, resource: true } });
+    const up = await prisma.upload.findFirst({ where: { id: uid, userId }, include: { taskFile: true, resource: true, projectFile: true } });
     if (!up) throw new UserError("Ese archivo no existe. Vuelve a subirlo.");
-    if (up.taskFile || up.resource) throw new UserError("Ese archivo ya está adjunto en otro lugar.");
+    if (up.taskFile || up.resource || up.projectFile) throw new UserError("Ese archivo ya está adjunto en otro lugar.");
     const last = await prisma.taskFile.aggregate({ where: { taskId: tid }, _max: { position: true } });
     const row = await prisma.taskFile.create({
       data: { taskId: tid, name: up.name, kind: kindOfMime(up.mime), size: formatBytes(up.size), uploadId: up.id, position: (last._max.position ?? -1) + 1 },

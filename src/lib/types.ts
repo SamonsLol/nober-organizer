@@ -210,6 +210,16 @@ export interface Project {
   notesFolder?: string;
 }
 
+/** Archivo adjunto a un proyecto. */
+export interface ProjectFile {
+  id: string;
+  name: string;
+  kind: ResourceKind;
+  size?: string;
+  url: string;
+  createdAt: string;
+}
+
 /** Evento de otro calendario de Google (solo lectura). */
 export interface ExternalItem {
   id: string;

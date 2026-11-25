@@ -16,7 +16,7 @@ import { noteName, projectFolder, type VaultInfo, type VaultTask } from "@/lib/n
 import { courseGrade, periodAverage, yearAverage } from "@/lib/grades";
 import { dayKey, toDate } from "@/lib/dates";
 import { buildItems, expandClasses, holidayKeys } from "@/lib/calendar";
-import type { Assessment, Course, Project } from "@/lib/types";
+import type { Assessment, Course, Project, ProjectFile } from "@/lib/types";
 
 /**
  * Capa de datos (repositorio).
@@ -444,7 +444,12 @@ export async function getProjectDetail(slug: string) {
   if (!project) return null;
   const vault = await getVault();
   const tasks = d.tasks.filter((t) => t.projectId === project.id).sort(byDue);
-  return { now: d.now, vault, project, tasks, ...(await projectObsidian(project, vault)) };
+  const files: ProjectFile[] = hasDatabase()
+    ? (await prisma.projectFile.findMany({ where: { projectId: project.id }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] })).map((f) => ({
+        id: f.id, name: f.name, kind: f.kind, size: f.size ?? undefined, url: `/api/files/${f.uploadId}`, createdAt: f.createdAt.toISOString(),
+      }))
+    : [];
+  return { now: d.now, vault, project, tasks, files, ...(await projectObsidian(project, vault)) };
 }
 
 export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;

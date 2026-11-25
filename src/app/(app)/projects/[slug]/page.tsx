@@ -4,7 +4,7 @@ import cn from "clsx";
 import { PageHeader } from "@/components/shell/page-header";
 import { Section } from "@/components/blocks/primitives";
 import { EditProjectButton } from "@/components/projects/project-editor";
-import { ProjectNotes, QuickTasks, VaultTaskList } from "@/components/projects/project-parts";
+import { ProjectFiles, ProjectNotes, QuickTasks, VaultTaskList } from "@/components/projects/project-parts";
 import { ProjectStatusTag } from "@/components/projects/projects-view";
 import { OpenObsidian } from "@/components/notes/open-obsidian";
 import { getProjectDetail } from "@/lib/data";
@@ -63,6 +63,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         </div>
 
         <div className="flex flex-col gap-5">
+          <Section title="Archivos">
+            <ProjectFiles project={p} files={d.files} />
+          </Section>
           <Section title="Notas en Obsidian">
             {d.vault.canWrite ? (
               <>

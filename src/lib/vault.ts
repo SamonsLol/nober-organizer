@@ -1,11 +1,11 @@
 import "server-only";
-import { promises as fs } from "node:fs";
+import { createReadStream, promises as fs } from "node:fs";
 import path from "node:path";
 import { parseTasks, toggleTaskLine, trimSlashes, type VaultInfo, type VaultTask } from "@/lib/notes";
 
 /**
  * Acceso a la bóveda de Obsidian montada en el servidor (OBSIDIAN_VAULT_PATH).
- * Solo archivos .md, nunca fuera de la bóveda ni dentro de carpetas ocultas (.obsidian, .trash…).
+ * Notas .md (y adjuntos, aparte), nunca fuera de la bóveda ni dentro de carpetas ocultas (.obsidian, .trash…).
  * La sincronización con los dispositivos la hace Obsidian (LiveSync, Sync, Syncthing…), no la app.
  */
 
@@ -117,8 +117,8 @@ export async function createNote(folder: string, name: string, content: string) 
 
 interface Entry { rel: string; mtime: number }
 
-/** Recorre una carpeta de la bóveda (sin las ocultas) y devuelve sus notas .md. */
-async function walk(relDir: string, maxDepth: number, limit: number): Promise<Entry[]> {
+/** Recorre una carpeta de la bóveda (sin las ocultas) y devuelve sus notas .md (o los archivos que pasen `want`). */
+async function walk(relDir: string, maxDepth: number, limit: number, want: (name: string) => boolean = (n) => /\.md$/i.test(n)): Promise<Entry[]> {
   const root = vaultDir();
   const out: Entry[] = [];
   async function go(rel: string, depth: number) {
@@ -128,7 +128,7 @@ async function walk(relDir: string, maxDepth: number, limit: number): Promise<En
       if (e.name.startsWith(".") || out.length >= limit) continue;
       const child = rel ? `${rel}/${e.name}` : e.name;
       if (e.isDirectory() && depth < maxDepth) await go(child, depth + 1);
-      else if (e.isFile() && /\.md$/i.test(e.name)) {
+      else if (e.isFile() && want(e.name)) {
         const st = await fs.stat(path.join(root, child)).catch(() => null);
         if (st) out.push({ rel: child.normalize("NFC"), mtime: st.mtimeMs });
       }
@@ -245,4 +245,90 @@ export async function setVaultTask(rel: string, line: number, raw: string, done:
   lines[at] = next;
   await fs.writeFile(abs, lines.join("\n"), "utf8");
   return { path: clean, line: at, raw: next };
+}
+
+/* ───────────── Adjuntos (imágenes, PDF…) ───────────── */
+
+/**
+ * Carpeta de adjuntos, como la configura Obsidian («Ajustes → Archivos y enlaces», `.obsidian/app.json`):
+ * «/» = raíz de la bóveda, «./» = junto a la nota, «./sub» = subcarpeta de la nota, otra = esa carpeta.
+ * OBSIDIAN_ATTACHMENTS_FOLDER la sustituye.
+ */
+async function attachmentFolder(notePath: string) {
+  let setting = process.env.OBSIDIAN_ATTACHMENTS_FOLDER?.trim();
+  if (setting === undefined || setting === "") {
+    const app = await fs.readFile(path.join(vaultDir(), ".obsidian", "app.json"), "utf8").then(JSON.parse, () => ({}));
+    setting = typeof app?.attachmentFolderPath === "string" ? app.attachmentFolderPath.trim() : "/";
+  }
+  const noteDir = cleanPath(notePath).split("/").slice(0, -1).join("/");
+  const s = setting || "/";
+  if (s === "/") return "";
+  if (s === "." || s === "./") return noteDir;
+  if (s.startsWith("./")) return [noteDir, trimSlashes(s.slice(2))].filter(Boolean).join("/");
+  return trimSlashes(s);
+}
+
+/** Nombre válido en Obsidian (sin # ^ [ ] | ni caracteres prohibidos en Windows), con su extensión. */
+function attachmentName(name: string) {
+  const base = name.split(/[\\/]/).pop()!.normalize("NFC");
+  const dot = base.lastIndexOf(".");
+  const ext = dot > 0 ? base.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, "") : "";
+  const stem = (dot > 0 ? base.slice(0, dot) : base).replace(/[\u0000-\u001f\u007f#^[\]|*"<>:?\\/]+/g, " ").replace(/\s+/g, " ").trim().replace(/^\.+/, "").slice(0, 120) || "Adjunto";
+  return { stem, ext };
+}
+
+/**
+ * Guarda un adjunto en la bóveda para la nota `notePath` y devuelve su ruta y el destino para `![[…]]`.
+ * El nombre no se repite en toda la bóveda («foto.png», «foto 1.png»…), así el enlace corto siempre resuelve.
+ */
+export async function saveAttachment(notePath: string, name: string, data: Buffer) {
+  const folder = await attachmentFolder(notePath);
+  const { stem, ext } = attachmentName(name);
+  if (!ext) throw new VaultError("El archivo necesita una extensión (.png, .pdf…).");
+  const taken = new Set((await walk("", 12, 50_000, () => true)).map((e) => e.rel.split("/").pop()!.toLowerCase()));
+  for (let i = 0; i < 500; i++) {
+    const file = `${stem}${i ? ` ${i}` : ""}.${ext}`;
+    if (taken.has(file.toLowerCase())) continue;
+    const { abs, rel } = await resolve(folder ? `${folder}/${file}` : file, { md: false });
+    await fs.mkdir(path.dirname(abs), { recursive: true });
+    try {
+      await fs.writeFile(abs, data, { flag: "wx" });
+      return { path: rel, target: file };
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+    }
+  }
+  throw new VaultError("Ya hay demasiados adjuntos con ese nombre.", "exists");
+}
+
+/** Resuelve el destino de `![[…]]` o `![](…)` (cualquier archivo, no solo notas) como lo hace Obsidian. */
+export async function findAttachment(target: string, from?: string) {
+  let name = target.split("#")[0].split("|")[0].trim();
+  try {
+    name = decodeURI(name);
+  } catch {}
+  name = name.normalize("NFC");
+  if (!name || /\.md$/i.test(name)) return null;
+  const fromDir = from ? from.split("/").slice(0, -1).join("/") : "";
+  // Ruta relativa a la nota o desde la raíz
+  for (const cand of [fromDir && !name.startsWith("/") ? path.posix.normalize(`${fromDir}/${name}`) : null, name]) {
+    if (!cand) continue;
+    try {
+      const { abs, rel } = await resolve(cand, { md: false });
+      if (await fs.stat(abs).then((s) => s.isFile(), () => false)) return rel;
+    } catch {}
+  }
+  const base = name.split("/").pop()!.toLowerCase();
+  const hits = await walk("", 12, 50_000, (n) => n.normalize("NFC").toLowerCase() === base);
+  if (!hits.length) return null;
+  hits.sort((a, b) => Number(!a.rel.startsWith(fromDir)) - Number(!b.rel.startsWith(fromDir)) || a.rel.length - b.rel.length);
+  return hits[0].rel;
+}
+
+/** Abre un archivo de la bóveda para enviarlo (no notas). */
+export async function openVaultFile(rel: string) {
+  const { abs, rel: clean } = await resolve(rel, { md: false });
+  const st = await fs.stat(abs).catch(() => null);
+  if (!st?.isFile()) return null;
+  return { path: clean, size: st.size, stream: () => createReadStream(abs) };
 }

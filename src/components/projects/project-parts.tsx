@@ -1,19 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Check, ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, Equal, FilePlus2, Loader2, NotebookPen, Plus } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, Equal, FilePlus2, Loader2, NotebookPen, Paperclip, Plus, X } from "lucide-react";
 import { cn } from "@/components/blocks/primitives";
-import { toneClass } from "@/components/blocks/shared";
+import { RESOURCE_KIND, toneClass } from "@/components/blocks/shared";
 import { NoteLink, openNote } from "@/components/notes/note-panel";
 import { useVault } from "@/components/notes/vault-context";
 import { toast } from "@/components/shell/toast";
 import { createTask, updateTask } from "@/lib/actions/tasks";
-import { createProjectNote, toggleVaultTask } from "@/lib/actions/projects";
+import { attachProjectFile, createProjectNote, deleteProjectFile, toggleVaultTask } from "@/lib/actions/projects";
+import { uploadFile } from "@/lib/upload-client";
 import { capitalize, deadline, fmt, relativeAgo } from "@/lib/dates";
 import { noteName, type VaultTask } from "@/lib/notes";
-import type { Project, Task } from "@/lib/types";
+import type { Project, ProjectFile, Task } from "@/lib/types";
 import { Ico } from "@/components/blocks/icons";
 import { AppIcon } from "@/components/blocks/icons";
 
@@ -246,6 +247,105 @@ export function ProjectNotes({ project, notes }: { project: Project; notes: { pa
           </button>
         </form>
       ) : null}
+    </div>
+  );
+}
+
+/* ───────────── Archivos del proyecto ───────────── */
+
+/** Archivos adjuntos al proyecto: botón «Adjuntar» o arrastrar y soltar sobre la lista. */
+export function ProjectFiles({ project, files: initial }: { project: Pick<Project, "id" | "color">; files: ProjectFile[] }) {
+  const router = useRouter();
+  const [files, setFiles] = useState(initial);
+  useEffect(() => setFiles(initial), [initial]);
+  const [busy, setBusy] = useState(0);
+  const [over, setOver] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+
+  async function add(list: File[]) {
+    if (!list.length) return;
+    setBusy((n) => n + list.length);
+    for (const file of list) {
+      const up = await uploadFile(file);
+      const r = up.ok ? await attachProjectFile(project.id, up.data.id) : up;
+      setBusy((n) => n - 1);
+      if (!r.ok) toast(r.error);
+      else setFiles((l) => [...l, r.data]);
+    }
+    router.refresh();
+  }
+
+  async function remove(f: ProjectFile) {
+    setFiles((l) => l.filter((x) => x.id !== f.id));
+    const r = await deleteProjectFile(f.id);
+    if (!r.ok) {
+      setFiles((l) => [...l, f]);
+      return toast(r.error);
+    }
+    router.refresh();
+  }
+
+  const onDrop = (e: DragEvent) => {
+    e.preventDefault();
+    setOver(false);
+    add([...e.dataTransfer.files]);
+  };
+
+  return (
+    <div
+      onDragOver={(e) => {
+        if (![...e.dataTransfer.types].includes("Files")) return;
+        e.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={onDrop}
+      className={cn("flex flex-col gap-1.5 rounded-[16px] transition-colors", over && "bg-accent/10 outline-2 outline-dashed outline-accent")}
+    >
+      {files.length === 0 && !busy ? <p className="px-1 py-2 text-[12.5px] text-faint">Sin archivos. Adjunta PDF, documentos, imágenes, audio o video (o arrástralos aquí).</p> : null}
+      <ul className="flex flex-col gap-1.5">
+        {files.map((f) => {
+          const Icon = RESOURCE_KIND[f.kind].icon;
+          return (
+            <li key={f.id} className="group flex items-center rounded-[14px] bg-surface-2 pr-1 transition-colors hover:bg-surface-hover">
+              <a href={f.url} target="_blank" rel="noreferrer" className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2">
+                <span className={cn("grid size-8 shrink-0 place-items-center rounded-[10px] text-on-pastel", `pastel-${project.color}`)}>
+                  <Icon className="size-4" />
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[13px]">{f.name}</span>
+                {f.size ? <span className="shrink-0 text-[11.5px] text-faint">{f.size}</span> : null}
+              </a>
+              <button
+                onClick={() => remove(f)}
+                aria-label={`Quitar «${f.name}»`}
+                title="Quitar"
+                className="mr-1 grid size-7 shrink-0 place-items-center rounded-full text-faint opacity-0 transition-opacity hover:bg-surface-2 hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 max-sm:opacity-100"
+              >
+                <X className="size-3.5" />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <input
+        ref={input}
+        type="file"
+        multiple
+        hidden
+        onChange={(e) => {
+          const list = [...(e.target.files ?? [])];
+          e.target.value = "";
+          add(list);
+        }}
+      />
+      <button
+        onClick={() => input.current?.click()}
+        disabled={busy > 0}
+        className="flex items-center gap-2 rounded-[14px] border border-dashed border-border-strong px-2.5 py-2 text-[13px] text-muted transition-colors hover:border-accent hover:text-text disabled:opacity-60"
+      >
+        {busy ? <Loader2 className="size-4 animate-spin" /> : <Paperclip className="size-4" />}
+        {busy ? `Subiendo${busy > 1 ? ` ${busy} archivos` : ""}…` : "Adjuntar archivo"}
+      </button>
     </div>
   );
 }
