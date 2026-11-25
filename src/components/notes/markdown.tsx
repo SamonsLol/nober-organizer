@@ -85,15 +85,33 @@ function obsidianToMarkdown(body: string) {
         // Tarea vacía («- [ ] »): Obsidian la pinta como casilla; GFM solo si tiene texto
         .replace(/^(\s*(?:>\s*)*(?:[-*+]|\d+[.)])\s+\[[ xX]\])\s*$/, "$1 ​")
         .replace(/!\[\[([^\]]+)\]\]/g, (_, t: string) => {
-          const name = t.split("|")[0];
-          return /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(name) ? `*⟦camera⟧ ${name}*` : `[↪ ${name}](wikilink:${encodeTarget(name)})`;
+          const [name, size] = t.split("|");
+          const label = (name.split("/").pop() ?? name).replace(/[[\]*_`]/g, "");
+          if (/\.(png|jpe?g|gif|webp)$/i.test(name)) return `![${label}${size && /^\d+(x\d+)?$/.test(size.trim()) ? `|${size.trim()}` : ""}](vault:${encodeTarget(name)})`;
+          // Otros adjuntos (PDF, audio…): enlace que los abre; sin extensión o .md, es otra nota
+          if (/\.(pdf|docx?|xlsx?|pptx?|od[tsp]|rtf|txt|csv|zip|mp4|webm|mov|mp3|m4a|wav|ogg|heic|svg|bmp|avif)$/i.test(name)) return `[*⟦paperclip⟧ ${label}*](vaultfile:${encodeTarget(name)})`;
+          return `[↪ ${name}](wikilink:${encodeTarget(name)})`;
         })
         .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, t: string, alias?: string) => `[${(alias ?? t.split("#")[0]).replace(/[[\]]/g, "")}](wikilink:${encodeTarget(t)})`);
     })
     .join("\n");
 }
 
-const urlTransform = (url: string) => (url.startsWith("wikilink:") || url.startsWith("obsidian:") ? url : defaultUrlTransform(url));
+const urlTransform = (url: string) => (/^(wikilink|vault|vaultfile|obsidian):/.test(url) ? url : defaultUrlTransform(url));
+
+/** URL de un adjunto de la bóveda (lo resuelve el servidor como Obsidian, cerca de la nota `from`). */
+export function vaultFileUrl(target: string, from?: string) {
+  return `/api/vault/file?target=${encodeURIComponent(target)}${from ? `&from=${encodeURIComponent(from)}` : ""}`;
+}
+
+const hasScheme = (u: string) => /^[a-z][a-z0-9+.-]*:/i.test(u) || u.startsWith("//");
+const decode = (u: string) => {
+  try {
+    return decodeURIComponent(u);
+  } catch {
+    return u;
+  }
+};
 
 /** Cambia la casilla de la tarea que empieza en la línea `line` (0 = primera línea del archivo). */
 export function toggleTaskAt(src: string, line: number) {
@@ -108,8 +126,10 @@ export function toggleTaskAt(src: string, line: number) {
 
 const TaskLine = createContext<number | null>(null);
 
-export function Markdown({ source, onToggleTask, onWikilink, className }: {
+export function Markdown({ source, notePath, onToggleTask, onWikilink, className }: {
   source: string;
+  /** Ruta de la nota en la bóveda: para mostrar sus imágenes y adjuntos. */
+  notePath?: string;
   /** Línea (0 = primera del archivo) de la tarea que se marcó. Sin esto, las casillas son de solo lectura. */
   onToggleTask?: (line: number) => void;
   onWikilink?: (target: string) => void;
@@ -136,6 +156,17 @@ export function Markdown({ source, onToggleTask, onWikilink, className }: {
             </a>
           );
         }
+        if (href.startsWith("vaultfile:")) {
+          return <a href={vaultFileUrl(decode(href.slice(10)), notePath)} target="_blank" rel="noreferrer" className="md-attachment">{children}</a>;
+        }
+        // Enlace Markdown relativo: otra nota ([x](Nota.md)) o un adjunto ([x](archivo.pdf))
+        if (href && !hasScheme(href) && !href.startsWith("#") && notePath) {
+          const target = decode(href);
+          if (/\.md(#.*)?$/i.test(target)) {
+            return <a href="#" className="md-wikilink" onClick={(e) => (e.preventDefault(), onWikilink?.(target))}>{children}</a>;
+          }
+          return <a href={vaultFileUrl(target, notePath)} target="_blank" rel="noreferrer">{children}</a>;
+        }
         return <a href={href} target="_blank" rel="noreferrer">{children}</a>;
       },
       strong: ({ children }) => <strong>{withIcon(children)}</strong>,
@@ -150,9 +181,9 @@ export function Markdown({ source, onToggleTask, onWikilink, className }: {
         );
       },
       input: (props) => (props.type === "checkbox" ? <TaskBox checked={Boolean(props.checked)} onToggle={onToggleTask} /> : <input {...props} />),
-      img: ({ src, alt }) => (typeof src === "string" && /^https?:/.test(src) ? <img src={src} alt={alt ?? ""} loading="lazy" /> : <em><AppIcon value="camera" className="mr-1 inline-block size-4 align-[-0.2em]" />{alt || String(src ?? "")}</em>),
+      img: ({ src, alt }) => <VaultImage src={typeof src === "string" ? src : ""} alt={alt ?? ""} from={notePath} />,
     }),
-    [offset, onToggleTask, onWikilink],
+    [offset, onToggleTask, onWikilink, notePath],
   );
 
   return (
@@ -164,6 +195,28 @@ export function Markdown({ source, onToggleTask, onWikilink, className }: {
         </ReactMarkdown>
       </div>
     </div>
+  );
+}
+
+/**
+ * Imagen de la nota: de internet, o un adjunto de la bóveda (`![[foto.png|300]]` o `![](foto.png)`).
+ * «|300» o «|300x200» en el texto alternativo fijan el ancho, como en Obsidian.
+ */
+function VaultImage({ src, alt, from }: { src: string; alt: string; from?: string }) {
+  const m = alt.match(/^(.*?)\|(\d+)(?:x(\d+))?$/);
+  const label = m ? m[1] : alt;
+  const width = m ? Number(m[2]) : undefined;
+  const local = src.startsWith("vault:") ? decode(src.slice(6)) : !hasScheme(src) && src ? decode(src) : null;
+  const url = local !== null ? (from ? vaultFileUrl(local, from) : null) : /^https?:/.test(src) ? src : null;
+  if (!url) {
+    return <em><AppIcon value="camera" className="mr-1 inline-block size-4 align-[-0.2em]" />{label || src}</em>;
+  }
+  return local !== null ? (
+    <a href={url} target="_blank" rel="noreferrer" className="md-image" title={label}>
+      <img src={url} alt={label} loading="lazy" style={width ? { width, maxWidth: "100%" } : undefined} />
+    </a>
+  ) : (
+    <img src={url} alt={label} loading="lazy" style={width ? { width, maxWidth: "100%" } : undefined} />
   );
 }
 

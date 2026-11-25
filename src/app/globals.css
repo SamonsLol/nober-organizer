@@ -337,4 +337,7 @@
 .md-body th { font-weight: 600; background: color-mix(in srgb, var(--ink) 5%, transparent); }
 .md-body hr { margin: 1.4em 0; border: 0; border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); }
 .md-body img { max-width: 100%; border-radius: 10px; }
+.md-body a.md-image { display: inline-block; text-decoration: none; }
+.md-body a.md-attachment { display: inline-flex; align-items: center; padding: 0.1em 0.7em; border-radius: 999px; text-decoration: none; background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.md-body a.md-attachment em { font-style: normal; }
 .md-body .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.2em 0; }

@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, ExternalLink, Loader2, Maximize2, Minimize2, PanelRight, PencilLine, RotateCw, Sparkles, X } from "lucide-react";
+import { BookOpen, ExternalLink, Loader2, Maximize2, Minimize2, PanelRight, Paperclip, PencilLine, RotateCw, Sparkles, X } from "lucide-react";
 import { NoteAi } from "@/components/ai/note-ai";
 import { AppIcon } from "@/components/blocks/icons";
 import { cn } from "@/components/blocks/primitives";
@@ -12,6 +12,7 @@ import { Markdown, toggleTaskAt } from "@/components/notes/markdown";
 import { useVault } from "@/components/notes/vault-context";
 import { readNote, resolveWikilink, saveNote } from "@/lib/actions/notes";
 import { noteName, obsidianUri } from "@/lib/notes";
+import { uploadToVault } from "@/lib/upload-client";
 import { capitalize, fmt } from "@/lib/dates";
 import type { Course, Lecture, TagColor } from "@/lib/types";
 
@@ -244,6 +245,10 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
   const [draft, setDraft] = useState("");
   const [save, setSave] = useState<Save>("saved");
   const [aiOpen, setAiOpen] = useState(false);
+  const [uploading, setUploading] = useState(0);
+  const [dropping, setDropping] = useState(false);
+  const area = useRef<HTMLTextAreaElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
 
   // Referencias para guardar desde temporizadores y al desmontar con el último estado
   const state = useRef({ file, draft, save });
@@ -350,6 +355,62 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
     [doc.path, doc.size],
   );
 
+  /**
+   * Adjunta archivos a la nota: se guardan en la carpeta de adjuntos de la bóveda y se inserta `![[…]]`
+   * donde está el cursor (editando) o al final (leyendo). Así se ven igual en Obsidian.
+   */
+  const attach = async (files: File[]) => {
+    const f = state.current.file;
+    if (!files.length || !f) return;
+    if (state.current.save === "conflict") return toast("Resuelve primero el conflicto con la versión de Obsidian.");
+    setUploading((n) => n + files.length);
+    const embeds: string[] = [];
+    for (const file of files) {
+      const r = await uploadToVault(file, f.path);
+      setUploading((n) => n - 1);
+      if (r.ok) embeds.push(`![[${r.data.target}]]`);
+      else toast(r.error);
+    }
+    if (!embeds.length) return;
+    const text = embeds.join("\n");
+    const cur = state.current.draft;
+    const el = area.current;
+    let next: string;
+    let caret: number | null = null;
+    if (el && document.body.contains(el)) {
+      const a = el.selectionStart ?? cur.length;
+      const b = el.selectionEnd ?? a;
+      const before = cur.slice(0, a);
+      const ins = `${before && !before.endsWith("\n") ? "\n" : ""}${text}\n`;
+      next = before + ins + cur.slice(b);
+      caret = a + ins.length;
+    } else {
+      next = `${cur.replace(/\s*$/, "")}\n\n${text}\n`;
+    }
+    edit(next);
+    if (caret !== null) requestAnimationFrame(() => area.current?.setSelectionRange(caret, caret));
+    toast(embeds.length === 1 ? "Archivo adjuntado a la nota." : `${embeds.length} archivos adjuntados a la nota.`, "ok");
+  };
+
+  const dropProps = vault.canWrite && file
+    ? {
+        onDragOver: (e: DragEvent) => {
+          if (![...e.dataTransfer.types].includes("Files")) return;
+          e.preventDefault();
+          setDropping(true);
+        },
+        onDragLeave: (e: DragEvent) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false);
+        },
+        onDrop: (e: DragEvent) => {
+          if (!e.dataTransfer.files.length) return;
+          e.preventDefault();
+          setDropping(false);
+          attach([...e.dataTransfer.files]);
+        },
+      }
+    : {};
+
   const switchMode = (m: "read" | "edit") => {
     if (m === "read") flush();
     setMode(m);
@@ -391,6 +452,30 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
               <Sparkles className="size-3.5" /> IA
             </button>
           ) : null}
+          {vault.canWrite && file ? (
+            <>
+              <input
+                ref={picker}
+                type="file"
+                multiple
+                hidden
+                onChange={(e) => {
+                  const list = [...(e.target.files ?? [])];
+                  e.target.value = "";
+                  attach(list);
+                }}
+              />
+              <button
+                onClick={() => picker.current?.click()}
+                disabled={uploading > 0 || save === "conflict"}
+                title="Adjuntar archivo (también puedes pegar o arrastrar)"
+                className="flex h-7 items-center gap-1.5 rounded-full bg-ink/[0.07] px-3 text-[12px] text-ink hover:bg-ink/[0.12] disabled:opacity-50"
+              >
+                {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Paperclip className="size-3.5" />}
+                <span className="max-sm:hidden">{uploading ? "Subiendo…" : "Adjuntar"}</span>
+              </button>
+            </>
+          ) : null}
           <button onClick={() => load()} aria-label="Recargar" title="Recargar desde la bóveda" disabled={save === "dirty" || save === "saving"} className="grid size-7 place-items-center rounded-full text-ink/55 hover:bg-ink/[0.07] hover:text-ink disabled:opacity-40">
             <RotateCw className="size-3.5" />
           </button>
@@ -418,7 +503,12 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
         <NoteAi path={file.path} getMtime={() => state.current.file?.mtime} flush={() => flush()} reload={() => load()} onClose={() => setAiOpen(false)} />
       ) : null}
 
-      <div className="relative min-h-0 flex-1 overflow-y-auto">
+      <div className={cn("relative min-h-0 flex-1 overflow-y-auto", dropping && "outline-2 -outline-offset-4 outline-dashed outline-accent")} {...dropProps}>
+        {dropping ? (
+          <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center">
+            <span className="flex items-center gap-1.5 rounded-full bg-ink px-3 py-1 text-[12px] text-paper"><Paperclip className="size-3.5" /> Suelta para adjuntar a la nota</span>
+          </div>
+        ) : null}
         {error ? (
           <div className="grid h-full place-items-center p-6 text-center">
             <div className="max-w-sm text-[13px] leading-relaxed text-ink/70">
@@ -435,8 +525,15 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
           </div>
         ) : mode === "edit" && vault.canWrite ? (
           <textarea
+            ref={area}
             value={draft}
             onChange={(e) => edit(e.target.value)}
+            onPaste={(e) => {
+              const files = [...e.clipboardData.files];
+              if (!files.length) return;
+              e.preventDefault();
+              attach(files);
+            }}
             onBlur={() => flush()}
             onKeyDown={(e) => {
               if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
@@ -451,6 +548,7 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
         ) : (
           <Markdown
             source={draft}
+            notePath={file.path}
             onToggleTask={vault.canWrite ? toggleTask : undefined}
             onWikilink={openWikilink}
             className="px-5 py-5 sm:px-8"

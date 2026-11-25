@@ -338,9 +338,27 @@ model Project {
   position    Int           @default(0)
   createdAt   DateTime      @default(now())
   tasks       Task[]
+  files       ProjectFile[]
 
   @@unique([userId, slug])
   @@index([userId])
+}
+
+/// Archivo adjunto a un proyecto (siempre subido: el contenido está en Upload).
+model ProjectFile {
+  id        String       @id @default(cuid())
+  projectId String
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  kind      ResourceKind
+  /// Tamaño ya formateado ("1,2 MB") para mostrar
+  size      String?
+  position  Int          @default(0)
+  createdAt DateTime     @default(now())
+  uploadId  String       @unique
+  upload    Upload       @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
 }
 
 model TaskStep {
@@ -526,8 +544,9 @@ model Upload {
   size      Int
   key       String    @unique
   createdAt DateTime  @default(now())
-  taskFile  TaskFile?
-  resource  Resource?
+  taskFile    TaskFile?
+  resource    Resource?
+  projectFile ProjectFile?
 
   @@index([userId])
 }

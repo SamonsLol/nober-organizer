@@ -138,6 +138,8 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
   `POST /api/files` (sesión, `MAX_UPLOAD_MB`, lista de tipos en `lib/storage.ts`; HTML/SVG rechazados),
   `GET /api/files/:id` solo para el dueño (nosniff + CSP sandbox). Borrar tarea/recurso/materia borra el disco;
   huérfanos se limpian a las 24 h. Cliente: `uploadFile()` (`lib/upload-client.ts`).
+  Proyectos también tienen archivos (`ProjectFile`, sección «Archivos» en `/projects/[slug]`, `attachProjectFile` /
+  `deleteProjectFile`; borrar el proyecto borra el disco).
 - Apuntes en Obsidian (reemplazó a AFFiNE el 2026-11-23, migración `20261123200000_obsidian`): ver sección «Obsidian».
 - Google Calendar: `lib/google-calendar.ts` (scope `calendar.app.created`, refresh propio del token desde la tabla
   `account`, eventos con `extendedProperties.private.nober` + `nober_hash`, clases como RRULE semanal con EXDATE de
@@ -181,6 +183,10 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
   desde cliente; `<NoteInline>` en /notes y la pestaña Apuntes; `<LectureLink>` = nota o, sin ella, a Clases.
   El editor (`NoteEditor`): Leer (Markdown con GFM, KaTeX, callouts, `[[enlaces]]` resueltos en el servidor, casillas
   que guardan) / Editar (textarea, autoguardado 0,9 s, Ctrl+S, recarga al volver a la pestaña si no hay cambios).
+- Adjuntos en apuntes: botón «Adjuntar» del `NoteEditor`, pegar o arrastrar. `POST /api/vault/attachments` guarda el archivo
+  en la carpeta de adjuntos de Obsidian (`attachmentFolderPath` de `.obsidian/app.json`, o `OBSIDIAN_ATTACHMENTS_FOLDER`),
+  con nombre único en la bóveda, e inserta `![[nombre]]`. El lector muestra imágenes y enlaza PDF/otros con
+  `GET /api/vault/file?target=&from=` (`findAttachment`, misma lista de tipos que `lib/storage.ts`, nunca .md/HTML/SVG).
 - `Markdown` preprocesa línea a línea sin cambiar el número de líneas: las casillas usan la línea de origen
   (`node.position` + líneas de las propiedades) para `toggleTaskAt`. Si se cambia el preproceso, mantenerlo así.
 

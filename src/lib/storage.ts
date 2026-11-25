@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db/prisma";
 import type { ResourceKind } from "@/lib/types";
 
 /**
- * Archivos subidos (tareas y recursos). El contenido vive en disco, fuera de la base:
+ * Archivos subidos (tareas, recursos y proyectos). El contenido vive en disco, fuera de la base:
  *   UPLOAD_DIR/<userId>/<key>
  * En Docker, UPLOAD_DIR es un volumen (/data/uploads). La base guarda nombre, tipo y tamaño (modelo Upload).
  */
@@ -111,7 +111,7 @@ export async function openUpload(userId: string, id: string) {
   return { row, size: info.size, stream: () => createReadStream(file) };
 }
 
-/** Borra filas y archivos en disco. Las filas de TaskFile/Resource ligadas se van en cascada. */
+/** Borra filas y archivos en disco. Las filas de TaskFile/Resource/ProjectFile ligadas se van en cascada. */
 export async function removeUploads(userId: string, ids: string[]) {
   if (!ids.length) return;
   const rows = await prisma.upload.findMany({ where: { userId, id: { in: ids } }, select: { id: true, key: true } });
@@ -123,7 +123,7 @@ export async function removeUploads(userId: string, ids: string[]) {
 export async function pruneOrphanUploads(userId: string) {
   const old = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const orphans = await prisma.upload.findMany({
-    where: { userId, createdAt: { lt: old }, taskFile: null, resource: null },
+    where: { userId, createdAt: { lt: old }, taskFile: null, resource: null, projectFile: null },
     select: { id: true },
   });
   await removeUploads(userId, orphans.map((o) => o.id));
