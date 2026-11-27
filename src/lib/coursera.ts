@@ -161,3 +161,19 @@ export function itemKind(type: string) {
   if (/widget|ungraded|lab|notebook/i.test(type)) return "Práctica";
   return "Actividad";
 }
+
+/** Para cada ítem del curso: su módulo y el índice de su lección dentro del módulo (para ubicar un subrayado). */
+export async function fetchCourseraItemIndex(slug: string) {
+  const mat = await get<Linked<unknown>>(
+    `onDemandCourseMaterials.v2/?q=slug&slug=${encodeURIComponent(slug)}&includes=modules,lessons` +
+      "&fields=onDemandCourseMaterialModules.v1(lessonIds),onDemandCourseMaterialLessons.v1(itemIds)",
+  );
+  const lessons = new Map(((mat.linked?.["onDemandCourseMaterialLessons.v1"] ?? []) as { id: string; itemIds?: string[] }[]).map((l) => [l.id, l.itemIds ?? []]));
+  const out = new Map<string, { moduleId: string; lesson: number }>();
+  for (const m of (mat.linked?.["onDemandCourseMaterialModules.v1"] ?? []) as { id: string; lessonIds?: string[] }[]) {
+    (m.lessonIds ?? []).forEach((lid, lesson) => {
+      for (const iid of lessons.get(lid) ?? []) out.set(iid, { moduleId: m.id, lesson });
+    });
+  }
+  return out;
+}

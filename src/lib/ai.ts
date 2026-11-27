@@ -1,26 +1,57 @@
 import "server-only";
 
 /**
- * IA por API compatible con OpenAI (`/chat/completions`). Por defecto Groq con `openai/gpt-oss-120b`
- * (capa gratuita: ~1.000 solicitudes y 200.000 tokens al día, 8.000 tokens por minuto).
- * Cambiar de proveedor = cambiar AI_BASE_URL / AI_MODEL / AI_API_KEY; no hay SDK de por medio.
+ * IA por API compatible con OpenAI (`/chat/completions`), sin SDK. Proveedores:
+ *  - Groq (por defecto, capa gratuita: ~1.000 solicitudes y 200.000 tokens al día, 8.000 tokens por minuto) con
+ *    `openai/gpt-oss-120b`;
+ *  - OpenAI (de pago) con `gpt-5-mini` por defecto;
+ *  - cualquier otro compatible (OpenRouter, Ollama, LM Studio…) con AI_BASE_URL + AI_MODEL.
+ * El proveedor sale de AI_PROVIDER, o de AI_BASE_URL, o del prefijo de la clave (`gsk_` Groq, `sk-` OpenAI).
  * Las respuestas se piden con esquema JSON estricto (`response_format: json_schema`).
  */
 
 export class AiError extends Error {}
 
-const cfg = () => ({
-  key: process.env.AI_API_KEY?.trim() ?? "",
-  base: (process.env.AI_BASE_URL?.trim() || "https://api.groq.com/openai/v1").replace(/\/+$/, ""),
-  model: process.env.AI_MODEL?.trim() || "openai/gpt-oss-120b",
-  // Los modelos gpt-oss razonan antes de responder; en la capa gratis conviene poco razonamiento
-  reasoning: process.env.AI_REASONING_EFFORT?.trim() || "low",
-});
+type Provider = "groq" | "openai" | "custom";
+
+const PRESETS: Record<Exclude<Provider, "custom">, { base: string; model: string; maxInput: number }> = {
+  groq: { base: "https://api.groq.com/openai/v1", model: "openai/gpt-oss-120b", maxInput: 14_000 },
+  openai: { base: "https://api.openai.com/v1", model: "gpt-5-mini", maxInput: 48_000 },
+};
+
+function provider(key: string, base: string): Provider {
+  const p = process.env.AI_PROVIDER?.trim().toLowerCase();
+  if (p === "groq" || p === "openai" || p === "custom") return p;
+  if (base) return /api\.openai\.com/i.test(base) ? "openai" : /api\.groq\.com/i.test(base) ? "groq" : "custom";
+  if (key.startsWith("gsk_")) return "groq";
+  if (key.startsWith("sk-")) return "openai";
+  return "groq";
+}
+
+const cfg = () => {
+  const key = process.env.AI_API_KEY?.trim() ?? "";
+  const rawBase = process.env.AI_BASE_URL?.trim() ?? "";
+  const p = provider(key, rawBase);
+  const preset = p === "custom" ? PRESETS.groq : PRESETS[p];
+  const model = process.env.AI_MODEL?.trim() || preset.model;
+  return {
+    provider: p,
+    key,
+    base: (rawBase || preset.base).replace(/\/+$/, ""),
+    model,
+    // Modelos que razonan antes de responder (gpt-oss, o1/o3/o4, gpt-5): poco razonamiento basta y es más rápido
+    reasoning: /gpt-oss|(^|\/)o\d|gpt-5/i.test(model) ? process.env.AI_REASONING_EFFORT?.trim() || "low" : "none",
+    maxInput: Number(process.env.AI_MAX_INPUT_CHARS) || preset.maxInput,
+  };
+};
 
 export const aiConfigured = () => Boolean(cfg().key);
 
-/** Límite de entrada: la capa gratuita admite ~8.000 tokens por minuto (entrada + salida). */
-export const AI_MAX_INPUT_CHARS = 14_000;
+/**
+ * Límite de entrada en caracteres: la capa gratuita de Groq admite ~8.000 tokens por minuto (entrada + salida); con
+ * OpenAI cabe mucho más. Se ajusta con AI_MAX_INPUT_CHARS.
+ */
+export const AI_MAX_INPUT_CHARS = cfg().maxInput;
 
 type JsonSchema = Record<string, unknown>;
 
@@ -34,10 +65,11 @@ export async function aiJson<T>(o: { name: string; schema: JsonSchema; system: s
       { role: "system", content: o.system },
       { role: "user", content: o.user },
     ],
-    max_completion_tokens: o.maxTokens ?? 2500,
+    // El razonamiento cuenta dentro de max_completion_tokens: margen extra para que la respuesta no quede cortada
+    max_completion_tokens: (o.maxTokens ?? 2500) + (c.reasoning !== "none" && c.provider !== "groq" ? 2000 : 0),
     response_format: { type: "json_schema", json_schema: { name: o.name, strict: true, schema: o.schema } },
   };
-  if (c.reasoning !== "none" && /gpt-oss/i.test(c.model)) body.reasoning_effort = c.reasoning;
+  if (c.reasoning !== "none") body.reasoning_effort = c.reasoning;
 
   const res = await fetch(`${c.base}/chat/completions`, {
     method: "POST",
@@ -50,14 +82,19 @@ export async function aiJson<T>(o: { name: string; schema: JsonSchema; system: s
 
   if (res.status === 401 || res.status === 403) throw new AiError("El servicio de IA rechazó la clave (AI_API_KEY). Revísala.");
   if (res.status === 429) {
+    const detail = await res.text().catch(() => "");
+    if (/insufficient_quota|billing/i.test(detail)) throw new AiError("La cuenta del servicio de IA no tiene saldo o cupo disponible. Revísala con tu proveedor.");
     const wait = Number(res.headers.get("retry-after"));
     throw new AiError(
       wait && wait < 120
-        ? `Se alcanzó el límite gratuito por minuto. Intenta de nuevo en ${Math.ceil(wait)} s.`
-        : "Se alcanzó el límite gratuito de IA por hoy. Vuelve a intentarlo más tarde.",
+        ? `Se alcanzó el límite de la IA por minuto. Intenta de nuevo en ${Math.ceil(wait)} s.`
+        : c.provider === "groq"
+          ? "Se alcanzó el límite gratuito de IA por hoy. Vuelve a intentarlo más tarde."
+          : "Se alcanzó el límite de uso de la IA. Vuelve a intentarlo en un rato.",
     );
   }
-  if (res.status === 413) throw new AiError("El texto es demasiado largo para la capa gratuita de IA.");
+  if (res.status === 413) throw new AiError("El texto es demasiado largo para el servicio de IA.");
+  if (res.status === 404) throw new AiError(`El servicio de IA no reconoce el modelo «${c.model}» (AI_MODEL) o la dirección (AI_BASE_URL).`);
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     console.error("IA:", res.status, detail.slice(0, 500));

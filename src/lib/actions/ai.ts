@@ -15,7 +15,7 @@ import { VaultError, createNote, readNote, vaultInfo, writeNote } from "@/lib/va
 import { vaultAllowed, vaultUser } from "@/lib/vault-access";
 
 /**
- * Funciones de IA (API gratuita compatible con OpenAI, ver lib/ai.ts). Nada se guarda sin que la persona
+ * Funciones de IA (API compatible con OpenAI: Groq gratis, OpenAI u otra; ver lib/ai.ts). Nada se guarda sin que la persona
  * lo confirme: la IA propone y la app escribe solo al pulsar «Guardar» / «Crear».
  */
 
@@ -40,7 +40,7 @@ async function noteForAi(path: string) {
   const body = note.content.replace(/^---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n/, "").trim();
   if (body.replace(/\s/g, "").length < 40) throw new UserError("El apunte casi no tiene contenido todavía.");
   if (body.length > AI_MAX_INPUT_CHARS) {
-    throw new UserError(`El apunte es muy largo para la IA gratuita (${Math.round(body.length / 1000)} mil caracteres; máximo ${AI_MAX_INPUT_CHARS / 1000} mil). Divídelo en notas más cortas.`);
+    throw new UserError(`El apunte es muy largo para la IA (${Math.round(body.length / 1000)} mil caracteres; máximo ${AI_MAX_INPUT_CHARS / 1000} mil). Divídelo en notas más cortas.`);
   }
   return { ...note, body };
 }

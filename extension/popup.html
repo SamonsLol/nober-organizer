@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><link rel="stylesheet" href="ui.css"><style>body{width:320px;padding:14px}</style></head>
+<body>
+  <h1><img src="icons/icon-192.png" alt=""> Nober</h1>
+  <p id="status" class="muted">Cargando…</p>
+  <div class="card">
+    <b>Tus apuntes</b>
+    <p>Selecciona texto y pulsa <b>✎ Nober</b> (o clic derecho, o <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>): la IA propone qué agregar a tu apunte, o lo guardas en la bandeja para después.</p>
+    <div class="row"><button id="page" class="primary">Extraer apuntes de esta página</button></div>
+    <p class="muted">En un curso de Coursera usa el apunte del módulo que estás viendo.</p>
+  </div>
+  <div class="card">
+    <b>Coursera</b>
+    <p id="sync" class="muted"></p>
+    <div class="row"><button id="syncBtn" class="primary">Sincronizar ahora</button></div>
+  </div>
+  <div class="row"><a id="open" class="btn" target="_blank">Abrir Nober</a><button id="opts">Opciones</button></div>
+  <script src="popup.js"></script>
+</body>
+</html>

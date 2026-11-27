@@ -208,9 +208,12 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
 ## IA (capa gratuita por API)
 
 - `lib/ai.ts`: `aiJson({name, schema, system, user})` contra cualquier API compatible con OpenAI (`/chat/completions`,
-  `response_format: json_schema` estricto). Por defecto Groq + `openai/gpt-oss-120b` (gratis: ~1.000 solicitudes y
-  200.000 tokens/día, 8.000 tokens/min) con `reasoning_effort: low`. Sin SDK. Variables `AI_API_KEY`, `AI_BASE_URL`,
-  `AI_MODEL`, `AI_REASONING_EFFORT`. Errores 401/429/413 → mensajes en español (`AiError`).
+  `response_format: json_schema` estricto). Proveedores (`AI_PROVIDER` o deducido de `AI_BASE_URL` / prefijo de la clave:
+  `gsk_` Groq, `sk-` OpenAI): Groq + `openai/gpt-oss-120b` por defecto (gratis: ~1.000 solicitudes y 200.000 tokens/día,
+  8.000 tokens/min; `AI_MAX_INPUT_CHARS` 14.000), OpenAI + `gpt-5-mini` (48.000), o `custom` (OpenRouter, Ollama…).
+  `reasoning_effort` solo para modelos que razonan (gpt-oss, o*, gpt-5), con margen extra de tokens fuera de Groq. Sin SDK.
+  Variables `AI_API_KEY`, `AI_PROVIDER`, `AI_BASE_URL`, `AI_MODEL`, `AI_REASONING_EFFORT`, `AI_MAX_INPUT_CHARS`.
+  Errores 401/404/429 (saldo agotado de OpenAI incluido)/413 → mensajes en español (`AiError`).
 - Acciones en `lib/actions/ai.ts`: `summarizeNote`, `reviewQuestions`, `suggestTasks` + `createSuggestedTasks`
   (materia/proyecto según la clase o la carpeta de la nota), `addSectionToNote` (llena «## Resumen en tres líneas» si
   está vacío; si no, agrega sección; con control de `mtime`), `planWeek` + `savePlanToVault`
@@ -409,3 +412,32 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   `ReviewButton`). Entradas: iconos por módulo en `StudyCourseSection` (+ «Repasar N» del curso), botones «Tarjetas» y
   «Quiz» en el panel IA del `NoteEditor`, ⌘K «Repasar tarjetas», aviso push en la mañana (`cards:<fecha>` en
   `lib/reminders.ts`) que abre `/?review=1`. Del quiz: «Tarjetas con lo que fallé».
+
+## Extensión del navegador (apuntes con IA, bandeja y Coursera)
+
+- Carpeta `extension/` (Chrome MV3, JS sin compilar): `background.js` (habla con Nober con `Bearer nbr_…`; servidor y clave en
+  `chrome.storage.local`; permiso de host del servidor pedido en Opciones con `optional_host_permissions`, así que no hace falta CORS;
+  mensaje `api` = proxy solo a `/api/ext/*`), `content.js` (en toda página http/https: botón «✎ Nober» al seleccionar, menú
+  contextual —selección o página— y `Alt+Shift+S`; panel en shadow DOM cerrado), `coursera.js` (sincronización del marcador
+  portada: automática al abrir `/learn/…` cada 4 h y «Sincronizar ahora» del popup → `/api/coursera/sync`), `popup.*` («Extraer
+  apuntes de esta página»), `options.*` (código de conexión `<origen>|<clave>`).
+- Panel: «Agregar con IA» (fragmento o página entera, con pedido opcional «¿Qué agregar?») → `/api/ext/integrate` `preview`
+  (la IA propone bloques por sección) → la persona marca/edita → `apply`. «Guardar en bandeja» → `/api/ext/clips`. Destino: en
+  Coursera el apunte del módulo (`courseraContext`: `/lecture/<item>` → módulo y lección con `fetchCourseraItemIndex`;
+  `/home/module/<n>`), si no, proyecto/materia + nota de su carpeta (`/api/ext/notes`) o «Nota nueva» con el título de la página.
+  Lo seleccionado se marca en la página (CSS Custom Highlight API, búsqueda sin espacios; solo consulta páginas donde ya guardó algo).
+- Motor común `lib/note-integrate.ts`: `proposeIntegration` (encabezados exactos de la nota o uno nuevo «## …», máx. 4 secciones,
+  solo lo que dice el material, sin repetir el apunte) y `applyEdits` (inserta al final de cada sección con `insertInSection`
+  de `lib/notes.ts` + «*Fuente: …*»; nunca borra). La IA solo propone: aplicar siempre lo aprueba la persona.
+- Modelo `Highlight` = recorte (`ClipStatus` PENDING/ADDED/DISMISSED, migración `20261128000000_highlights`). Servidor:
+  `lib/highlights.ts` (`extUser`, `courseraContext`, `saveClip`, `extIntegrate`, `extNotes`, `cardsFromText`), `lib/ext-route.ts`.
+- Bandeja en Nober: botón con bandeja y contador en el `NoteEditor` → `ClipTray` (`components/notes/clip-tray.tsx`): «Insertar»
+  (cita `clipQuote` donde está el cursor), varios marcados → «Integrar con IA» (`previewClips`/`applyClips` en
+  `lib/actions/clips.ts`, con control de `mtime`), «Descartar». Los del apunte (mismo módulo o carpeta) primero. En
+  `/projects/[slug]`, sección «Bandeja» (`ProjectHighlights`) con los pendientes del proyecto y sus módulos.
+- Misma clave que el marcador (`Settings.courseraTokenHash`). Ajustes → Integraciones → «Extensión y Coursera» muestra el código y el
+  enlace de descarga. `scripts/zip-extension.mjs` (sin dependencias) arma `public/extension/nober-extension.zip` (ignorado por git)
+  en el `builder` del Dockerfile. Se instala con «Cargar descomprimida» (modo de desarrollador).
+- Probado con Chromium sin interfaz (Playwright + `--load-extension`, shadow DOM abierto solo en la copia de prueba) contra la build
+  standalone, base y bóveda temporales y la IA real. Ojo: `.next/standalone` copia `.env` y `.env.production`; para pruebas pasar
+  `OBSIDIAN_ALLOWED_EMAILS` explícito.

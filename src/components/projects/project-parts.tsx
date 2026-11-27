@@ -12,6 +12,7 @@ import { toast } from "@/components/shell/toast";
 import { createTask, updateTask } from "@/lib/actions/tasks";
 import { attachProjectFile, createProjectNote, deleteProjectFile, toggleVaultTask } from "@/lib/actions/projects";
 import { uploadFile } from "@/lib/upload-client";
+import { setClipStatus } from "@/lib/actions/clips";
 import { capitalize, deadline, fmt, relativeAgo } from "@/lib/dates";
 import { noteName, type VaultTask } from "@/lib/notes";
 import type { Project, ProjectFile, Task } from "@/lib/types";
@@ -346,6 +347,77 @@ export function ProjectFiles({ project, files: initial }: { project: Pick<Projec
         {busy ? <Loader2 className="size-4 animate-spin" /> : <Paperclip className="size-4" />}
         {busy ? `Subiendo${busy > 1 ? ` ${busy} archivos` : ""}…` : "Adjuntar archivo"}
       </button>
+    </div>
+  );
+}
+
+export interface HighlightItem { id: string; text: string; comment: string; url: string; title: string; notePath?: string; label?: string; createdAt: string }
+
+/**
+ * Bandeja del proyecto: recortes guardados con la extensión que aún no se agregan a un apunte. Se agregan desde el
+ * editor del apunte (botón «Bandeja»: a mano o con IA); aquí se pueden descartar.
+ */
+export function ProjectHighlights({ highlights: initial }: { highlights: HighlightItem[] }) {
+  const [list, setList] = useState(initial);
+  useEffect(() => setList(initial), [initial]);
+  const [open, setOpen] = useState(false);
+  const shown = open ? list : list.slice(0, 5);
+
+  async function remove(h: HighlightItem) {
+    setList((l) => l.filter((x) => x.id !== h.id));
+    const r = await setClipStatus(h.id, "DISMISSED");
+    if (!r.ok) {
+      setList((l) => [h, ...l]);
+      toast(r.error);
+    }
+  }
+
+  if (!list.length) {
+    return (
+      <p className="px-1 py-1 text-[12.5px] leading-relaxed text-faint">
+        Vacía. Con la extensión de Nober (Ajustes → Integraciones) selecciona texto en cualquier página y pulsa «Guardar en
+        bandeja»; después lo agregas a tus apuntes desde el botón «Bandeja» del apunte.
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-2">
+        {shown.map((h) => {
+          let host = "";
+          try {
+            host = new URL(h.url).hostname.replace(/^www\./, "");
+          } catch {}
+          return (
+            <li key={h.id} className="group rounded-[14px] bg-surface-2 px-3 py-2.5">
+              <p className="line-clamp-4 border-l-2 border-accent/60 pl-2.5 text-[12.5px] leading-relaxed text-text">{h.text}</p>
+              {h.comment ? <p className="mt-1.5 pl-3 text-[12px] text-muted">{h.comment}</p> : null}
+              <div className="mt-1.5 flex items-center gap-2 pl-3 text-[11.5px] text-faint">
+                {h.label ? <span className="shrink-0 rounded-full bg-pill px-1.5 py-px text-[11px] text-muted">{h.label}</span> : null}
+                <a href={h.url} target="_blank" rel="noreferrer" className="min-w-0 truncate hover:text-text" title={h.title || h.url}>
+                  {h.title || host}
+                </a>
+                <span className="shrink-0">· {relativeAgo(h.createdAt)}</span>
+                <span className="flex-1" />
+                {h.notePath ? <NoteLink path={h.notePath} title={noteName(h.notePath)} label="Abrir el apunte del módulo (botón «Bandeja» para agregarlo)" className="shrink-0 hover:text-text">Agregar al apunte</NoteLink> : null}
+                <button
+                  onClick={() => remove(h)}
+                  aria-label="Descartar recorte"
+                  title="Descartar"
+                  className="grid size-6 shrink-0 place-items-center rounded-full opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 max-sm:opacity-100"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {list.length > 5 ? (
+        <button onClick={() => setOpen((o) => !o)} className="self-start px-1 text-[12px] text-faint hover:text-text">
+          {open ? "Ver menos" : `Ver los ${list.length}`}
+        </button>
+      ) : null}
     </div>
   );
 }
