@@ -62,7 +62,7 @@ export interface StudyDetail {
   slug: string;
   progress?: number;
   syncedAt?: string;
-  modules: { id: string; name: string; position: number; minutes: number; notePath?: string; done: boolean; next?: string }[];
+  modules: { id: string; name: string; position: number; minutes: number; notePath?: string; progress?: number; done: boolean; next?: string }[];
 }
 
 export function StudyCourseSection({ study, color, emoji }: { study: StudyDetail; color: TagColor; emoji: string }) {
@@ -87,6 +87,7 @@ export function StudyCourseSection({ study, color, emoji }: { study: StudyDetail
               <div className={cn("truncate text-[13px]", m.done && "text-faint line-through")}><span className="text-faint">M{m.position + 1}</span> {m.name}</div>
               <div className="text-[11.5px] text-faint">
                 {formatMinutes(m.minutes)}
+                {!m.done && m.progress ? ` · ${m.progress} % en Coursera` : ""}
                 {!m.done && m.next ? ` · próxima sesión ${capitalize(fmt(m.next, "EEE d MMM").replace(".", ""))}` : ""}
               </div>
             </div>

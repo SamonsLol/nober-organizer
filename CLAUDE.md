@@ -376,11 +376,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   `/api/coursera/script` dentro de coursera.org, lee `memberships.v1` y avance con la sesión de la persona (nunca llega
   al servidor) y hace POST a `/api/coursera/sync` con `Bearer nbr_…` (solo se guarda el SHA-256 en
   `Settings.courseraTokenHash`; CORS solo `https://www.coursera.org`). `lib/coursera-sync.ts`: detecta cursos nuevos →
-  push a `/projects?study=<id>`; lee ítems completados con un recorrido tolerante (`completedItemIds`) y da un módulo por
-  terminado si lo calificado está completo y ≥ 80 % de sus ítems. La última respuesta (recortada) queda en
-  `Settings.courseraLastPayload` para ajustar la lectura si Coursera cambia: las direcciones de avance
-  (`onDemandCourseProgress.v1`, `onDemandCourseViewGrades.v1`, `onDemandGuidedCourseWeekCards.v1`) no se han
-  confirmado con una sesión real.
+  push a `/projects?study=<id>`. Avance (formatos confirmados con una cuenta real, nov. 2026):
+  `onDemandCoursesProgress.v1/<uid>~<cid>` → `{overall: %, modules: {<moduleId>: %}, items: {<itemId>: {progressState}}}` y
+  `onDemandHomeProgress.v1/<uid>~<cid>/?fields=modulesCompleted,modulesPassed`. Módulo terminado = 100 % o en esas listas;
+  `StudyModule.progress` guarda el % (migración `20261127010000_study_module_progress`). Si faltaran, se deduce de los ítems
+  (`completedItemIds` + `finishedModules`). La última respuesta (recortada) queda en `Settings.courseraLastPayload`.
+  No existen: `onDemandCourseProgress.v1` ni `onDemandGuidedCourseWeekCards.v1` (responden HTML con 200).
 - UI: `components/study/` (`StudySetupHost` + `openStudySetup(id?)` en el layout, `StudyPending` en /projects
   «Cursos por organizar», `StudyCourseSection` en el proyecto, `CourseraConnect` en Ajustes; ⌘K «Importar curso de
   Coursera»). El `href="javascript:…"` del marcador se pone con `setAttribute` (React lo bloquea en JSX).

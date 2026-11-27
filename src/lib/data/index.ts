@@ -444,7 +444,7 @@ async function projectStudyCourse(projectId: string) {
     modules: c.modules.map((m) => {
       const pending = m.tasks.filter((t) => t.status !== "DONE").sort((a, b) => +a.dueAt - +b.dueAt);
       return {
-        id: m.id, name: m.name, position: m.position, minutes: m.minutes, notePath: m.notePath ?? undefined,
+        id: m.id, name: m.name, position: m.position, minutes: m.minutes, notePath: m.notePath ?? undefined, progress: m.progress ?? undefined,
         done: Boolean(m.completedAt) || (m.tasks.length > 0 && !pending.length),
         next: pending[0]?.dueAt.toISOString(),
       };
