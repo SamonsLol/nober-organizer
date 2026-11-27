@@ -6,6 +6,7 @@ import { Section } from "@/components/blocks/primitives";
 import { EditProjectButton } from "@/components/projects/project-editor";
 import { ProjectFiles, ProjectNotes, QuickTasks, VaultTaskList } from "@/components/projects/project-parts";
 import { ProjectStatusTag } from "@/components/projects/projects-view";
+import { AiPlanButton } from "@/components/ai/ai-planner";
 import { OpenObsidian } from "@/components/notes/open-obsidian";
 import { getProjectDetail } from "@/lib/data";
 import { fmt } from "@/lib/dates";
@@ -51,7 +52,15 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             </div>
           </div>
 
-          <Section title="Tareas" action={<Link href={`/tasks?project=${p.id}`} className="text-[12px] text-faint hover:text-text">Abrir en Tareas →</Link>}>
+          <Section
+            title="Tareas"
+            action={
+              <span className="flex items-center gap-2">
+                <AiPlanButton mode={{ kind: "project", project: { id: p.id, name: p.name, emoji: p.emoji, color: p.color } }} label="Planear con IA" small />
+                <Link href={`/tasks?project=${p.id}`} className="text-[12px] text-faint hover:text-text">Abrir en Tareas →</Link>
+              </span>
+            }
+          >
             <QuickTasks tasks={d.tasks} projectId={p.id} now={d.now} emptyText="Sin tareas pendientes. Agrega la primera abajo." />
           </Section>
 

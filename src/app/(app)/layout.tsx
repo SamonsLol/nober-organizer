@@ -5,6 +5,7 @@ import { CommandMenu } from "@/components/shell/command-menu";
 import { getActiveProjects, getCourses, getCurrentPeriod, getPeriods, getProfile, getVault } from "@/lib/data";
 import { ProjectEditorHost } from "@/components/projects/project-editor";
 import { WeekPlanHost } from "@/components/ai/week-plan";
+import { AiPlannerHost } from "@/components/ai/ai-planner";
 import { NotePanel } from "@/components/notes/note-panel";
 import { VaultProvider } from "@/components/notes/vault-context";
 import { Toaster } from "@/components/shell/toast";
@@ -25,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <CourseEditorHost />
       <ProjectEditorHost />
       <WeekPlanHost />
+      <AiPlannerHost />
       <EventEditorHost courses={courses} />
       <AssessmentEditorHost courses={courses} periods={periods} currentPeriodId={period.id} scale={scale} />
     </div>
