@@ -2,20 +2,22 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Layers, ListChecks, Loader2, MessageCircleQuestion, ScrollText, Trophy, X } from "lucide-react";
+import { Check, Layers, ListChecks, Loader2, MessageCircleQuestion, ScrollText, Trophy, Undo2, WandSparkles, X } from "lucide-react";
 import { openCardMaker, openQuiz } from "@/components/review/review-dialogs";
 import { cn } from "@/components/blocks/primitives";
 import { Markdown } from "@/components/notes/markdown";
 import { toast } from "@/components/shell/toast";
 import {
-  addSectionToNote, createSuggestedTasks, reviewQuestions, suggestTasks, summarizeNote,
-  type NoteSummary, type ReviewQuestions, type SuggestedTask,
+  addSectionToNote, createSuggestedTasks, editNoteWithAi, reviewQuestions, suggestTasks, summarizeNote,
+  type NoteRewrite, type NoteSummary, type ReviewQuestions, type SuggestedTask,
 } from "@/lib/actions/ai";
 import { fmt } from "@/lib/dates";
+import { lineDiff, type DiffOp } from "@/lib/line-diff";
 
-type Mode = "summary" | "questions" | "tasks";
+type Mode = "summary" | "questions" | "tasks" | "edit";
 type State =
   | { mode: Mode; status: "loading" }
+  | { mode: "edit"; status: "done"; data: NoteRewrite; diff: DiffOp[] | null; before: string }
   | { mode: "summary"; status: "done"; data: NoteSummary }
   | { mode: "questions"; status: "done"; data: ReviewQuestions }
   | { mode: "tasks"; status: "done"; data: { tasks: SuggestedTask[]; context: string } };
@@ -32,8 +34,12 @@ const PRIORITY = { HIGH: "Alta", MEDIUM: "Media", LOW: "Baja" } as const;
  * Herramientas de IA para el apunte abierto. La IA propone; solo se escribe en la nota o se crean tareas
  * cuando la persona lo confirma.
  */
-export function NoteAi({ path, getMtime, flush, reload, onClose }: {
+export function NoteAi({ path, getMtime, flush, reload, onClose, getContent, replaceContent }: {
   path: string;
+  /** Contenido actual del editor (para comparar y deshacer). */
+  getContent: () => string;
+  /** Reemplaza el apunte en el editor y lo guarda. */
+  replaceContent: (content: string) => void;
   getMtime: () => number | undefined;
   /** Guarda lo pendiente del editor antes de leer o escribir la nota. */
   flush: () => Promise<void>;
@@ -44,6 +50,31 @@ export function NoteAi({ path, getMtime, flush, reload, onClose }: {
   const [state, setState] = useState<State | null>(null);
   const [busy, setBusy] = useState(false);
   const [picked, setPicked] = useState<boolean[]>([]);
+  const [ask, setAsk] = useState("");
+  const [undo, setUndo] = useState<string | null>(null);
+
+  async function proposeEdit() {
+    if (ask.trim().length < 3) return toast("Escribe qué cambio quieres en el apunte.");
+    await flush();
+    setUndo(null);
+    setState({ mode: "edit", status: "loading" });
+    const before = getContent();
+    const r = await editNoteWithAi({ path, instruction: ask.trim() });
+    if (!r.ok) {
+      setState(null);
+      return toast(r.error);
+    }
+    setState({ mode: "edit", status: "done", data: r.data, diff: lineDiff(before, r.data.content), before });
+  }
+
+  function applyEdit(data: NoteRewrite, before: string) {
+    if (getContent() !== before) return toast("El apunte cambió mientras tanto. Vuelve a pedir el cambio.");
+    replaceContent(data.content);
+    setUndo(before);
+    setState(null);
+    setAsk("");
+    toast("Cambios aplicados al apunte.", "ok");
+  }
 
   async function run(mode: Mode) {
     await flush();
@@ -85,6 +116,40 @@ export function NoteAi({ path, getMtime, flush, reload, onClose }: {
 
   return (
     <div className="border-b border-ink/10 bg-ink/[0.035] px-3 py-2">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (state?.status !== "loading") proposeEdit();
+        }}
+        className="mb-2 flex items-center gap-1.5"
+      >
+        <input
+          value={ask}
+          onChange={(e) => setAsk(e.target.value)}
+          placeholder="Pídele un cambio: ordénalo en secciones, agrega un ejemplo, corrige la ortografía…"
+          aria-label="Cambio que quieres en el apunte"
+          className="h-8 min-w-0 flex-1 rounded-full bg-paper px-3 text-[12.5px] text-ink outline-none ring-1 ring-ink/10 placeholder:text-ink/40 focus:ring-ink/25"
+        />
+        <button type="submit" disabled={state?.status === "loading" || ask.trim().length < 3} className="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-ink px-3 text-[12px] text-paper hover:bg-ink/85 disabled:opacity-40">
+          {state?.mode === "edit" && state.status === "loading" ? <Loader2 className="size-3.5 animate-spin" /> : <WandSparkles className="size-3.5" />}
+          Proponer
+        </button>
+      </form>
+      {undo !== null ? (
+        <div className="mb-2 flex items-center gap-2 rounded-[10px] bg-paper px-3 py-1.5 text-[12px] text-ink/70 shadow-[0_0_0_1px_rgb(0_0_0/0.06)]">
+          <Check className="size-3.5" /> Cambios aplicados.
+          <button
+            onClick={() => {
+              replaceContent(undo);
+              setUndo(null);
+              toast("Se deshicieron los cambios.", "ok");
+            }}
+            className="ml-auto flex h-6 items-center gap-1 rounded-full bg-ink/[0.07] px-2.5 hover:bg-ink/[0.12]"
+          >
+            <Undo2 className="size-3.5" /> Deshacer
+          </button>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-1.5">
         {ACTIONS.map(({ id, label, icon: Icon }) => (
           <button
@@ -112,12 +177,19 @@ export function NoteAi({ path, getMtime, flush, reload, onClose }: {
       </div>
 
       {state?.status === "loading" ? (
-        <p className="px-1 pt-2 text-[12px] text-ink/60">La IA está leyendo el apunte… (unos segundos)</p>
+        <p className="px-1 pt-2 text-[12px] text-ink/60">{state.mode === "edit" ? "La IA está editando el apunte… (puede tardar un poco)" : "La IA está leyendo el apunte… (unos segundos)"}</p>
       ) : null}
 
       {state?.status === "done" ? (
         <div className="mt-2 max-h-[45vh] overflow-y-auto rounded-[12px] bg-paper p-3 text-[13px] text-ink shadow-[0_0_0_1px_rgb(0_0_0/0.06)]">
-          {state.mode === "summary" ? (
+          {state.mode === "edit" ? (
+            <EditPreview
+              data={state.data}
+              diff={state.diff}
+              onApply={() => applyEdit(state.data, state.before)}
+              onDiscard={() => setState(null)}
+            />
+          ) : state.mode === "summary" ? (
             <>
               <p className="leading-relaxed">{state.data.summary}</p>
               {state.data.keyPoints.length ? (
@@ -215,4 +287,61 @@ function Actions({ busy, primary, disabled, onPrimary, onDiscard }: { busy: bool
 /** Texto corto con fórmulas ($…$) y negritas, sin márgenes de párrafo. */
 function InlineMd({ text }: { text: string }) {
   return <Markdown source={text} className="inline [&_.md-body]:inline [&_.md-body_p]:my-0 [&_.md-body_p]:inline [&_.md-body]:text-[13px]" />;
+}
+
+/** Lo que cambiaría: líneas quitadas en rojo, agregadas en verde; lo igual se resume (2 líneas de contexto). */
+function EditPreview({ data, diff, onApply, onDiscard }: { data: NoteRewrite; diff: DiffOp[] | null; onApply: () => void; onDiscard: () => void }) {
+  const [all, setAll] = useState(false);
+  const added = diff?.filter((d) => d.type === "add").length ?? 0;
+  const removed = diff?.filter((d) => d.type === "del").length ?? 0;
+  const rows: (DiffOp | { type: "gap"; count: number })[] = [];
+  if (diff) {
+    const near = (i: number) => diff.slice(Math.max(0, i - 2), i + 3).some((d) => d.type !== "same");
+    let gap = 0;
+    diff.forEach((d, i) => {
+      if (all || d.type !== "same" || near(i)) {
+        if (gap) rows.push({ type: "gap", count: gap });
+        gap = 0;
+        rows.push(d);
+      } else gap++;
+    });
+    if (gap) rows.push({ type: "gap", count: gap });
+  }
+  return (
+    <>
+      <p className="leading-relaxed">{data.summary}</p>
+      {!data.changed ? (
+        <p className="mt-2 text-ink/60">La IA no cambió nada.</p>
+      ) : diff ? (
+        <>
+          <p className="mt-1.5 text-[11.5px] text-ink/50">
+            <span className="text-[var(--color-success)]">+{added}</span> · <span className="text-[var(--color-danger)]">−{removed}</span> líneas
+            <button onClick={() => setAll((v) => !v)} className="ml-2 underline-offset-2 hover:underline">{all ? "Solo cambios" : "Ver todo"}</button>
+          </p>
+          <pre className="mt-1.5 max-h-[38vh] overflow-auto rounded-[10px] bg-ink/[0.04] py-1.5 font-mono text-[11.5px] leading-relaxed">
+            {rows.map((r, i) =>
+              r.type === "gap" ? (
+                <div key={i} className="px-3 text-ink/35">··· {r.count} {r.count === 1 ? "línea igual" : "líneas iguales"}</div>
+              ) : (
+                <div
+                  key={i}
+                  className={cn(
+                    "whitespace-pre-wrap break-words px-3",
+                    r.type === "add" && "bg-[color-mix(in_srgb,var(--color-success)_16%,transparent)]",
+                    r.type === "del" && "bg-[color-mix(in_srgb,var(--color-danger)_14%,transparent)] text-ink/55 line-through",
+                  )}
+                >
+                  <span className="mr-2 select-none text-ink/35">{r.type === "add" ? "+" : r.type === "del" ? "−" : " "}</span>
+                  {r.text || " "}
+                </div>
+              ),
+            )}
+          </pre>
+        </>
+      ) : (
+        <Markdown source={data.content} className="mt-2 max-h-[38vh] overflow-auto" />
+      )}
+      <Actions busy={false} primary={data.changed ? "Aplicar cambios" : undefined} onPrimary={onApply} onDiscard={onDiscard} />
+    </>
+  );
 }
