@@ -22,7 +22,7 @@ ARG NEXT_PUBLIC_SOURCE_URL
 ENV NEXT_PUBLIC_SOURCE_URL=$NEXT_PUBLIC_SOURCE_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx prisma generate && npm run build
+RUN node scripts/zip-extension.mjs && npx prisma generate && npm run build
 
 # ── Migraciones: corre una vez y termina (compose arranca la app después) ──
 FROM builder AS migrate

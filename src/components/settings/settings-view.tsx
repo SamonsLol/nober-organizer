@@ -234,9 +234,9 @@ export function SettingsView({ data }: { data: SettingsData }) {
             />
             {data.coursera ? (
               <Integration
-                name="Coursera"
+                name="Extensión y Coursera"
                 emoji="graduation-cap"
-                status={<Tag color={data.coursera.active ? "green" : "gray"}>{data.coursera.active ? "Marcador activo" : "Desactivado"}</Tag>}
+                status={<Tag color={data.coursera.active ? "green" : "gray"}>{data.coursera.active ? "Clave activa" : "Desactivado"}</Tag>}
                 body={<CourseraConnect status={data.coursera} />}
                 action={null}
               />

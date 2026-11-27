@@ -519,7 +519,29 @@ export async function getProjectDetail(slug: string) {
         id: f.id, name: f.name, kind: f.kind, size: f.size ?? undefined, url: `/api/files/${f.uploadId}`, createdAt: f.createdAt.toISOString(),
       }))
     : [];
-  return { now: d.now, vault, project, tasks, files, study: await projectStudy(project.id), ...(await projectObsidian(project, vault)) };
+  // Bandeja: recortes de la extensión ligados al proyecto o a sus módulos, aún sin agregar a un apunte
+  const highlights = hasDatabase()
+    ? (
+        await prisma.highlight.findMany({
+          where: { status: "PENDING", OR: [{ projectId: project.id }, { studyModule: { course: { projectId: project.id } } }] },
+          include: { studyModule: { select: { position: true, notePath: true, course: { select: { programIndex: true, programTotal: true } } } } },
+          orderBy: { createdAt: "desc" },
+          take: 40,
+        })
+      ).map((h) => ({
+        id: h.id,
+        text: h.text,
+        comment: h.comment,
+        url: h.url,
+        title: h.title,
+        notePath: h.studyModule?.notePath ?? undefined,
+        label: h.studyModule
+          ? `${h.studyModule.course.programIndex != null && h.studyModule.course.programTotal ? `C${h.studyModule.course.programIndex + 1} · ` : ""}M${h.studyModule.position + 1}`
+          : undefined,
+        createdAt: h.createdAt.toISOString(),
+      }))
+    : [];
+  return { now: d.now, vault, project, tasks, files, highlights, study: await projectStudy(project.id), ...(await projectObsidian(project, vault)) };
 }
 
 export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;

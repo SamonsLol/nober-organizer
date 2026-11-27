@@ -45,6 +45,7 @@ model User {
   studyCourses  StudyCourse[]
   flashcards    Flashcard[]
   quizAttempts  QuizAttempt[]
+  highlights    Highlight[]
 
   @@map("user")
 }
@@ -266,6 +267,7 @@ model Course {
   lectures        Lecture[]
   events          CalendarEvent[]
   resources       Resource[]
+  highlights      Highlight[]
 
   @@unique([userId, slug])
 }
@@ -352,6 +354,7 @@ model Project {
   tasks       Task[]
   files       ProjectFile[]
   studyCourses StudyCourse[]
+  highlights  Highlight[]
 
   @@unique([userId, slug])
   @@index([userId])
@@ -677,6 +680,7 @@ model StudyModule {
   tasks       Task[]
   flashcards  Flashcard[]
   quizzes     QuizAttempt[]
+  highlights  Highlight[]
 
   @@unique([courseId, externalId])
   @@index([courseId])
@@ -724,5 +728,41 @@ model QuizAttempt {
   createdAt     DateTime     @default(now())
 
   @@index([userId])
+  @@index([studyModuleId])
+}
+
+enum ClipStatus {
+  PENDING
+  ADDED
+  DISMISSED
+}
+
+/// Recorte de una página (texto seleccionado) guardado con la extensión de Nober: queda en la bandeja (PENDING)
+/// hasta que se agrega a un apunte (a mano o con IA) o se descarta.
+model Highlight {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text          String
+  /// Comentario propio (opcional)
+  comment       String       @default("")
+  /// Página de origen, sin el #fragmento
+  url           String
+  title         String       @default("")
+  projectId     String?
+  project       Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  courseId      String?
+  course        Course?      @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  studyModuleId String?
+  studyModule   StudyModule? @relation(fields: [studyModuleId], references: [id], onDelete: SetNull)
+  status        ClipStatus   @default(PENDING)
+  /// Nota de la bóveda donde se agregó
+  notePath      String?
+  addedAt       DateTime?
+  createdAt     DateTime     @default(now())
+
+  @@index([userId, url])
+  @@index([userId, status])
+  @@index([projectId])
   @@index([studyModuleId])
 }

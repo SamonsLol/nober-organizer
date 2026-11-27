@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Nober · Opciones</title><link rel="stylesheet" href="ui.css"><style>body{max-width:560px;margin:40px auto;padding:0 16px}</style></head>
+<body>
+  <h1><img src="icons/icon-192.png" alt=""> Conectar con Nober</h1>
+  <div class="card">
+    <ol>
+      <li>En Nober, abre <b>Ajustes → Integraciones → Extensión y Coursera</b> y pulsa «Crear clave».</li>
+      <li>Copia el <b>código de conexión</b> y pégalo aquí.</li>
+    </ol>
+    <input id="code" placeholder="https://tu-nober.com|nbr_…" autocomplete="off" spellcheck="false">
+    <div class="row"><button id="connect" class="primary">Conectar</button><button id="disconnect">Desconectar</button></div>
+    <p id="msg"></p>
+  </div>
+  <div class="card">
+    <p class="muted">La extensión solo habla con tu servidor de Nober. En Coursera lee tus cursos y tu avance con tu sesión, desde tu navegador:
+      la sesión nunca se envía. Los subrayados se guardan en Nober y en tu bóveda de Obsidian. Atajo: <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>
+      (se cambia en chrome://extensions/shortcuts).</p>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>
