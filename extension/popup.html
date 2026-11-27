@@ -1,21 +1,73 @@
 <!doctype html>
 <html lang="es">
-<head><meta charset="utf-8"><link rel="stylesheet" href="ui.css"><style>body{width:320px;padding:14px}</style></head>
+<head><meta charset="utf-8"><link rel="stylesheet" href="ui.css">
+<style>
+  body { width: 360px; padding: 14px; }
+  textarea { width: 100%; min-height: 84px; border: 1px solid rgba(255,255,255,.1); background: #26232f; color: #f4f2fb; border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 12.5px; resize: vertical; }
+  select { width: 100%; height: 34px; border: 1px solid rgba(255,255,255,.1); background: #26232f; color: #f4f2fb; border-radius: 10px; padding: 0 8px; font: inherit; font-size: 12.5px; }
+  select + select { margin-top: 6px; }
+  label { display: block; color: #a9a5bd; font-size: 11.5px; margin: 9px 0 4px; }
+  .check { display: flex; gap: 8px; align-items: center; color: #d9d5ea; font-size: 12.5px; margin-top: 9px; cursor: pointer; }
+  .dest { padding: 7px 9px; border-radius: 10px; background: rgba(167,139,250,.12); color: #d9cffd; font-size: 12px; }
+  .edit { margin-top: 8px; padding: 8px 9px; border-radius: 12px; background: rgba(255,255,255,.04); }
+  .edit-h { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 12.5px; color: #e6defe; }
+  .edit textarea { margin-top: 6px; min-height: 90px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; }
+  .tag { font-weight: 500; font-size: 10.5px; padding: 1px 6px; border-radius: 999px; background: rgba(167,139,250,.2); color: #d9cffd; }
+  .hidden { display: none !important; }
+  .row.end { justify-content: flex-end; }
+</style></head>
 <body>
   <h1><img src="icons/icon-192.png" alt=""> Nober</h1>
   <p id="status" class="muted">Cargando…</p>
-  <div class="card">
-    <b>Tus apuntes</b>
-    <p>Selecciona texto y pulsa <b>✎ Nober</b> (o clic derecho, o <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>): la IA propone qué agregar a tu apunte, o lo guardas en la bandeja para después.</p>
-    <div class="row"><button id="page" class="primary">Extraer apuntes de esta página</button></div>
-    <p class="muted">En un curso de Coursera usa el apunte del módulo que estás viendo.</p>
+
+  <!-- Inicio -->
+  <div id="home">
+    <div class="card">
+      <b>Apunte rápido</b>
+      <p class="muted" style="margin-top:2px">Escribe una idea o algo que aprendiste; la IA lo desarrolla y lo agrega a tu apunte.</p>
+      <textarea id="note" placeholder="Ej.: el hash con sal evita ataques de tablas arcoíris porque…"></textarea>
+      <div class="row end"><button id="noteInbox">Guardar en bandeja</button><button id="noteGo" class="primary">Agregar con IA</button></div>
+      <p id="noteErr" class="err"></p>
+    </div>
+    <div class="card">
+      <b>De esta página</b>
+      <p>Selecciona texto y pulsa <b>✎ Nober</b> (o clic derecho, o <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>).</p>
+      <div class="row"><button id="page">Extraer apuntes de esta página</button></div>
+    </div>
+    <div class="card">
+      <b>Coursera</b>
+      <p id="sync" class="muted"></p>
+      <div class="row"><button id="syncBtn">Sincronizar ahora</button></div>
+    </div>
+    <div class="row"><a id="open" class="btn" target="_blank">Abrir Nober</a><button id="opts">Opciones</button></div>
   </div>
-  <div class="card">
-    <b>Coursera</b>
-    <p id="sync" class="muted"></p>
-    <div class="row"><button id="syncBtn" class="primary">Sincronizar ahora</button></div>
+
+  <!-- Destino -->
+  <div id="destView" class="card hidden">
+    <b>¿En qué apunte?</b>
+    <div id="destWrap" style="margin-top:6px"></div>
+    <label>¿Algo más? (opcional)</label>
+    <input type="text" id="instr" placeholder="Ej.: con un ejemplo en Python · en 3 puntos">
+    <label class="check" id="cardsWrap"><input type="checkbox" id="cards"> Crear también tarjetas de repaso</label>
+    <p id="destErr" class="err"></p>
+    <div class="row end"><button id="destBack">Atrás</button><button id="destGo" class="primary">Ver propuesta</button></div>
   </div>
-  <div class="row"><a id="open" class="btn" target="_blank">Abrir Nober</a><button id="opts">Opciones</button></div>
+
+  <!-- Propuesta -->
+  <div id="prevView" class="card hidden">
+    <b id="prevTitle"></b>
+    <p id="prevSummary" class="muted"></p>
+    <div id="edits"></div>
+    <p id="prevErr" class="err"></p>
+    <div class="row end"><button id="prevBack">Atrás</button><button id="apply" class="primary">Agregar al apunte</button></div>
+  </div>
+
+  <!-- Listo -->
+  <div id="doneView" class="card hidden">
+    <p id="doneMsg"></p>
+    <div class="row end"><button id="again" class="primary">Otro apunte</button></div>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

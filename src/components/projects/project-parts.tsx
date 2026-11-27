@@ -394,9 +394,13 @@ export function ProjectHighlights({ highlights: initial }: { highlights: Highlig
               {h.comment ? <p className="mt-1.5 pl-3 text-[12px] text-muted">{h.comment}</p> : null}
               <div className="mt-1.5 flex items-center gap-2 pl-3 text-[11.5px] text-faint">
                 {h.label ? <span className="shrink-0 rounded-full bg-pill px-1.5 py-px text-[11px] text-muted">{h.label}</span> : null}
-                <a href={h.url} target="_blank" rel="noreferrer" className="min-w-0 truncate hover:text-text" title={h.title || h.url}>
-                  {h.title || host}
-                </a>
+                {h.url ? (
+                  <a href={h.url} target="_blank" rel="noreferrer" className="min-w-0 truncate hover:text-text" title={h.title || h.url}>
+                    {h.title || host}
+                  </a>
+                ) : (
+                  <span className="min-w-0 truncate">Apunte escrito</span>
+                )}
                 <span className="shrink-0">· {relativeAgo(h.createdAt)}</span>
                 <span className="flex-1" />
                 {h.notePath ? <NoteLink path={h.notePath} title={noteName(h.notePath)} label="Abrir el apunte del módulo (botón «Bandeja» para agregarlo)" className="shrink-0 hover:text-text">Agregar al apunte</NoteLink> : null}

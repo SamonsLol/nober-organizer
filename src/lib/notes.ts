@@ -166,7 +166,8 @@ export function mdLink(title: string, url: string) {
 
 /** Recorte como cita de Obsidian (para insertarlo a mano desde la bandeja). */
 export function clipQuote(c: { text: string; comment?: string; url: string; title: string }) {
-  const lines = [`> [!quote] ${mdLink(c.title, c.url)}`, ...c.text.split(/\r?\n/).filter((l) => l.trim()).map((l) => `> ${l.trim()}`)];
+  const head = c.url ? `> [!quote] ${mdLink(c.title, c.url)}` : "> [!note] Apunte rápido";
+  const lines = [head, ...c.text.split(/\r?\n/).filter((l) => l.trim()).map((l) => `> ${l.trim()}`)];
   if (c.comment) lines.push("", c.comment);
   return lines.join("\n");
 }
