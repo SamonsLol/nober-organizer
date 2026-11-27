@@ -7,6 +7,7 @@ import { EditProjectButton } from "@/components/projects/project-editor";
 import { ProjectFiles, ProjectNotes, QuickTasks, VaultTaskList } from "@/components/projects/project-parts";
 import { ProjectStatusTag } from "@/components/projects/projects-view";
 import { AiPlanButton } from "@/components/ai/ai-planner";
+import { StudyCourseSection } from "@/components/study/study-parts";
 import { OpenObsidian } from "@/components/notes/open-obsidian";
 import { getProjectDetail } from "@/lib/data";
 import { fmt } from "@/lib/dates";
@@ -51,6 +52,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
               <span className="tabular-nums">{pct} %</span>
             </div>
           </div>
+
+          {d.study ? (
+            <Section title={`Curso${d.study.partner ? ` · ${d.study.partner}` : ""}`}>
+              <StudyCourseSection study={d.study} color={p.color} emoji={p.emoji} />
+            </Section>
+          ) : null}
 
           <Section
             title="Tareas"

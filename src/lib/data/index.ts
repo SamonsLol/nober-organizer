@@ -410,6 +410,48 @@ async function projectObsidian(p: Project, vault: VaultStatus) {
 
 const byDue = (a: { dueAt: string }, b: { dueAt: string }) => +toDate(a.dueAt) - +toDate(b.dueAt);
 
+/** Cursos en línea detectados o importados que falta organizar. */
+async function pendingStudyCourses() {
+  if (!hasDatabase()) return [];
+  const userId = await requireUserId();
+  const rows = await prisma.studyCourse.findMany({
+    where: { userId, OR: [{ status: "DETECTED" }, { status: "PLANNED", projectId: null }] },
+    include: { modules: { select: { minutes: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map((c) => ({ id: c.id, name: c.name, partner: c.partner ?? undefined, modules: c.modules.length, minutes: c.modules.reduce((a, m) => a + m.minutes, 0) }));
+}
+
+async function getCourseraStatus() {
+  if (!hasDatabase()) return null;
+  const userId = await requireUserId();
+  const s = await prisma.settings.findUnique({ where: { userId }, select: { courseraTokenHash: true, courseraSyncedAt: true } });
+  const courses = await prisma.studyCourse.count({ where: { userId, provider: "coursera", status: { not: "IGNORED" } } });
+  return { active: Boolean(s?.courseraTokenHash), syncedAt: s?.courseraSyncedAt?.toISOString() ?? null, courses };
+}
+
+/** Curso en línea ligado a un proyecto: módulos, avance y notas. */
+async function projectStudyCourse(projectId: string) {
+  if (!hasDatabase()) return null;
+  const c = await prisma.studyCourse.findUnique({
+    where: { projectId },
+    include: { modules: { orderBy: { position: "asc" }, include: { tasks: { select: { status: true, dueAt: true } } } } },
+  });
+  if (!c) return null;
+  return {
+    id: c.id, name: c.name, partner: c.partner ?? undefined, slug: c.slug, status: c.status, progress: c.progress ?? undefined,
+    syncedAt: c.syncedAt?.toISOString(),
+    modules: c.modules.map((m) => {
+      const pending = m.tasks.filter((t) => t.status !== "DONE").sort((a, b) => +a.dueAt - +b.dueAt);
+      return {
+        id: m.id, name: m.name, position: m.position, minutes: m.minutes, notePath: m.notePath ?? undefined,
+        done: Boolean(m.completedAt) || (m.tasks.length > 0 && !pending.length),
+        next: pending[0]?.dueAt.toISOString(),
+      };
+    }),
+  };
+}
+
 export async function getProjectsPage() {
   const d = await db();
   const vault = await getVault();
@@ -433,6 +475,7 @@ export async function getProjectsPage() {
     projects: cards,
     // «Otras actividades»: tareas sin materia ni proyecto
     personal: d.tasks.filter((t) => !t.courseId && !t.projectId && t.status !== "DONE").sort(byDue),
+    studyPending: await pendingStudyCourses(),
   };
 }
 
@@ -449,7 +492,7 @@ export async function getProjectDetail(slug: string) {
         id: f.id, name: f.name, kind: f.kind, size: f.size ?? undefined, url: `/api/files/${f.uploadId}`, createdAt: f.createdAt.toISOString(),
       }))
     : [];
-  return { now: d.now, vault, project, tasks, files, ...(await projectObsidian(project, vault)) };
+  return { now: d.now, vault, project, tasks, files, study: await projectStudyCourse(project.id), ...(await projectObsidian(project, vault)) };
 }
 
 export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
@@ -531,6 +574,7 @@ export async function getSettings() {
     vault: await getVault(),
     google: await getGoogleStatus(),
     push: await getPushStatus(),
+    coursera: await getCourseraStatus(),
   };
 }
 

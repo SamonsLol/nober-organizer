@@ -9,6 +9,7 @@ import { saveSettings } from "@/lib/actions/settings";
 import { signOut } from "@/lib/auth-client";
 import { GoogleConnect } from "@/components/settings/google-connect";
 import { PushSettings } from "@/components/settings/push-settings";
+import { CourseraConnect } from "@/components/study/study-parts";
 import { OpenObsidian } from "@/components/notes/open-obsidian";
 import { AppIcon } from "@/components/blocks/icons";
 import { Tag, cn } from "@/components/blocks/primitives";
@@ -230,6 +231,15 @@ export function SettingsView({ data }: { data: SettingsData }) {
               body={<GoogleConnect status={data.google} />}
               action={null}
             />
+            {data.coursera ? (
+              <Integration
+                name="Coursera"
+                emoji="graduation-cap"
+                status={<Tag color={data.coursera.active ? "green" : "gray"}>{data.coursera.active ? "Marcador activo" : "Desactivado"}</Tag>}
+                body={<CourseraConnect status={data.coursera} />}
+                action={null}
+              />
+            ) : null}
           </div>
         </Panel>
 

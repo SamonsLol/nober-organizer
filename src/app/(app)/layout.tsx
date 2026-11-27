@@ -6,6 +6,7 @@ import { getActiveProjects, getCourses, getCurrentPeriod, getPeriods, getProfile
 import { ProjectEditorHost } from "@/components/projects/project-editor";
 import { WeekPlanHost } from "@/components/ai/week-plan";
 import { AiPlannerHost } from "@/components/ai/ai-planner";
+import { StudySetupHost } from "@/components/study/study-setup";
 import { NotePanel } from "@/components/notes/note-panel";
 import { VaultProvider } from "@/components/notes/vault-context";
 import { Toaster } from "@/components/shell/toast";
@@ -27,6 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <ProjectEditorHost />
       <WeekPlanHost />
       <AiPlannerHost />
+      <StudySetupHost />
       <EventEditorHost courses={courses} />
       <AssessmentEditorHost courses={courses} periods={periods} currentPeriodId={period.id} scale={scale} />
     </div>
