@@ -33,8 +33,12 @@ todo en un solo lugar. Interfaz en español (formato es-CO), modo oscuro y claro
   También «Otras actividades pendientes» para lo que no es de ninguna materia ni proyecto, y archivos adjuntos por proyecto.
 - **Cursos en línea (Coursera)**: importa un curso con su enlace (o un programa completo, p. ej. un certificado de 6
   cursos) y elige cuánto estudias cada día. Nober arma las sesiones **por lección** con el tiempo que estima Coursera
-  (los pasos de cada sesión son sus videos y lecturas), crea una nota por módulo en Obsidian y, con un marcador del
-  navegador, detecta los cursos que empiezas y marca lo que ya completaste.
+  (los pasos de cada sesión son sus videos y lecturas), crea una nota por módulo en Obsidian y, con la extensión del
+  navegador (o un marcador), detecta los cursos que empiezas y marca lo que ya completaste.
+- **Extensión del navegador (Chrome)**: selecciona texto en cualquier página —o usa la página entera— y la IA propone
+  qué agregar a tus apuntes y en qué sección (lo revisas y editas antes de aplicarlo); o guarda el recorte en la
+  **bandeja** y agrégalo después desde el editor del apunte, a mano o con IA. En un curso de Coursera usa el apunte del
+  módulo y la lección que estás viendo.
 - **Repaso**: tarjetas con repetición espaciada (Otra vez / Difícil / Bien / Fácil) y quiz de práctica de opción
   múltiple, generados con IA desde tus apuntes o desde el temario de un módulo; lo que fallas en el quiz se vuelve tarjeta.
 - **Calificaciones**: escala configurable (1.0–5.0 por defecto, aprueba con 3.0), períodos con peso, notas «sobre»
@@ -91,15 +95,18 @@ En iPhone/iPad funcionan con la app instalada en la pantalla de inicio (iOS 16.4
 Con `AI_API_KEY` aparecen **Resumir**, **Preguntas de repaso**, **Convertir en tareas**, **Tarjetas** y **Quiz** en el
 panel de cada apunte; **Plan de la semana**; **Proyecto con IA** (una idea → proyecto con su plan de tareas), **Planear
 con IA** en cada proyecto, **Tareas con IA** (texto libre → tareas con fecha, prioridad y materia) y **Desglosar con IA**
-(pasos de una tarea). Usa cualquier API compatible con OpenAI que admita respuestas con esquema
-JSON; por defecto [Groq](https://console.groq.com) con `openai/gpt-oss-120b`, que tiene capa gratuita. La IA solo
-propone: nada se escribe en tus notas ni se crean tareas sin confirmarlo. El contenido del apunte se envía al proveedor.
+(pasos de una tarea), y «Agregar a mis apuntes» desde la extensión o la bandeja. Funciona con
+[Groq](https://console.groq.com) (capa gratuita, `openai/gpt-oss-120b`), [OpenAI](https://platform.openai.com)
+(`gpt-5-mini`) o cualquier API compatible con OpenAI que admita respuestas con esquema JSON. La IA solo propone: nada se
+escribe en tus notas ni se crean tareas sin confirmarlo. El contenido del apunte se envía al proveedor.
 
 | Variable | Qué es |
 | --- | --- |
-| `AI_API_KEY` | Clave del proveedor (vacía = sin IA) |
-| `AI_BASE_URL` | URL base compatible con OpenAI (por defecto `https://api.groq.com/openai/v1`) |
-| `AI_MODEL` | Modelo (por defecto `openai/gpt-oss-120b`) |
+| `AI_API_KEY` | Clave del proveedor (vacía = sin IA). El proveedor se deduce de ella: `gsk_…` Groq, `sk-…` OpenAI |
+| `AI_PROVIDER` | Opcional: `groq`, `openai` o `custom` (otra API compatible con OpenAI) |
+| `AI_MODEL` | Modelo (por defecto `openai/gpt-oss-120b` en Groq, `gpt-5-mini` en OpenAI) |
+| `AI_BASE_URL` | URL base para `custom` (OpenRouter, Ollama, LM Studio…) |
+| `AI_MAX_INPUT_CHARS` | Texto máximo por solicitud (14.000 en la capa gratis de Groq, 48.000 en OpenAI) |
 
 ## Desarrollo
 
@@ -144,10 +151,10 @@ deploy/               plantilla de nginx y guía de despliegue
   Edición con autoguardado que nunca pisa un cambio hecho en Obsidian mientras tanto: pregunta cuál conservar.
 - **Google Calendar**: un calendario propio con clases recurrentes (sin festivos), tareas, evaluaciones y eventos,
   sin duplicados. Permiso mínimo: solo calendarios creados por la app.
-- **Coursera**: en **Ajustes → Integraciones → Coursera** creas un marcador «Nober» para tu navegador. Pulsado en
-  coursera.org, lee tus cursos y tu avance con tu sesión **en tu navegador** y los envía a Nober con una clave personal
-  (solo se guarda su hash); tu sesión de Coursera nunca llega al servidor. Usa direcciones internas de Coursera no
-  documentadas: pueden cambiar.
+- **Extensión y Coursera**: en **Ajustes → Integraciones → Extensión y Coursera** creas una clave personal (solo se guarda
+  su hash) y descargas la extensión (Chrome, «Cargar descomprimida»). En coursera.org lee tus cursos y tu avance con tu
+  sesión **en tu navegador** (tu sesión de Coursera nunca llega al servidor) y los sincroniza sola; un marcador «Nober»
+  hace lo mismo donde no hay extensiones. Usa direcciones internas de Coursera no documentadas: pueden cambiar.
 - **Archivos**: sube PDF, documentos, imágenes, audio o video a tareas, recursos y proyectos (solo su dueño puede verlos).
 - **PWA**: instálala en el celular desde el navegador («Agregar a la pantalla de inicio»).
 

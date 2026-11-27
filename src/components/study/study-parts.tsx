@@ -139,7 +139,7 @@ export function StudyCourseSection({ study, color, emoji, projectId }: { study: 
           <RefreshCw className="size-3.5" /> Cambiar plan
         </button>
         <span className="text-[11.5px] text-faint">
-          {synced ? `Sincronizado con Coursera ${relativeAgo(synced)}` : "Marca las sesiones como hechas, o sincroniza con el marcador de Coursera."}
+          {synced ? `Sincronizado con Coursera ${relativeAgo(synced)}` : "Marca las sesiones como hechas, o sincroniza con la extensión de Nober o el marcador de Coursera."}
         </span>
       </div>
     </div>
@@ -197,10 +197,12 @@ export function CourseraConnect({ status }: { status: { active: boolean; syncedA
   const [busy, setBusy] = useState(false);
   const link = useRef<HTMLAnchorElement>(null);
   const [code, setCode] = useState("");
+  const [connect, setConnect] = useState("");
 
   useEffect(() => {
     if (!token) return;
     const origin = window.location.origin;
+    setConnect(`${origin}|${token}`);
     const js = `javascript:(function(){window.__nober={t:${JSON.stringify(token)},u:${JSON.stringify(origin)}};var s=document.createElement("script");s.src=${JSON.stringify(`${origin}/api/coursera/script`)}+"?"+Date.now();document.body.appendChild(s)})()`;
     setCode(js);
     // React no permite href «javascript:»: se pone directo en el DOM para poder arrastrarlo a la barra de marcadores
@@ -208,7 +210,7 @@ export function CourseraConnect({ status }: { status: { active: boolean; syncedA
   }, [token]);
 
   async function create() {
-    if (status.active && !confirm("Se creará una clave nueva y el marcador anterior dejará de funcionar. ¿Seguir?")) return;
+    if (status.active && !confirm("Se creará una clave nueva: la extensión y el marcador dejarán de funcionar hasta que pongas la nueva. ¿Seguir?")) return;
     setBusy(true);
     const r = await createCourseraToken();
     setBusy(false);
@@ -218,7 +220,7 @@ export function CourseraConnect({ status }: { status: { active: boolean; syncedA
   }
 
   async function revoke() {
-    if (!confirm("El marcador dejará de funcionar. Tus cursos y planes se quedan. ¿Desactivar?")) return;
+    if (!confirm("La extensión y el marcador dejarán de funcionar. Tus cursos, planes y subrayados se quedan. ¿Desactivar?")) return;
     const r = await revokeCourseraToken();
     if (!r.ok) return toast(r.error);
     setToken(null);
@@ -228,39 +230,59 @@ export function CourseraConnect({ status }: { status: { active: boolean; syncedA
   return (
     <div className="flex flex-col gap-2 text-[12.5px] text-muted">
       <p className="leading-relaxed">
-        Un marcador del navegador que pulsas estando en coursera.org: lee tus cursos y tu avance <b className="font-medium text-text">desde tu navegador</b> y
-        los envía aquí. Tu sesión de Coursera nunca sale de tu navegador; Nober solo recibe la lista de cursos y lo completado.
+        <b className="font-medium text-text">Extensión de Chrome</b> (recomendada): selecciona texto en cualquier página —o usa la página entera— y
+        la IA propone qué agregar a tu apunte y en qué sección (tú lo revisas), o guárdalo en la bandeja y agrégalo después desde el apunte. En
+        Coursera usa el apunte del módulo y la lección que estás viendo, y sincroniza tu avance sola. Tu sesión de Coursera nunca sale de tu
+        navegador. El <b className="font-medium text-text">marcador</b> hace solo la sincronización (sirve donde no hay extensiones). Los dos usan
+        la misma clave.
       </p>
       {status.active ? (
         <p>
-          Activo{status.syncedAt ? ` · última sincronización ${relativeAgo(status.syncedAt)}` : " · aún no se ha usado"}{status.courses ? ` · ${status.courses} cursos` : ""}.
+          Clave activa{status.syncedAt ? ` · última sincronización ${relativeAgo(status.syncedAt)}` : " · aún no se ha usado"}{status.courses ? ` · ${status.courses} ${status.courses === 1 ? "curso" : "cursos"}` : ""}.
         </p>
       ) : null}
       {token ? (
-        <div className="mt-1 flex flex-col gap-2 rounded-[14px] border border-accent/40 bg-accent/[0.06] p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <a ref={link} onClick={(e) => e.preventDefault()} className="inline-flex h-9 cursor-grab items-center gap-1.5 rounded-full bg-accent px-4 text-[13px] font-medium text-white" title="Arrástrame a la barra de marcadores">
-              <GraduationCap className="size-4" /> Nober
-            </a>
-            <span className="text-[12px]">← arrástralo a tu barra de marcadores.</span>
+        <div className="mt-1 flex flex-col gap-3 rounded-[14px] border border-accent/40 bg-accent/[0.06] p-3">
+          <div className="flex flex-col gap-1.5">
+            <b className="text-[12.5px] font-medium text-text">Extensión</b>
+            <ol className="list-decimal space-y-0.5 pl-5 text-[12px]">
+              <li>
+                <a href="/extension/nober-extension.zip" download className="text-accent hover:underline">Descarga la extensión</a> y descomprímela.
+              </li>
+              <li>Abre <code className="text-text">chrome://extensions</code>, activa «Modo de desarrollador» y pulsa «Cargar descomprimida» → carpeta <code className="text-text">nober-extension</code>.</li>
+              <li>En las opciones de la extensión pega este código de conexión:</li>
+            </ol>
+            <div className="flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded-[10px] bg-surface-2 px-2.5 py-1.5 font-mono text-[11.5px] text-text">{connect}</code>
+              <button
+                onClick={() => navigator.clipboard.writeText(connect).then(() => toast("Código de conexión copiado.", "ok"))}
+                className="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-accent px-3 text-[12px] font-medium text-white"
+              >
+                <Copy className="size-3.5" /> Copiar
+              </button>
+            </div>
           </div>
-          <ol className="list-decimal space-y-0.5 pl-5 text-[12px]">
-            <li>Abre coursera.org con tu sesión iniciada (mejor en la página del curso que estás haciendo).</li>
-            <li>Pulsa el marcador «Nober». Abajo a la derecha verás qué encontró.</li>
-            <li>Si empezaste un curso nuevo, te llega un aviso para organizarlo.</li>
-          </ol>
-          <button
-            onClick={() => navigator.clipboard.writeText(code).then(() => toast("Código del marcador copiado.", "ok"))}
-            className="flex h-8 items-center gap-1.5 self-start rounded-full bg-pill px-3 text-[12px] hover:bg-pill-hover"
-          >
-            <Copy className="size-3.5" /> Copiar código (para crearlo a mano, p. ej. en el celular)
-          </button>
-          <p className="text-[11.5px] text-faint">Esta clave solo se muestra ahora. Si pierdes el marcador, crea uno nuevo.</p>
+          <div className="flex flex-col gap-1.5">
+            <b className="text-[12.5px] font-medium text-text">Marcador (opcional)</b>
+            <div className="flex flex-wrap items-center gap-2">
+              <a ref={link} onClick={(e) => e.preventDefault()} className="inline-flex h-8 cursor-grab items-center gap-1.5 rounded-full bg-pill px-3.5 text-[12.5px] font-medium text-text" title="Arrástrame a la barra de marcadores">
+                <GraduationCap className="size-4" /> Nober
+              </a>
+              <span className="text-[12px]">← arrástralo a tu barra de marcadores y púlsalo estando en coursera.org.</span>
+            </div>
+            <button
+              onClick={() => navigator.clipboard.writeText(code).then(() => toast("Código del marcador copiado.", "ok"))}
+              className="flex h-8 items-center gap-1.5 self-start rounded-full bg-pill px-3 text-[12px] hover:bg-pill-hover"
+            >
+              <Copy className="size-3.5" /> Copiar código del marcador (para crearlo a mano)
+            </button>
+          </div>
+          <p className="text-[11.5px] text-faint">La clave solo se muestra ahora. Si la pierdes, crea una nueva (la anterior deja de funcionar en la extensión y el marcador).</p>
         </div>
       ) : null}
       <div className="mt-1 flex flex-wrap gap-2">
         <button onClick={create} disabled={busy} className="flex h-8 items-center gap-1.5 rounded-full bg-pill px-3.5 text-[12.5px] text-text hover:bg-pill-hover disabled:opacity-60">
-          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />} {status.active ? "Crear marcador nuevo" : "Crear marcador"}
+          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />} {status.active ? "Crear clave nueva" : "Crear clave"}
         </button>
         {status.active ? (
           <button onClick={revoke} className="h-8 rounded-full px-3 text-[12.5px] text-muted hover:bg-surface-hover hover:text-danger">Desactivar</button>

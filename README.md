@@ -35,8 +35,12 @@ all in one place. Dark and light themes, built for desktop and mobile.
   notes in Obsidian; the `- [ ]` checkboxes in those notes (Tasks plugin format) show up and can be ticked in the app.
 - **Online courses (Coursera)**: import a course by its link (or a whole program, e.g. a 6-course certificate) and
   choose how long you study each day. Nober builds study sessions **lesson by lesson** using Coursera's time estimates
-  (each session's steps are its videos and readings), creates one note per module in Obsidian and, with a browser
-  bookmarklet, detects the courses you start and marks what you've completed.
+  (each session's steps are its videos and readings), creates one note per module in Obsidian and, with the browser
+  extension (or a bookmarklet), detects the courses you start and marks what you've completed.
+- **Browser extension (Chrome)**: select text on any page, or use the whole page, and the AI proposes what to add to
+  your notes and under which section (you review and edit it before applying); or drop the clip in the **inbox** and add
+  it later from the note editor, by hand or with AI. On a Coursera course it uses the note of the module and lesson
+  you're watching.
 - **Review**: spaced-repetition flashcards (Again / Hard / Good / Easy) and multiple-choice practice quizzes, generated
   with AI from your notes or from a module's syllabus; what you miss in a quiz becomes flashcards.
 - **Grades**: configurable scale (1.0–5.0 by default, passing at 3.0), weighted terms, scores on a different scale
@@ -52,12 +56,14 @@ all in one place. Dark and light themes, built for desktop and mobile.
 - **Obsidian**: "Crear apunte" creates the class note from a template; if you move or rename it in Obsidian, the app
   finds it again. Autosave never overwrites a change made in Obsidian meanwhile: it asks which version to keep.
 - **AI (optional)**: summaries, review questions, note → tasks, flashcards, quizzes, a weekly study plan, "project
-  with AI" (an idea → a project with its task plan) and task breakdown. Works with any OpenAI-compatible API that
-  supports JSON-schema responses; [Groq](https://console.groq.com) has a free tier. The AI only proposes: nothing is
-  written or created without your confirmation.
-- **Coursera**: a bookmarklet created in Settings reads your courses and progress **in your browser** (your Coursera
-  session never reaches the server) and sends them with a personal key (only its hash is stored). It relies on
-  undocumented Coursera endpoints, which may change.
+  with AI" (an idea → a project with its task plan), task breakdown and "add to my notes" from the extension or the
+  inbox. Works with [Groq](https://console.groq.com) (free tier), [OpenAI](https://platform.openai.com) or any
+  OpenAI-compatible API that supports JSON-schema responses. The AI only proposes: nothing is written or created
+  without your confirmation.
+- **Browser extension and Coursera**: in Settings → Integrations you create a personal key (only its hash is stored)
+  and download the extension (Chrome, "Load unpacked"). On coursera.org it reads your courses and progress **in your
+  browser** (your Coursera session never reaches the server) and syncs them on its own; a bookmarklet does the same
+  where extensions aren't available. It relies on undocumented Coursera endpoints, which may change.
 - **Google Calendar**: a dedicated calendar with recurring classes (skipping holidays), tasks, assessments and
   events, without duplicates; other calendars can be shown read-only.
 - **Push reminders**: deadlines, exams and flashcards due today, on every device you enable (PWA on iOS 16.4+).
@@ -104,9 +110,11 @@ Without a vault the app works the same, just without creating or opening notes.
 
 | Variable | Meaning |
 | --- | --- |
-| `AI_API_KEY` | Provider key (empty = no AI) |
-| `AI_BASE_URL` | OpenAI-compatible base URL (default `https://api.groq.com/openai/v1`) |
-| `AI_MODEL` | Model (default `openai/gpt-oss-120b`) |
+| `AI_API_KEY` | Provider key (empty = no AI). The provider is detected from it: `gsk_…` Groq, `sk-…` OpenAI |
+| `AI_PROVIDER` | Optional: `groq`, `openai` or `custom` (any other OpenAI-compatible API) |
+| `AI_MODEL` | Model (default `openai/gpt-oss-120b` on Groq, `gpt-5-mini` on OpenAI) |
+| `AI_BASE_URL` | Base URL for `custom` (OpenRouter, Ollama, LM Studio…) |
+| `AI_MAX_INPUT_CHARS` | Max text per request (default 14,000 on Groq's free tier, 48,000 on OpenAI) |
 
 Note content is sent to the provider you configure.
 
@@ -142,6 +150,8 @@ src/
   lib/data/           data layer: loads the user's data and derives what each screen needs
   lib/vault.ts        Obsidian vault access (never outside the vault)
   lib/coursera*.ts    Coursera public API and bookmarklet sync
+  lib/note-integrate.ts  AI "add to my notes" (proposal + apply by section)
+extension/            Chrome extension (MV3): AI notes, inbox, Coursera sync
 prisma/               schema, migrations and seed
 deploy/               nginx template, backup script and deployment guide
 ```
