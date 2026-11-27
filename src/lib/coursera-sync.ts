@@ -24,8 +24,6 @@ export const syncPayload = z.object({
   page: z.object({ slug: z.string().max(200) }).nullable().optional(),
   memberships: raw.nullable().optional(),
   progress: z.array(raw.extend({ courseId: z.string().max(100) })).max(30).optional(),
-  /** Direcciones de la API que la página de Coursera ya había consultado (diagnóstico). */
-  seen: z.array(z.string().max(2000)).max(300).optional(),
 });
 
 export type SyncPayload = z.infer<typeof syncPayload>;
@@ -125,27 +123,52 @@ export async function runCourseraSync(userId: string, data: SyncPayload): Promis
     if (c && c.status === "DETECTED") detected.push({ id: c.id, name: c.name });
   }
 
-  // 2. Avance por curso
+  // 2. Avance por curso. Formatos confirmados (nov. 2026):
+  //  onDemandCoursesProgress.v1 → { overall: %, modules: { <moduleId>: % }, items: { <itemId>: { progressState } } }
+  //  onDemandHomeProgress.v1    → { modulesCompleted: [ids], modulesPassed: [ids] }
   let modulesDone = 0;
   let progressRead = false;
-  const courses = await prisma.studyCourse.findMany({ where: { userId, provider: "coursera", status: { in: ["DETECTED", "PLANNED"] } }, select: { id: true, externalId: true, slug: true } });
-  for (const p of data.progress ?? []) {
-    if (p.status !== 200) continue;
-    const course = courses.find((c) => c.externalId === p.courseId);
-    if (!course) continue;
-    const done = completedItemIds(json(p.body));
-    if (!done.size) continue;
+  const courses = await prisma.studyCourse.findMany({
+    where: { userId, provider: "coursera", status: { in: ["DETECTED", "PLANNED"] } },
+    select: { id: true, externalId: true, slug: true },
+  });
+  for (const course of courses) {
+    const bodies = (data.progress ?? []).filter((p) => p.status === 200 && p.courseId === course.externalId).map((p) => json(p.body));
+    if (!bodies.length) continue;
+    let overall: number | null = null;
+    const modulePct = new Map<string, number>();
+    const finished = new Set<string>();
+    const items = new Set<string>();
+    for (const b of bodies) {
+      const e = (b as { elements?: Record<string, unknown>[] } | null)?.elements?.[0];
+      if (!e) continue;
+      if (typeof e.overall === "number") overall = e.overall;
+      if (e.modules && typeof e.modules === "object") {
+        for (const [id, pct] of Object.entries(e.modules as Record<string, unknown>)) if (typeof pct === "number") modulePct.set(id, pct);
+      }
+      for (const key of ["modulesCompleted", "modulesPassed"]) {
+        if (Array.isArray(e[key])) for (const id of e[key] as unknown[]) if (typeof id === "string") finished.add(id);
+      }
+      for (const id of completedItemIds(b)) items.add(id);
+    }
+    for (const [id, pct] of modulePct) if (pct >= 100) finished.add(id);
+    // Sin datos por módulo: deducirlo de los ítems completados
+    if (!modulePct.size && !finished.size && items.size) {
+      const all = await fetchCourseraItems(course.slug).catch(() => []);
+      for (const id of finishedModules(all, items)) finished.add(id);
+    }
+    if (overall === null && !modulePct.size && !finished.size && !items.size) continue;
     progressRead = true;
-    const items = await fetchCourseraItems(course.slug).catch(() => []);
-    const finished = finishedModules(items, done);
-    modulesDone += await completeModules(userId, course.id, finished);
-    const pct = items.length ? Math.round((items.filter((i) => done.has(i.id)).length / items.length) * 100) : null;
-    await prisma.studyCourse.update({ where: { id: course.id }, data: { progress: pct, syncedAt: new Date() } });
+    modulesDone += await completeModules(userId, course.id, [...finished]);
+    for (const [id, pct] of modulePct) {
+      await prisma.studyModule.updateMany({ where: { courseId: course.id, externalId: id }, data: { progress: Math.max(0, Math.min(100, Math.round(pct))) } });
+    }
+    await prisma.studyCourse.update({ where: { id: course.id }, data: { progress: overall === null ? undefined : Math.round(overall), syncedAt: new Date() } });
   }
 
   // Copia recortada (20 KB por respuesta) para diagnosticar
   const cut = <T extends { body: string }>(r: T) => ({ ...r, body: r.body.slice(0, 20_000) });
-  const sample = { page: data.page ?? null, memberships: data.memberships ? cut(data.memberships) : null, progress: (data.progress ?? []).map(cut), seen: data.seen ?? [] };
+  const sample = { page: data.page ?? null, memberships: data.memberships ? cut(data.memberships) : null, progress: (data.progress ?? []).map(cut) };
   await prisma.settings.update({ where: { userId }, data: { courseraSyncedAt: new Date(), courseraLastPayload: sample } });
 
   // 3. Aviso: curso nuevo → organizarlo

@@ -657,6 +657,8 @@ model StudyModule {
   position    Int
   /// Tiempo estimado por el proveedor
   minutes     Int
+  /// Avance del módulo según el proveedor (0–100)
+  progress    Int?
   lessons     String[]    @default([])
   notePath    String?
   completedAt DateTime?
