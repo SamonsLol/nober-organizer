@@ -10,6 +10,6 @@ export const dynamic = "force-dynamic";
 export function GET(req: Request) {
   return extHandler(req, async (u) => {
     const user = await prisma.user.findUnique({ where: { id: u.userId }, select: { name: true } });
-    return { app: APP_NAME, name: user?.name ?? "", vault: u.vault, ai: aiConfigured() && u.vault, targets: await extTargets(u.userId) };
+    return { app: APP_NAME, name: user?.name ?? "", vault: u.vault, ai: (await aiConfigured()) && u.vault, targets: await extTargets(u.userId) };
   });
 }

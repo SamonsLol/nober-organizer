@@ -768,3 +768,10 @@ model Highlight {
   @@index([projectId])
   @@index([studyModuleId])
 }
+
+/// Configuración de la instancia editable desde Ajustes (p. ej. «ai»: proveedor, modelo y clave cifrada). JSON por clave.
+model AppConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}

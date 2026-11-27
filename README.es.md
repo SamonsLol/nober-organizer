@@ -100,6 +100,9 @@ con IA** en cada proyecto, **Tareas con IA** (texto libre → tareas con fecha, 
 (`gpt-5-mini`) o cualquier API compatible con OpenAI que admita respuestas con esquema JSON. La IA solo propone: nada se
 escribe en tus notas ni se crean tareas sin confirmarlo. El contenido del apunte se envía al proveedor.
 
+También se configura desde la app en **Ajustes → IA** (proveedor, modelo y clave; la clave se guarda cifrada y tiene
+prioridad sobre estas variables).
+
 | Variable | Qué es |
 | --- | --- |
 | `AI_API_KEY` | Clave del proveedor (vacía = sin IA). El proveedor se deduce de ella: `gsk_…` Groq, `sk-…` OpenAI |

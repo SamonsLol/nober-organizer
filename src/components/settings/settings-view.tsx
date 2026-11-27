@@ -11,6 +11,7 @@ import { APP_NAME, SOURCE_URL } from "@/lib/brand";
 import { GoogleConnect } from "@/components/settings/google-connect";
 import { PushSettings } from "@/components/settings/push-settings";
 import { CourseraConnect } from "@/components/study/study-parts";
+import { AiSettings } from "@/components/settings/ai-settings";
 import { OpenObsidian } from "@/components/notes/open-obsidian";
 import { AppIcon } from "@/components/blocks/icons";
 import { Tag, cn } from "@/components/blocks/primitives";
@@ -232,6 +233,15 @@ export function SettingsView({ data }: { data: SettingsData }) {
               body={<GoogleConnect status={data.google} />}
               action={null}
             />
+            {data.ai ? (
+              <Integration
+                name="IA"
+                emoji="sparkles"
+                status={<Tag color={data.ai.source === "none" ? "gray" : "green"}>{data.ai.source === "none" ? "Desactivada" : data.ai.provider === "openai" ? "OpenAI" : data.ai.provider === "groq" ? "Groq" : "Activa"}</Tag>}
+                body={<AiSettings view={data.ai} />}
+                action={null}
+              />
+            ) : null}
             {data.coursera ? (
               <Integration
                 name="Extensión y Coursera"

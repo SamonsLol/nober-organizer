@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { readNote } from "@/lib/vault";
 import { fetchCourseraModuleOutline } from "@/lib/coursera";
 import { noteName } from "@/lib/notes";
-import { AI_MAX_INPUT_CHARS } from "@/lib/ai";
+import { aiMaxInput } from "@/lib/ai";
 
 /**
  * Material para generar tarjetas y quizzes: el texto de un apunte o un módulo de un curso en línea.
@@ -44,7 +44,7 @@ export async function studySource(userId: string, o: { path?: string; moduleId?:
     if (m.notePath) {
       const note = await readNote(m.notePath).catch(() => null);
       const body = note ? noteBody(note.content) : "";
-      if (ownText(body).length >= 300) return { deck, text: clip(body), from: "notes", notePath: m.notePath, moduleId: m.id };
+      if (ownText(body).length >= 300) return { deck, text: await clip(body), from: "notes", notePath: m.notePath, moduleId: m.id };
     }
     const outline = await fetchCourseraModuleOutline(m.course.slug, m.externalId).catch(() => null);
     const text = [
@@ -54,7 +54,7 @@ export async function studySource(userId: string, o: { path?: string; moduleId?:
       m.lessons.length ? `Lecciones:\n${m.lessons.map((l) => `- ${l}`).join("\n")}` : "",
       outline?.items.length ? `Contenido (videos, lecturas, prácticas):\n${outline.items.map((i) => `- ${i}`).join("\n")}` : "",
     ].filter(Boolean).join("\n\n");
-    return { deck, text: clip(text), from: "outline", notePath: m.notePath ?? undefined, moduleId: m.id };
+    return { deck, text: await clip(text), from: "outline", notePath: m.notePath ?? undefined, moduleId: m.id };
   }
   if (!o.path) throw new Error("Falta el apunte.");
   const note = await readNote(o.path);
@@ -64,14 +64,15 @@ export async function studySource(userId: string, o: { path?: string; moduleId?:
   const mod = await prisma.studyModule.findFirst({ where: { notePath: note.path, course: { userId } }, include: { course: true } });
   return {
     deck: mod ? `${mod.course.name} · M${mod.position + 1}` : noteName(note.path),
-    text: clip(body),
+    text: await clip(body),
     from: "notes",
     notePath: note.path,
     moduleId: mod?.id,
   };
 }
 
-function clip(text: string) {
-  if (text.length <= AI_MAX_INPUT_CHARS) return text;
-  return `${text.slice(0, AI_MAX_INPUT_CHARS)}\n\n[… recortado por longitud]`;
+async function clip(text: string) {
+  const max = await aiMaxInput();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max)}\n\n[… recortado por longitud]`;
 }

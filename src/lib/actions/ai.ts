@@ -6,7 +6,7 @@ import { addDays, format, startOfDay } from "date-fns";
 import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { getSession, requireUserId } from "@/lib/session";
 import { UserError, run, type Result } from "@/lib/actions/result";
-import { AI_MAX_INPUT_CHARS, AiError, aiConfigured, aiJson } from "@/lib/ai";
+import { AiError, aiConfigured, aiJson, aiMaxInput } from "@/lib/ai";
 import { loadUserDB } from "@/lib/data/source";
 import { expandClasses, holidayKeys } from "@/lib/calendar";
 import { capitalize, fmt } from "@/lib/dates";
@@ -27,7 +27,7 @@ function aiErr(e: unknown) {
 }
 
 async function aiUser() {
-  if (!aiConfigured()) throw new UserError("La IA no está configurada en el servidor (AI_API_KEY).");
+  if (!(await aiConfigured())) throw new UserError("La IA no está configurada (Ajustes → IA).");
   const userId = await requireUserId();
   if (!vaultAllowed((await getSession())?.user.email)) throw new UserError("Tu cuenta no tiene acceso a la IA de este servidor.");
   return userId;
@@ -39,8 +39,9 @@ async function noteForAi(path: string) {
   const note = await readNote(path).catch((e) => Promise.reject(aiErr(e)));
   const body = note.content.replace(/^---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n/, "").trim();
   if (body.replace(/\s/g, "").length < 40) throw new UserError("El apunte casi no tiene contenido todavía.");
-  if (body.length > AI_MAX_INPUT_CHARS) {
-    throw new UserError(`El apunte es muy largo para la IA (${Math.round(body.length / 1000)} mil caracteres; máximo ${AI_MAX_INPUT_CHARS / 1000} mil). Divídelo en notas más cortas.`);
+  const max = await aiMaxInput();
+  if (body.length > max) {
+    throw new UserError(`El apunte es muy largo para la IA (${Math.round(body.length / 1000)} mil caracteres; máximo ${max / 1000} mil). Divídelo en notas más cortas.`);
   }
   return { ...note, body };
 }
