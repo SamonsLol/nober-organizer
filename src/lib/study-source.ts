@@ -23,7 +23,18 @@ function noteBody(content: string) {
     .trim();
 }
 
-const ownText = (body: string) => body.split("\n").filter((l) => l.trim() && !/^\s*(#|>)/.test(l)).join("\n");
+/** Texto propio: sin encabezados ni avisos de la plantilla; las citas subrayadas (`> [!quote]`) sí cuentan. */
+function ownText(body: string) {
+  let quote = false;
+  return body
+    .split("\n")
+    .filter((l) => {
+      if (/^\s*>\s*\[!quote\]/i.test(l)) return (quote = true) && false;
+      if (!/^\s*>/.test(l)) quote = false;
+      return l.trim() && !/^\s*#/.test(l) && (quote || !/^\s*>/.test(l));
+    })
+    .join("\n");
+}
 
 export async function studySource(userId: string, o: { path?: string; moduleId?: string }): Promise<StudySource> {
   if (o.moduleId) {

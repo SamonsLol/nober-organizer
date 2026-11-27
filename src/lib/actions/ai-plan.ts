@@ -52,7 +52,7 @@ async function aiUser() {
 }
 
 function checkLength(text: string) {
-  if (text.length > AI_MAX_INPUT_CHARS / 2) throw new UserError("El texto es demasiado largo para la IA gratuita. Resúmelo un poco.");
+  if (text.length > AI_MAX_INPUT_CHARS / 2) throw new UserError("El texto es demasiado largo para la IA. Resúmelo un poco.");
 }
 
 /** Contexto de fechas para la IA: hoy y cuántas tareas pendientes hay cada día de las próximas 3 semanas. */

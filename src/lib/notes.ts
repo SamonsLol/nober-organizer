@@ -121,3 +121,52 @@ export function toggleTaskLine(raw: string, done: boolean, today: string) {
   if (done) body = `${body.trimEnd()} ✅ ${today}`;
   return `${m[1]}${done ? "x" : " "}${m[3]}${body}`;
 }
+
+/**
+ * Inserta `block` al final de la sección cuyo encabezado es `heading` (p. ej. «## Ideas clave»; también vale si en la nota
+ * sigue « · 40 min»). Si no existe, crea la sección al final. Quita la viñeta vacía de la plantilla al final de la sección.
+ */
+export function insertInSection(content: string, block: string, heading: string) {
+  const lines = content.replace(/\n+$/, "").split("\n");
+  const h = heading.trim();
+  const at = lines.findIndex((l) => l.trimEnd() === h || l.startsWith(`${h} ·`));
+  if (at < 0) return `${lines.join("\n")}\n\n${h}\n\n${block}\n`;
+  const level = lines[at].match(/^#+/)?.[0].length ?? 2;
+  let end = lines.findIndex((l, i) => i > at && /^#+\s/.test(l) && l.match(/^#+/)![0].length <= level);
+  if (end < 0) end = lines.length;
+  let last = end;
+  const trim = () => {
+    while (last > at + 1 && !lines[last - 1].trim()) last--;
+  };
+  trim();
+  if (last > at + 1 && /^\s*[-*]\s*$/.test(lines[last - 1])) {
+    lines.splice(last - 1, 1);
+    last--;
+    end--;
+    trim();
+  }
+  return [...lines.slice(0, last), "", block, "", ...lines.slice(end)].join("\n").replace(/\n*$/, "\n");
+}
+
+/** Encabezados de una nota tal como están escritos («## Ideas clave», «### Ejemplo · 5 min»), sin las propiedades. */
+export function noteHeadings(content: string) {
+  return content
+    .replace(/^---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n/, "")
+    .split("\n")
+    .filter((l) => /^#{1,6}\s+\S/.test(l))
+    .map((l) => l.trimEnd());
+}
+
+/** Enlace Markdown seguro para una dirección (paréntesis y espacios escapados). */
+export function mdLink(title: string, url: string) {
+  const href = url.replace(/[()\s]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`);
+  const t = title.replace(/[[\]]/g, "").trim();
+  return t ? `[${t}](${href})` : `<${href}>`;
+}
+
+/** Recorte como cita de Obsidian (para insertarlo a mano desde la bandeja). */
+export function clipQuote(c: { text: string; comment?: string; url: string; title: string }) {
+  const lines = [`> [!quote] ${mdLink(c.title, c.url)}`, ...c.text.split(/\r?\n/).filter((l) => l.trim()).map((l) => `> ${l.trim()}`)];
+  if (c.comment) lines.push("", c.comment);
+  return lines.join("\n");
+}

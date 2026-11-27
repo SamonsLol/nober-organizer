@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, ExternalLink, Loader2, Maximize2, Minimize2, PanelRight, Paperclip, PencilLine, RotateCw, Sparkles, X } from "lucide-react";
+import { BookOpen, ExternalLink, Inbox, Loader2, Maximize2, Minimize2, PanelRight, Paperclip, PencilLine, RotateCw, Sparkles, X } from "lucide-react";
 import { NoteAi } from "@/components/ai/note-ai";
+import { ClipTray } from "@/components/notes/clip-tray";
+import { listClips, type Clip } from "@/lib/actions/clips";
 import { AppIcon } from "@/components/blocks/icons";
 import { cn } from "@/components/blocks/primitives";
 import { toast } from "@/components/shell/toast";
@@ -245,6 +247,8 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
   const [draft, setDraft] = useState("");
   const [save, setSave] = useState<Save>("saved");
   const [aiOpen, setAiOpen] = useState(false);
+  const [trayOpen, setTrayOpen] = useState(false);
+  const [clips, setClips] = useState<Clip[]>([]);
   const [uploading, setUploading] = useState(0);
   const [dropping, setDropping] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
@@ -285,6 +289,17 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
   useEffect(() => {
     load();
   }, [load]);
+
+  // Recortes de la extensión pendientes (los de este apunte primero)
+  const notePath = file?.path;
+  useEffect(() => {
+    if (!vault.canWrite || !notePath) return;
+    let live = true;
+    listClips(notePath).then((r) => live && r.ok && setClips(r.data.clips));
+    return () => {
+      live = false;
+    };
+  }, [vault.canWrite, notePath]);
 
   useEffect(() => {
     const onFocus = () => document.visibilityState === "visible" && load(true);
@@ -372,7 +387,12 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
       else toast(r.error);
     }
     if (!embeds.length) return;
-    const text = embeds.join("\n");
+    insertText(embeds.join("\n"));
+    toast(embeds.length === 1 ? "Archivo adjuntado a la nota." : `${embeds.length} archivos adjuntados a la nota.`, "ok");
+  };
+
+  /** Inserta texto donde está el cursor (editando) o al final (leyendo), como bloque aparte. */
+  const insertText = (text: string) => {
     const cur = state.current.draft;
     const el = area.current;
     let next: string;
@@ -381,7 +401,7 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
       const a = el.selectionStart ?? cur.length;
       const b = el.selectionEnd ?? a;
       const before = cur.slice(0, a);
-      const ins = `${before && !before.endsWith("\n") ? "\n" : ""}${text}\n`;
+      const ins = `${before && !before.endsWith("\n") ? "\n" : ""}${/\n\n$/.test(before) || !before ? "" : "\n"}${text}\n\n`;
       next = before + ins + cur.slice(b);
       caret = a + ins.length;
     } else {
@@ -389,7 +409,6 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
     }
     edit(next);
     if (caret !== null) requestAnimationFrame(() => area.current?.setSelectionRange(caret, caret));
-    toast(embeds.length === 1 ? "Archivo adjuntado a la nota." : `${embeds.length} archivos adjuntados a la nota.`, "ok");
   };
 
   const dropProps = vault.canWrite && file
@@ -421,7 +440,7 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
 
   return (
     <div className={cn("flex min-h-0 flex-col bg-paper text-ink", className)} style={style}>
-      <div className="flex items-center gap-2 border-b border-ink/10 px-3 py-1.5">
+      <div className="flex items-center gap-2 overflow-x-auto border-b border-ink/10 px-3 py-1.5 [&_a]:shrink-0 [&_a]:whitespace-nowrap [&_button]:shrink-0 [&_button]:whitespace-nowrap">
         {vault.canWrite ? (
           <div className="flex items-center gap-0.5 rounded-full bg-ink/[0.06] p-[3px]" role="radiogroup" aria-label="Modo">
             {([
@@ -450,6 +469,18 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
               className={cn("flex h-7 items-center gap-1.5 rounded-full px-3 text-[12px]", aiOpen ? "bg-ink text-paper" : "bg-ink/[0.07] text-ink hover:bg-ink/[0.12]")}
             >
               <Sparkles className="size-3.5" /> IA
+            </button>
+          ) : null}
+          {vault.canWrite && file ? (
+            <button
+              onClick={() => setTrayOpen((v) => !v)}
+              aria-pressed={trayOpen}
+              title="Bandeja: lo que guardaste con la extensión del navegador"
+              className={cn("relative flex h-7 items-center gap-1.5 rounded-full px-3 text-[12px]", trayOpen ? "bg-ink text-paper" : "bg-ink/[0.07] text-ink hover:bg-ink/[0.12]")}
+            >
+              <Inbox className="size-3.5" />
+              <span className="sr-only">Bandeja</span>
+              {clips.length ? <span className={cn("rounded-full px-1.5 text-[10.5px] tabular-nums", trayOpen ? "bg-paper/20" : "bg-ink text-paper")}>{clips.length}</span> : null}
             </button>
           ) : null}
           {vault.canWrite && file ? (
@@ -497,6 +528,24 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
           <button onClick={() => load()} className="h-7 rounded-full bg-ink/10 px-3 hover:bg-ink/15">Usar la de Obsidian</button>
           <button onClick={() => flush(true)} className="h-7 rounded-full bg-ink px-3 text-paper hover:bg-ink/85">Guardar la mía</button>
         </div>
+      ) : null}
+
+      {trayOpen && file ? (
+        <ClipTray
+          path={file.path}
+          clips={clips}
+          setClips={setClips}
+          ai={vault.ai}
+          insert={(text) => {
+            if (state.current.save === "conflict") return toast("Resuelve primero el conflicto con la versión de Obsidian.");
+            insertText(text);
+            setTimeout(() => flush(), 0);
+          }}
+          flush={() => flush()}
+          getMtime={() => state.current.file?.mtime}
+          reload={() => load()}
+          onClose={() => setTrayOpen(false)}
+        />
       ) : null}
 
       {aiOpen && file ? (
