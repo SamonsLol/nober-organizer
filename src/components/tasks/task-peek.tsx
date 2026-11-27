@@ -7,7 +7,8 @@ import { Check, ExternalLink, Link2, Loader2, Plus, Trash2, Upload, X } from "lu
 import { Tag, cn } from "@/components/blocks/primitives";
 import { KIND, PRIORITY, RESOURCE_KIND, TASK_STATUS, TASK_TYPE, toneClass } from "@/components/blocks/shared";
 import { deadline, toDate } from "@/lib/dates";
-import type { Assessment, Course, Priority, Project, Task, TaskStatus, TaskType } from "@/lib/types";
+import type { Assessment, Course, Priority, Project, Task, TaskStatus, TaskStep, TaskType } from "@/lib/types";
+import { useStepSuggest } from "@/components/ai/step-suggest";
 import { Select, type SelectOption } from "@/components/blocks/select";
 import { IconPicker } from "@/components/blocks/icon-picker";
 import { Ico } from "@/components/blocks/icons";
@@ -18,6 +19,8 @@ export type TaskEdit = Partial<Pick<Task, "title" | "emoji" | "description" | "c
 export interface TaskPeekActions {
   onEdit: (patch: TaskEdit) => void;
   onAddStep: (title: string) => Promise<boolean>;
+  /** Pasos ya guardados (p. ej. los que agregó la IA). */
+  onStepsAdded: (steps: TaskStep[]) => void;
   onToggleStep: (stepId: string) => void;
   onDeleteStep: (stepId: string) => void;
   onAddLink: (url: string, label?: string) => Promise<boolean>;
@@ -42,6 +45,7 @@ export function TaskPeek({
 } & TaskPeekActions) {
   const panel = useRef<HTMLElement>(null);
   const dl = deadline(t.dueAt, t.status === "DONE", now);
+  const ai = useStepSuggest(t.id, act.onStepsAdded);
 
   const close = useRef(onClose);
   close.current = onClose;
@@ -179,7 +183,15 @@ export function TaskPeek({
           </Block>
 
           {/* Pasos */}
-          <Block title="Pasos" right={t.subtasks ? <span className="text-[12px] tabular-nums text-faint">{t.subtasks.done}/{t.subtasks.total}</span> : null}>
+          <Block
+            title="Pasos"
+            right={
+              <span className="flex items-center gap-1.5">
+                {ai.button}
+                {t.subtasks ? <span className="text-[12px] tabular-nums text-faint">{t.subtasks.done}/{t.subtasks.total}</span> : null}
+              </span>
+            }
+          >
             {t.subtasks ? (
               <div className="mb-2 h-1 overflow-hidden rounded-full bg-[var(--chart-track)]">
                 <div className="h-full rounded-full bg-chart-1 transition-[width]" style={{ width: `${(t.subtasks.done / t.subtasks.total) * 100}%` }} />
@@ -200,6 +212,7 @@ export function TaskPeek({
               ))}
             </ul>
             <AddRow placeholder="Agregar paso" onAdd={act.onAddStep} />
+            {ai.panel}
           </Block>
 
           {/* Archivos */}

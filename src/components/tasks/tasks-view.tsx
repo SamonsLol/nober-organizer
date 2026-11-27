@@ -15,7 +15,7 @@ import type { Result } from "@/lib/actions/result";
 import { uploadFile } from "@/lib/upload-client";
 import { capitalize, deadline, fmt, toDate } from "@/lib/dates";
 import type { TasksPageData } from "@/lib/data";
-import type { Course, Priority, Project, Task, TaskStatus, TaskType } from "@/lib/types";
+import type { Course, Priority, Project, Task, TaskStatus, TaskStep, TaskType } from "@/lib/types";
 import { Ico } from "@/components/blocks/icons";
 
 export type TasksViewId = "lista" | "tablero" | "fecha";
@@ -153,6 +153,7 @@ export function TasksView({
       local(t.id, (cur) => ({ steps: [...(cur.steps ?? []), r.data] }));
       return true;
     },
+    onStepsAdded: (steps: TaskStep[]) => local(t.id, (cur) => ({ steps: [...(cur.steps ?? []), ...steps] })),
     onAddLink: async (url: string, label?: string) => {
       const r = await addTaskLink(t.id, { url: /^https?:\/\//i.test(url) ? url : `https://${url}`, label });
       if (!r.ok) {

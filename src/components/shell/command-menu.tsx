@@ -10,6 +10,7 @@ import { NAV } from "@/components/shell/nav";
 import { useObsidianHome } from "@/components/notes/note-panel";
 import { useVault } from "@/components/notes/vault-context";
 import { openWeekPlan } from "@/components/ai/week-plan";
+import { openAiPlanner } from "@/components/ai/ai-planner";
 import { cn } from "@/components/blocks/primitives";
 import { openCourseEditor } from "@/components/courses/course-editor";
 import { openAssessmentEditor } from "@/components/grades/assessment-editor";
@@ -119,7 +120,11 @@ export function CommandMenu({ courses, projects = [] }: { courses: Course[]; pro
     return [
       ...create,
       ...(ai
-        ? [{ id: "ai-week", group: "IA", label: "Plan de la semana", icon: Sparkles, run: () => { setOpen(false); openWeekPlan(); } }]
+        ? [
+            { id: "ai-tasks", group: "IA", label: "Crear tareas con IA", icon: Sparkles, run: () => { setOpen(false); openAiPlanner({ kind: "tasks" }); } },
+            { id: "ai-project", group: "IA", label: "Nuevo proyecto con IA", icon: Sparkles, run: () => { setOpen(false); openAiPlanner({ kind: "new-project" }); } },
+            { id: "ai-week", group: "IA", label: "Plan de la semana", icon: Sparkles, run: () => { setOpen(false); openWeekPlan(); } },
+          ]
         : []),
       ...NAV.map((n) => ({ id: `n-${n.href}`, group: "Ir a", label: n.label, icon: n.icon, run: go(n.href) })),
       {

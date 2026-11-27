@@ -218,6 +218,13 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
 - La IA solo propone; escribir o crear tareas siempre lo confirma la persona. Mismas cuentas que la bóveda
   (`vaultAllowed`). `getVault().ai` → botón «IA» en `NoteEditor` (`components/ai/note-ai.tsx`) y «Plan de la semana»
   (`components/ai/week-plan.tsx`, `openWeekPlan()`, host en el layout; `PageHeader extra=`).
+- Planear con IA (`lib/actions/ai-plan.ts`): `planProject` (sin `projectId` = proyecto nuevo con nombre, ícono de
+  `PROJECT_ICONS`, color, fecha y plan; con `projectId` = tareas que faltan, sin repetir), `tasksFromText` (texto libre →
+  tareas con materia/proyecto), `suggestSteps` + `addTaskSteps` (pasos de una tarea) y `savePlannedTasks` (una
+  transacción: proyecto nuevo + tareas con pasos; la estimación va a la nota). La IA recibe los días que ya tienen
+  varias tareas para no amontonar. UI: `components/ai/ai-planner.tsx` (`openAiPlanner({kind})`, `<AiPlannerHost>` en el
+  layout, `AiPlanButton`; entradas en /projects, la sección Tareas del proyecto, /tasks y ⌘K) y «Desglosar con IA» en el
+  bloque Pasos de `TaskPeek` (`useStepSuggest`). Todo se revisa y edita antes de crear.
 - Gemini gratis (~20 solicitudes/día) y OpenRouter `:free` (50/día) se descartaron por sus límites (nov. 2026).
 
 ## Google Calendar: lectura
