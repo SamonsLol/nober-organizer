@@ -1,5 +1,5 @@
 import "server-only";
-import { AI_MAX_INPUT_CHARS, AiError, aiJson } from "@/lib/ai";
+import { AiError, aiJson, aiMaxInput } from "@/lib/ai";
 import { insertInSection, mdLink, noteHeadings } from "@/lib/notes";
 
 /**
@@ -41,7 +41,7 @@ export async function proposeIntegration(o: {
   const headings = noteHeadings(o.note.content);
   const material = o.material.trim().slice(0, MAX_MATERIAL);
   if (material.length < 3) throw new AiError("No hay texto para agregar.");
-  const noteText = noteForAi(o.note.content, Math.max(2000, AI_MAX_INPUT_CHARS - material.length - 2500));
+  const noteText = noteForAi(o.note.content, Math.max(2000, (await aiMaxInput()) - material.length - 2500));
   const what = { selection: "un fragmento que la persona subrayó", page: "el texto de una página web", clips: "recortes que la persona guardó", note: "una idea o apunte rápido que la persona escribió" }[o.kind];
   const expand = o.kind === "note";
 

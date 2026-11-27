@@ -33,7 +33,7 @@ async function user() {
 }
 
 async function aiUser() {
-  if (!aiConfigured()) throw new UserError("La IA no está configurada en el servidor (AI_API_KEY).");
+  if (!(await aiConfigured())) throw new UserError("La IA no está configurada (Ajustes → IA).");
   const userId = await user();
   if (!vaultAllowed((await getSession())?.user.email)) throw new UserError("Tu cuenta no tiene acceso a la IA de este servidor.");
   return userId;

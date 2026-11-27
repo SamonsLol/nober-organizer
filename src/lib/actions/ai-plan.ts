@@ -6,7 +6,7 @@ import { addDays, format, startOfDay } from "date-fns";
 import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { getSession, requireUserId } from "@/lib/session";
 import { UserError, run, type Result } from "@/lib/actions/result";
-import { AI_MAX_INPUT_CHARS, AiError, aiConfigured, aiJson } from "@/lib/ai";
+import { AiError, aiConfigured, aiJson, aiMaxInput } from "@/lib/ai";
 import { capitalize, fmt } from "@/lib/dates";
 import { isIconKey } from "@/components/blocks/icons";
 import { firstFree, slugify } from "@/lib/slug";
@@ -44,15 +44,15 @@ function aiErr(e: unknown) {
 }
 
 async function aiUser() {
-  if (!aiConfigured()) throw new UserError("La IA no está configurada en el servidor (AI_API_KEY).");
+  if (!(await aiConfigured())) throw new UserError("La IA no está configurada (Ajustes → IA).");
   if (!hasDatabase()) throw new UserError("Planear con IA necesita la base de datos.");
   const userId = await requireUserId();
   if (!vaultAllowed((await getSession())?.user.email)) throw new UserError("Tu cuenta no tiene acceso a la IA de este servidor.");
   return userId;
 }
 
-function checkLength(text: string) {
-  if (text.length > AI_MAX_INPUT_CHARS / 2) throw new UserError("El texto es demasiado largo para la IA. Resúmelo un poco.");
+async function checkLength(text: string) {
+  if (text.length > (await aiMaxInput()) / 2) throw new UserError("El texto es demasiado largo para la IA. Resúmelo un poco.");
 }
 
 /** Contexto de fechas para la IA: hoy y cuántas tareas pendientes hay cada día de las próximas 3 semanas. */
@@ -146,7 +146,7 @@ export async function planProject(input: { projectId?: string; idea: string; due
       .object({ projectId: id.optional(), idea: z.string().trim().max(4000), dueDate: z.iso.date().nullable().optional() })
       .parse(input);
     const userId = await aiUser();
-    checkLength(data.idea);
+    await checkLength(data.idea);
     const ctx = await loadContext(userId);
 
     if (data.projectId) {
@@ -244,7 +244,7 @@ export async function tasksFromText(text: string): Promise<Result<{ tasks: Plann
   return run(async () => {
     const t = z.string().trim().min(3, "Escribe qué tienes que hacer.").max(4000).parse(text);
     const userId = await aiUser();
-    checkLength(t);
+    await checkLength(t);
     const [ctx, courses, projects] = await Promise.all([
       loadContext(userId),
       prisma.course.findMany({ where: { userId }, select: { id: true, name: true }, orderBy: { position: "asc" } }),

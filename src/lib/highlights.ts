@@ -280,7 +280,7 @@ export async function extIntegrate(u: ExtUser, input: IntegrateInput): Promise<I
 
 /** 1–5 tarjetas de repaso sobre lo que se acaba de agregar. */
 export async function cardsFromText(userId: string, h: { text: string; title: string; deck: string; notePath: string | null; studyModuleId: string | null }) {
-  if (!aiConfigured()) throw new Error("La IA no está configurada en el servidor.");
+  if (!(await aiConfigured())) throw new Error("La IA no está configurada en el servidor.");
   const r = await aiJson<{ cards: { front: string; back: string }[] }>({
     name: "tarjetas",
     system: "Haces tarjetas de repaso (estilo Anki). Respondes siempre en español de Colombia, claro y preciso. Si hay fórmulas, en LaTeX entre $…$.",

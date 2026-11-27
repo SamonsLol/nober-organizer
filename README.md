@@ -116,7 +116,8 @@ Without a vault the app works the same, just without creating or opening notes.
 | `AI_BASE_URL` | Base URL for `custom` (OpenRouter, Ollama, LM Studio…) |
 | `AI_MAX_INPUT_CHARS` | Max text per request (default 14,000 on Groq's free tier, 48,000 on OpenAI) |
 
-Note content is sent to the provider you configure.
+You can also set it up from the app in **Settings → AI** (provider, model and key; the key is stored encrypted and
+takes precedence over these variables). Note content is sent to the provider you configure.
 
 ## Development
 

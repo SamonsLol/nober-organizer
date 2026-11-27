@@ -10,6 +10,7 @@ import { loadUserDB } from "@/lib/data/source";
 import { folderNotes, folderTasks, vaultInfo } from "@/lib/vault";
 import { vaultAllowed } from "@/lib/vault-access";
 import { aiConfigured } from "@/lib/ai";
+import { aiSettingsView } from "@/lib/ai-store";
 import { pushConfigured, pushPublicKey } from "@/lib/push";
 import { upcomingReminders } from "@/lib/reminders";
 import { noteName, projectFolder, type VaultInfo, type VaultTask } from "@/lib/notes";
@@ -38,7 +39,7 @@ export const getVault = cache(async (): Promise<VaultInfo & { canWrite: boolean;
   if (!hasDatabase()) return { ...v, canWrite: false, ai: false };
   const allowed = vaultAllowed((await getSession())?.user.email);
   // `ai`: hay clave de IA y esta cuenta puede usarla (mismas cuentas que la bóveda)
-  return { ...v, canWrite: v.enabled && allowed, ai: aiConfigured() && allowed };
+  return { ...v, canWrite: v.enabled && allowed, ai: (await aiConfigured()) && allowed };
 });
 
 export type VaultStatus = Awaited<ReturnType<typeof getVault>>;
@@ -624,6 +625,7 @@ export async function getSettings() {
     google: await getGoogleStatus(),
     push: await getPushStatus(),
     coursera: await getCourseraStatus(),
+    ai: hasDatabase() ? await aiSettingsView((await getSession())?.user.email) : null,
   };
 }
 

@@ -88,7 +88,7 @@ export async function setClipStatus(clipId: string, status: "ADDED" | "DISMISSED
 }
 
 async function aiUser() {
-  if (!aiConfigured()) throw new UserError("La IA no está configurada en el servidor (AI_API_KEY).");
+  if (!(await aiConfigured())) throw new UserError("La IA no está configurada (Ajustes → IA).");
   const userId = await user();
   if (!(await getSession())) throw new UserError("Inicia sesión.");
   return userId;

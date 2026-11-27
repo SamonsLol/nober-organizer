@@ -6,59 +6,97 @@ import "server-only";
  *    `openai/gpt-oss-120b`;
  *  - OpenAI (de pago) con `gpt-5-mini` por defecto;
  *  - cualquier otro compatible (OpenRouter, Ollama, LM Studio…) con AI_BASE_URL + AI_MODEL.
+ * Se configura en Ajustes → IA (guardado cifrado en la base) o en .env.production (AI_*); Ajustes tiene prioridad.
  * El proveedor sale de AI_PROVIDER, o de AI_BASE_URL, o del prefijo de la clave (`gsk_` Groq, `sk-` OpenAI).
  * Las respuestas se piden con esquema JSON estricto (`response_format: json_schema`).
  */
 
 export class AiError extends Error {}
 
-type Provider = "groq" | "openai" | "custom";
+export type Provider = "groq" | "openai" | "custom";
 
-const PRESETS: Record<Exclude<Provider, "custom">, { base: string; model: string; maxInput: number }> = {
+export const AI_PRESETS: Record<Exclude<Provider, "custom">, { base: string; model: string; maxInput: number }> = {
   groq: { base: "https://api.groq.com/openai/v1", model: "openai/gpt-oss-120b", maxInput: 14_000 },
   openai: { base: "https://api.openai.com/v1", model: "gpt-5-mini", maxInput: 48_000 },
 };
 
-function provider(key: string, base: string): Provider {
-  const p = process.env.AI_PROVIDER?.trim().toLowerCase();
+/** Lo que se puede configurar (en .env.production o en Ajustes → IA). Vacío = valor por defecto. */
+export interface AiSource { key: string; provider?: string; base?: string; model?: string; reasoning?: string; maxInput?: number }
+
+export interface AiCfg { provider: Provider; key: string; base: string; model: string; reasoning: string; maxInput: number }
+
+function detect(src: AiSource): Provider {
+  const p = src.provider?.trim().toLowerCase();
   if (p === "groq" || p === "openai" || p === "custom") return p;
+  const base = src.base?.trim() ?? "";
   if (base) return /api\.openai\.com/i.test(base) ? "openai" : /api\.groq\.com/i.test(base) ? "groq" : "custom";
-  if (key.startsWith("gsk_")) return "groq";
-  if (key.startsWith("sk-")) return "openai";
+  if (src.key.startsWith("gsk_")) return "groq";
+  if (src.key.startsWith("sk-")) return "openai";
   return "groq";
 }
 
-const cfg = () => {
-  const key = process.env.AI_API_KEY?.trim() ?? "";
-  const rawBase = process.env.AI_BASE_URL?.trim() ?? "";
-  const p = provider(key, rawBase);
-  const preset = p === "custom" ? PRESETS.groq : PRESETS[p];
-  const model = process.env.AI_MODEL?.trim() || preset.model;
+export function buildAiCfg(src: AiSource): AiCfg {
+  const p = detect(src);
+  const preset = p === "custom" ? AI_PRESETS.groq : AI_PRESETS[p];
+  const model = src.model?.trim() || preset.model;
   return {
     provider: p,
-    key,
-    base: (rawBase || preset.base).replace(/\/+$/, ""),
+    key: src.key.trim(),
+    base: (src.base?.trim() || preset.base).replace(/\/+$/, ""),
     model,
     // Modelos que razonan antes de responder (gpt-oss, o1/o3/o4, gpt-5): poco razonamiento basta y es más rápido
-    reasoning: /gpt-oss|(^|\/)o\d|gpt-5/i.test(model) ? process.env.AI_REASONING_EFFORT?.trim() || "low" : "none",
-    maxInput: Number(process.env.AI_MAX_INPUT_CHARS) || preset.maxInput,
+    reasoning: /gpt-oss|(^|\/)o\d|gpt-5/i.test(model) ? src.reasoning?.trim() || "low" : "none",
+    maxInput: src.maxInput || preset.maxInput,
   };
-};
+}
 
-export const aiConfigured = () => Boolean(cfg().key);
+export const envAiSource = (): AiSource => ({
+  key: process.env.AI_API_KEY?.trim() ?? "",
+  provider: process.env.AI_PROVIDER,
+  base: process.env.AI_BASE_URL,
+  model: process.env.AI_MODEL,
+  reasoning: process.env.AI_REASONING_EFFORT,
+  maxInput: Number(process.env.AI_MAX_INPUT_CHARS) || undefined,
+});
+
+/**
+ * Configuración vigente: la de Ajustes → IA (tabla AppConfig «ai», clave cifrada) si existe; si no, la de .env.production.
+ * Se guarda 30 s en memoria (`resetAiConfigCache` al cambiarla).
+ */
+let cached: { at: number; cfg: AiCfg & { source: "app" | "env" } } | null = null;
+
+export function resetAiConfigCache() {
+  cached = null;
+}
+
+export async function aiConfig(): Promise<AiCfg & { source: "app" | "env" }> {
+  if (cached && Date.now() - cached.at < 30_000) return cached.cfg;
+  let cfg: AiCfg & { source: "app" | "env" } = { ...buildAiCfg(envAiSource()), source: "env" };
+  try {
+    const { loadAppAi } = await import("@/lib/ai-store");
+    const app = await loadAppAi();
+    if (app?.key) cfg = { ...buildAiCfg(app), source: "app" };
+  } catch (e) {
+    console.error("IA: no se pudo leer la configuración de Ajustes:", (e as Error).message);
+  }
+  cached = { at: Date.now(), cfg };
+  return cfg;
+}
+
+export const aiConfigured = async () => Boolean((await aiConfig()).key);
 
 /**
  * Límite de entrada en caracteres: la capa gratuita de Groq admite ~8.000 tokens por minuto (entrada + salida); con
  * OpenAI cabe mucho más. Se ajusta con AI_MAX_INPUT_CHARS.
  */
-export const AI_MAX_INPUT_CHARS = cfg().maxInput;
+export const aiMaxInput = async () => (await aiConfig()).maxInput;
 
 type JsonSchema = Record<string, unknown>;
 
 /** Una solicitud con respuesta JSON validada contra `schema` (modo estricto). */
-export async function aiJson<T>(o: { name: string; schema: JsonSchema; system: string; user: string; maxTokens?: number }): Promise<T> {
-  const c = cfg();
-  if (!c.key) throw new AiError("La IA no está configurada en el servidor (falta AI_API_KEY).");
+export async function aiJson<T>(o: { name: string; schema: JsonSchema; system: string; user: string; maxTokens?: number }, override?: AiCfg): Promise<T> {
+  const c = override ?? (await aiConfig());
+  if (!c.key) throw new AiError("La IA no está configurada (Ajustes → IA o AI_API_KEY).");
   const body: Record<string, unknown> = {
     model: c.model,
     messages: [
@@ -80,7 +118,7 @@ export async function aiJson<T>(o: { name: string; schema: JsonSchema; system: s
     throw new AiError(`No se pudo conectar con el servicio de IA (${(e as Error).name === "TimeoutError" ? "tardó demasiado" : (e as Error).message}).`);
   });
 
-  if (res.status === 401 || res.status === 403) throw new AiError("El servicio de IA rechazó la clave (AI_API_KEY). Revísala.");
+  if (res.status === 401 || res.status === 403) throw new AiError("El servicio de IA rechazó la clave. Revísala en Ajustes → IA.");
   if (res.status === 429) {
     const detail = await res.text().catch(() => "");
     if (/insufficient_quota|billing/i.test(detail)) throw new AiError("La cuenta del servicio de IA no tiene saldo o cupo disponible. Revísala con tu proveedor.");
@@ -94,7 +132,7 @@ export async function aiJson<T>(o: { name: string; schema: JsonSchema; system: s
     );
   }
   if (res.status === 413) throw new AiError("El texto es demasiado largo para el servicio de IA.");
-  if (res.status === 404) throw new AiError(`El servicio de IA no reconoce el modelo «${c.model}» (AI_MODEL) o la dirección (AI_BASE_URL).`);
+  if (res.status === 404) throw new AiError(`El servicio de IA no reconoce el modelo «${c.model}» o la dirección. Revísalos en Ajustes → IA.`);
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     console.error("IA:", res.status, detail.slice(0, 500));
