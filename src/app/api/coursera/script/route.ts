@@ -55,6 +55,8 @@ const SCRIPT = String.raw`(async () => {
     const parts = [];
     if (d.detected.length) parts.push(d.detected.length === 1 ? "curso nuevo: «" + d.detected[0].name + "». Te llegará un aviso para organizarlo" : d.detected.length + " cursos nuevos para organizar");
     if (d.modulesDone) parts.push(d.modulesDone + (d.modulesDone === 1 ? " módulo terminado" : " módulos terminados"));
+    if (d.sessionsDone) parts.push(d.sessionsDone + (d.sessionsDone === 1 ? " sesión de estudio hecha" : " sesiones de estudio hechas"));
+    else if (d.stepsDone) parts.push(d.stepsDone + (d.stepsDone === 1 ? " paso marcado" : " pasos marcados"));
     say(parts.length ? parts.join(" · ") + "." : "todo al día ✓", true);
   } catch (e) { say("no se pudo conectar con Nober.", true); }
 })();`;

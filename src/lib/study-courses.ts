@@ -131,6 +131,11 @@ function indexNote(o: { title: string; partner?: string | null; url?: string; de
   ].join("\n");
 }
 
+/** Título del paso de una sesión: «Video: Qué es el hacking ético · 6 min». «Reading: …» o «Podcast: …» ya dicen qué son. */
+export function stepTitle(i: LessonItem) {
+  return `${/^[\p{L} ]{3,20}:\s/u.test(i.name) ? i.name : `${itemKind(i.type)}: ${i.name}`} · ${i.minutes} min`.slice(0, 200);
+}
+
 /** Reparte los ítems de una lección partida en `parts` grupos seguidos de duración parecida. */
 function itemsForPart(items: LessonItem[], part: number, parts: number) {
   if (parts <= 1) return items;
@@ -221,8 +226,7 @@ export async function applyStudyPlan(userId: string, courseId: string, plan: Stu
     return s.pieces
       .flatMap((p) => itemsForPart(lessons[p.lesson] ?? [], p.part, p.parts))
       .slice(0, 40)
-      // «Reading: …», «Podcast: …» ya dicen qué son: no se repite el tipo
-      .map((i) => `${/^[\p{L} ]{3,20}:\s/u.test(i.name) ? i.name : `${itemKind(i.type)}: ${i.name}`} · ${i.minutes} min`.slice(0, 200));
+      .map((i) => ({ title: stepTitle(i), itemId: i.id }));
   };
 
   return prisma.$transaction(
@@ -269,7 +273,7 @@ export async function applyStudyPlan(userId: string, courseId: string, plan: Stu
             description: inProgram ? `${course.name} · ${module.name}` : module.name,
             note: `Sesión de estudio · ≈ ${formatMinutes(s.minutes)}.`,
             links: { create: [{ url: courseraUrl(course.slug, module.position + 1), label: `Abrir ${s.label} en Coursera`, position: 0 }] },
-            steps: { create: stepsFor(s).map((t, i) => ({ title: t, position: i })) },
+            steps: { create: stepsFor(s).map((t, i) => ({ title: t.title, itemId: t.itemId, position: i })) },
           },
         });
       }
@@ -299,4 +303,55 @@ export async function completeModules(userId: string, courseId: string, external
   const left = await prisma.studyModule.count({ where: { courseId, completedAt: null } });
   if (!left) await prisma.studyCourse.update({ where: { id: courseId }, data: { status: "DONE" } });
   return ids.length;
+}
+
+/**
+ * Marca como hechos los pasos de las sesiones cuyos videos/lecturas ya se completaron en Coursera, y la sesión entera
+ * cuando todos sus pasos están hechos. Nunca desmarca nada. Los pasos creados antes de guardar `itemId` se emparejan por
+ * su título (y se les guarda el `itemId` para la próxima vez).
+ */
+export async function completeSessionItems(userId: string, course: { id: string; slug: string }, doneItems: Set<string>) {
+  if (!doneItems.size) return { steps: 0, sessions: 0 };
+  const tasks = await prisma.task.findMany({
+    where: { userId, status: { not: "DONE" }, studyModule: { courseId: course.id } },
+    select: { id: true, steps: { select: { id: true, title: true, done: true, itemId: true } }, studyModule: { select: { externalId: true } } },
+  });
+  if (!tasks.length) return { steps: 0, sessions: 0 };
+
+  // Títulos → ítems, por módulo, solo si hay pasos antiguos sin itemId
+  let byTitle: Map<string, Map<string, string[]>> | null = null;
+  if (tasks.some((t) => t.steps.some((s) => !s.itemId && !s.done))) {
+    byTitle = new Map();
+    const lessons = await fetchCourseraLessonItems(course.slug).catch(() => null);
+    for (const [moduleId, list] of lessons ?? []) {
+      const m = new Map<string, string[]>();
+      for (const it of list.flat()) m.set(stepTitle(it), [...(m.get(stepTitle(it)) ?? []), it.id]);
+      byTitle.set(moduleId, m);
+    }
+  }
+
+  const doneSteps: string[] = [];
+  const backfill: { id: string; itemId: string }[] = [];
+  const doneTasks: string[] = [];
+  for (const t of tasks) {
+    let all = t.steps.length > 0;
+    for (const s of t.steps) {
+      let ids = s.itemId ? [s.itemId] : null;
+      if (!ids) {
+        ids = byTitle?.get(t.studyModule?.externalId ?? "")?.get(s.title) ?? null;
+        if (ids?.length === 1) backfill.push({ id: s.id, itemId: ids[0] });
+      }
+      const complete = s.done || Boolean(ids?.length && ids.every((i) => doneItems.has(i)));
+      if (complete && !s.done) doneSteps.push(s.id);
+      if (!complete) all = false;
+    }
+    if (all) doneTasks.push(t.id);
+  }
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.taskStep.updateMany({ where: { id: { in: doneSteps } }, data: { done: true } }),
+    prisma.task.updateMany({ where: { id: { in: doneTasks }, userId, status: { not: "DONE" } }, data: { status: "DONE", completedAt: now } }),
+    ...backfill.map((b) => prisma.taskStep.update({ where: { id: b.id }, data: { itemId: b.itemId } })),
+  ]);
+  return { steps: doneSteps.length, sessions: doneTasks.length };
 }

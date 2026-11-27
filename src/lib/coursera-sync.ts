@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { fetchCourseraItems } from "@/lib/coursera";
-import { completeModules, importCoursera } from "@/lib/study-courses";
+import { completeModules, completeSessionItems, importCoursera } from "@/lib/study-courses";
 import { sendToUser } from "@/lib/push";
 
 /**
@@ -98,7 +98,7 @@ function finishedModules(items: { id: string; moduleId: string; type: string }[]
   return out;
 }
 
-export interface SyncResult { courses: number; detected: { id: string; name: string }[]; modulesDone: number; progressRead: boolean }
+export interface SyncResult { courses: number; detected: { id: string; name: string }[]; modulesDone: number; sessionsDone: number; stepsDone: number; progressRead: boolean }
 
 export async function runCourseraSync(userId: string, data: SyncPayload): Promise<SyncResult> {
   const settings = await prisma.settings.findUnique({ where: { userId }, select: { courseraSyncedAt: true } });
@@ -127,6 +127,8 @@ export async function runCourseraSync(userId: string, data: SyncPayload): Promis
   //  onDemandCoursesProgress.v1 → { overall: %, modules: { <moduleId>: % }, items: { <itemId>: { progressState } } }
   //  onDemandHomeProgress.v1    → { modulesCompleted: [ids], modulesPassed: [ids] }
   let modulesDone = 0;
+  let sessionsDone = 0;
+  let stepsDone = 0;
   let progressRead = false;
   const courses = await prisma.studyCourse.findMany({
     where: { userId, provider: "coursera", status: { in: ["DETECTED", "PLANNED"] } },
@@ -160,6 +162,13 @@ export async function runCourseraSync(userId: string, data: SyncPayload): Promis
     if (overall === null && !modulePct.size && !finished.size && !items.size) continue;
     progressRead = true;
     modulesDone += await completeModules(userId, course.id, [...finished]);
+    // Sesiones y pasos según los videos y lecturas completados (las de módulos terminados ya quedaron hechas)
+    const r = await completeSessionItems(userId, course, items).catch((e) => {
+      console.error("coursera sesiones:", (e as Error).message);
+      return { steps: 0, sessions: 0 };
+    });
+    sessionsDone += r.sessions;
+    stepsDone += r.steps;
     for (const [id, pct] of modulePct) {
       await prisma.studyModule.updateMany({ where: { courseId: course.id, externalId: id }, data: { progress: Math.max(0, Math.min(100, Math.round(pct))) } });
     }
@@ -182,5 +191,5 @@ export async function runCourseraSync(userId: string, data: SyncPayload): Promis
     }).catch(() => {});
   }
 
-  return { courses: list.length, detected, modulesDone, progressRead };
+  return { courses: list.length, detected, modulesDone, sessionsDone, stepsDone, progressRead };
 }

@@ -384,6 +384,8 @@ model TaskStep {
   title    String
   done     Boolean @default(false)
   position Int     @default(0)
+  /// Ítem de Coursera (video, lectura…) que es este paso, en las sesiones de estudio
+  itemId   String?
 
   @@index([taskId])
 }
