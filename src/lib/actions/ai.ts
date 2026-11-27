@@ -328,3 +328,59 @@ export async function savePlanToVault(markdown: string): Promise<Result<{ path: 
     return { path };
   });
 }
+
+/* ───────────── Cambios pedidos al apunte ───────────── */
+
+export interface NoteRewrite { summary: string; content: string; changed: boolean }
+
+/**
+ * «Pídele un cambio»: la IA devuelve el apunte completo con el cambio aplicado (las propiedades no se tocan). No guarda:
+ * el editor muestra las diferencias y la persona decide si aplicarlas.
+ */
+export async function editNoteWithAi(input: { path: string; instruction: string }): Promise<Result<NoteRewrite>> {
+  return run(async () => {
+    const data = z.object({ path: notePath, instruction: z.string().trim().min(3, "Escribe qué cambio quieres.").max(1500) }).parse(input);
+    await aiUser();
+    await vaultUser();
+    const note = await readNote(data.path).catch((e) => Promise.reject(aiErr(e)));
+    const fm = note.content.match(/^---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n/)?.[0] ?? "";
+    const body = note.content.slice(fm.length);
+    const max = await aiMaxInput();
+    // El apunte va y vuelve completo: se reserva la mitad del límite para la respuesta
+    if (body.length > max / 2) {
+      throw new UserError(`El apunte es muy largo para editarlo entero con la IA (${Math.round(body.length / 1000)} mil caracteres; máximo ${Math.round(max / 2000)} mil). Pide el cambio en una nota más corta.`);
+    }
+    try {
+      const r = await aiJson<{ summary: string; content: string }>({
+        name: "editar_apunte",
+        system: `Editas apuntes de Obsidian (Markdown) según lo que pide la persona. ${STYLE.replace("Usas solo la información dada; si algo no está, no lo inventas.", "")}`.trim(),
+        user: [
+          "Aplica el pedido al apunte y devuelve el apunte COMPLETO ya modificado en \"content\".",
+          "Reglas:",
+          "- Cambia solo lo que el pedido implica; todo lo demás queda EXACTAMENTE igual (mismas palabras, orden y formato).",
+          "- Conserva la sintaxis de Obsidian: [[enlaces]], ![[adjuntos]], callouts (> [!info]), casillas - [ ] / - [x] con sus fechas y emojis (📅 ✅ ⏳), fórmulas $…$, bloques de código y tablas.",
+          "- Si el pedido requiere agregar contenido (explicar, ejemplos, completar), usa conocimiento estándar y verificable; no inventes datos específicos (cifras, fechas, nombres).",
+          "- No agregues comentarios sobre lo que hiciste dentro del apunte. Español de Colombia salvo que el pedido diga otro idioma.",
+          "- \"summary\": una frase con lo que cambiaste (o por qué no cambiaste nada).",
+          "",
+          `Pedido: ${data.instruction}`,
+          "",
+          `<apunte>\n${body}\n</apunte>`,
+        ].join("\n"),
+        schema: {
+          type: "object",
+          properties: { summary: { type: "string" }, content: { type: "string" } },
+          required: ["summary", "content"],
+          additionalProperties: false,
+        },
+        maxTokens: Math.min(16_000, Math.round(body.length / 2.2) + 2500),
+      });
+      let content = r.content.replace(/^\s*<apunte>\s*|\s*<\/apunte>\s*$/g, "").replace(/[‐‑]/g, "-");
+      if (!content.trim()) throw new UserError("La IA devolvió el apunte vacío. Intenta pedirlo de otra forma.");
+      content = fm + content.replace(/\s*$/, "\n");
+      return { summary: r.summary.trim(), content, changed: content.trim() !== note.content.trim() };
+    } catch (e) {
+      throw aiErr(e);
+    }
+  });
+}

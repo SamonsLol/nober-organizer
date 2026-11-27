@@ -346,6 +346,8 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
 
   const edit = (content: string) => {
     setDraft(content);
+    // También en la referencia, para que un `flush()` inmediato guarde ya el contenido nuevo
+    state.current = { ...state.current, draft: content, save: state.current.save === "conflict" ? "conflict" : "dirty" };
     if (state.current.save !== "conflict") setSave("dirty");
   };
 
@@ -549,7 +551,19 @@ export function NoteEditor({ doc, className, style }: { doc: NoteDoc; className?
       ) : null}
 
       {aiOpen && file ? (
-        <NoteAi path={file.path} getMtime={() => state.current.file?.mtime} flush={() => flush()} reload={() => load()} onClose={() => setAiOpen(false)} />
+        <NoteAi
+          path={file.path}
+          getMtime={() => state.current.file?.mtime}
+          flush={() => flush()}
+          reload={() => load()}
+          onClose={() => setAiOpen(false)}
+          getContent={() => state.current.draft}
+          replaceContent={(content) => {
+            if (state.current.save === "conflict") return toast("Resuelve primero el conflicto con la versión de Obsidian.");
+            edit(content);
+            setTimeout(() => flush(), 0);
+          }}
+        />
       ) : null}
 
       <div className={cn("relative min-h-0 flex-1 overflow-y-auto", dropping && "outline-2 -outline-offset-4 outline-dashed outline-accent")} {...dropProps}>
