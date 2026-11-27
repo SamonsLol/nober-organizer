@@ -123,7 +123,7 @@ export async function fetchCourseraProgram(courseId: string): Promise<CourseraPr
   return { slug: p.slug, name: p.name.trim(), courseIds: p.courseIds };
 }
 
-export interface LessonItem { name: string; type: string; minutes: number }
+export interface LessonItem { id: string; name: string; type: string; minutes: number }
 
 /** Ítems (videos, lecturas, prácticas, quizzes) de cada lección, por módulo y en orden: `byModule.get(moduleId)[lessonIndex]`. */
 export async function fetchCourseraLessonItems(slug: string) {
@@ -144,7 +144,7 @@ export async function fetchCourseraLessonItems(slug: string) {
         (lessons.get(lid)?.itemIds ?? [])
           .map((iid) => items.get(iid))
           .filter((i): i is NonNullable<typeof i> => Boolean(i))
-          .map((i) => ({ name: i.name.trim(), type: i.contentSummary?.typeName ?? "", minutes: Math.max(1, Math.round((i.timeCommitment ?? 0) / 60_000)) })),
+          .map((i) => ({ id: i.id, name: i.name.trim(), type: i.contentSummary?.typeName ?? "", minutes: Math.max(1, Math.round((i.timeCommitment ?? 0) / 60_000)) })),
       ),
     );
   }

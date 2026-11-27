@@ -68,6 +68,8 @@
       if (d.detected.length)
         parts.push(d.detected.length === 1 ? `curso nuevo: <b>${esc(d.detected[0].name)}</b>. Te llegará un aviso para organizarlo` : `${d.detected.length} cursos nuevos para organizar`);
       if (d.modulesDone) parts.push(d.modulesDone + (d.modulesDone === 1 ? " módulo terminado" : " módulos terminados"));
+      if (d.sessionsDone) parts.push(d.sessionsDone + (d.sessionsDone === 1 ? " sesión de estudio hecha" : " sesiones de estudio hechas"));
+      else if (d.stepsDone) parts.push(d.stepsDone + (d.stepsDone === 1 ? " paso marcado" : " pasos marcados"));
       if (manual || parts.length) toast("Nober · " + (parts.length ? parts.join(" · ") + "." : "todo al día ✓"), 8000);
       return { ok: true, data: d };
     } catch (e) {
