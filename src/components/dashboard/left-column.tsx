@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarClock, Flag, MapPin, Sparkles, X, Zap } from "lucide-react";
+import { CalendarClock, Check, Copy, Flag, MapPin, Sparkles, X, Zap } from "lucide-react";
 import { EmptyHint, Section, cn } from "@/components/blocks/primitives";
 import { openEventEditor } from "@/components/calendar/event-editor";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import { toast } from "@/components/shell/toast";
 import { addQuickNote, deleteQuickNote, setQuickNoteDone } from "@/lib/actions/study";
 import { capitalize, fmt, friendlyDay } from "@/lib/dates";
 import type { DashboardData } from "@/lib/data";
+import { Ico } from "@/components/blocks/icons";
 
 /* ───────────── Hoy ───────────── */
 
@@ -22,10 +23,13 @@ export function TodayAgenda({ data }: { data: DashboardData }) {
 
   return (
     <Section icon={CalendarClock} title="Hoy" bodyClassName="p-2">
-      {today.tasks.length + today.events.length > 0 ? (
+      {today.tasks.length + today.events.length + today.google.length > 0 ? (
         <div className="mb-2 flex flex-col gap-1 border-b border-border pb-2">
           {today.events.map((e) => (
             <Row key={e.id} emoji={e.emoji} title={e.title} meta={e.allDay ? "Todo el día" : fmt(e.start, "HH:mm")} />
+          ))}
+          {today.google.map((e) => (
+            <Row key={e.id} emoji="calendar" title={e.title} meta={e.allDay ? e.calendarName : `${fmt(e.start, "HH:mm")} · ${e.calendarName}`} />
           ))}
           {today.tasks.map((t) => (
             <Row key={t.id} emoji={t.emoji} title={t.title} meta={t.allDay ? "Pendiente hoy" : `Vence ${fmt(t.dueAt, "HH:mm")}`} tone="warn" />
@@ -67,7 +71,7 @@ export function TodayAgenda({ data }: { data: DashboardData }) {
               <span className={cn("mt-[5px] size-1.5 shrink-0 rounded-full", `dot-${c.color}`)} />
               <div className="min-w-0 leading-tight">
                 <div className="truncate text-[13px]">
-                  {c.emoji} {c.name}
+                  <Ico value={c.emoji} fallback="book" />{c.name}
                 </div>
                 <div className="mt-0.5 flex items-center gap-1 text-[11.5px] text-faint">
                   <MapPin className="size-3" />
@@ -86,7 +90,7 @@ export function TodayAgenda({ data }: { data: DashboardData }) {
 function Row({ emoji, title, meta, tone }: { emoji: string; title: string; meta: string; tone?: "warn" }) {
   return (
     <div className="flex items-center gap-2 rounded-md px-1.5 py-1">
-      <span className="w-4 text-center text-[13px]">{emoji}</span>
+      <span className="grid w-4 place-items-center text-[13px]"><Ico value={emoji} fallback="circle-check" className="mr-0" /></span>
       <span className="min-w-0 flex-1 truncate text-[13px]">{title}</span>
       <span className={cn("shrink-0 text-[11.5px]", tone === "warn" ? "text-warn" : "text-faint")}>{meta}</span>
     </div>
@@ -133,7 +137,7 @@ export function ImportantDates({ data }: { data: DashboardData }) {
             </div>
             <div className="min-w-0 leading-tight">
               <div className="truncate text-[13px]">
-                {e.emoji} {e.title}
+                <Ico value={e.emoji} />{e.title}
               </div>
               <div className="mt-0.5 text-[11.5px] text-faint">{friendlyDay(e.start, now)}</div>
             </div>
@@ -198,13 +202,53 @@ export function Thoughts({ initial }: { initial: DashboardData["quickNotes"] }) 
           <li key={n.id} className="group flex items-start rounded-md hover:bg-surface-hover">
             <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2 px-1.5 py-1">
               <input type="checkbox" checked={n.done} onChange={() => toggle(n.id)} className="mt-[3px] size-3.5 shrink-0 accent-[var(--accent)]" />
-              <span className={cn("text-[13px] leading-snug", n.done && "text-faint line-through")}>{n.text}</span>
+              <span className={cn("min-w-0 text-[13px] leading-snug", n.done && "text-faint line-through")}>{n.text}</span>
             </label>
+            <CopyButton text={n.text} />
             <RemoveButton label={`Quitar «${n.text}»`} onClick={() => remove(n.id)} />
           </li>
         ))}
       </ul>
     </Section>
+  );
+}
+
+/** Botón para copiar el texto al portapapeles; aparece al pasar el cursor (siempre visible en móvil). */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Sin API de portapapeles (contexto no seguro o permiso denegado): método clásico.
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      area.remove();
+      if (!ok) return toast("No se pudo copiar.");
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <button
+      onClick={copy}
+      aria-label={copied ? "Copiado" : `Copiar «${text}»`}
+      title={copied ? "Copiado" : "Copiar"}
+      className={cn(
+        "mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-faint transition-opacity hover:bg-surface-2 hover:text-text focus-visible:opacity-100 group-hover:opacity-100 max-sm:opacity-100",
+        copied ? "text-[var(--accent)] opacity-100" : "opacity-0",
+      )}
+    >
+      {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+    </button>
   );
 }
 

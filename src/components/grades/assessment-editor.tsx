@@ -10,6 +10,8 @@ import { toast } from "@/components/shell/toast";
 import { deleteAssessment, saveAssessment } from "@/lib/actions/assessments";
 import { formatGrade } from "@/lib/grades";
 import type { Assessment, AssessmentKind, Course, GradingScale, Period } from "@/lib/types";
+import { Select } from "@/components/blocks/select";
+import { Ico } from "@/components/blocks/icons";
 
 /* ───────────── Apertura desde cualquier parte ───────────── */
 
@@ -174,21 +176,17 @@ function AssessmentEditor({
             onClick={() => setKind(k)}
             className={cn("tag h-7 px-3 text-[12.5px] transition", `tag-${KIND[k].color}`, kind === k ? "ring-2 ring-accent" : "opacity-70 hover:opacity-100")}
           >
-            {KIND[k].emoji} {KIND[k].label}
+            <Ico value={KIND[k].emoji} />{KIND[k].label}
           </button>
         ))}
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <Field label="Materia">
-          <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className={inputCls}>
-            {courses.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
-          </select>
+          <Select label="Materia" value={courseId} onChange={setCourseId} options={courses.map((c) => ({ value: c.id, label: c.name, emoji: c.emoji, color: c.color }))} />
         </Field>
         <Field label="Período">
-          <select value={periodId} onChange={(e) => setPeriodId(e.target.value)} className={inputCls}>
-            {periods.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          <Select label="Período" value={periodId} onChange={setPeriodId} options={periods.map((p) => ({ value: p.id, label: p.name, hint: `${p.weight} %` }))} />
         </Field>
         <Field label="Fecha (opcional)">
           <input type="date" value={date} onChange={(e) => pickDate(e.target.value)} className={cn(inputCls, "[color-scheme:inherit]")} />

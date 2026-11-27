@@ -5,6 +5,7 @@ import clsx from "clsx";
 import type { LucideIcon } from "lucide-react";
 import { Check, ChevronDown, Plus } from "lucide-react";
 import type { TagColor } from "@/lib/types";
+import { Ico } from "@/components/blocks/icons";
 
 export const cn = clsx;
 
@@ -199,7 +200,7 @@ export function FilterMenu<T extends string>({
                   {on ? <Check className="size-3" strokeWidth={3} /> : null}
                 </span>
                 {o.color ? <span className={cn("size-2 shrink-0 rounded-full", `dot-${o.color}`)} /> : null}
-                <span className="flex-1 truncate">{o.emoji ? `${o.emoji} ` : ""}{o.label}</span>
+                <span className="flex-1 truncate"><Ico value={o.emoji} />{o.label}</span>
               </button>
             );
           })}

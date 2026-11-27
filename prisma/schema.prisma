@@ -29,16 +29,22 @@ model User {
   courses       Course[]
   schedule      ClassSchedule[]
   tasks         Task[]
+  projects      Project[]
+  pushSubscriptions PushSubscription[]
+  reminderLogs  ReminderLog[]
+  externalEvents ExternalEvent[]
   assessments   Assessment[]
   topics        Topic[]
   lectures      Lecture[]
   events        CalendarEvent[]
   goals         Goal[]
   quickNotes    QuickNote[]
-  recentDocs    RecentDoc[]
   focusSessions FocusSession[]
   resources     Resource[]
   uploads       Upload[]
+  studyCourses  StudyCourse[]
+  flashcards    Flashcard[]
+  quizAttempts  QuizAttempt[]
 
   @@map("user")
 }
@@ -199,15 +205,27 @@ model Settings {
   scaleMax      Float  @default(5)
   scalePassing  Float  @default(3)
   scaleDecimals Int    @default(1)
-  /// Espacio de AFFiNE propio (si no, NEXT_PUBLIC_AFFINE_WORKSPACE)
-  affineWorkspace String?
-  /// Token MCP de AFFiNE (aff_mcp_v1…), cifrado con AES-256-GCM (lib/crypto.ts). Nunca se envía al navegador.
-  affineToken     String?
   /// Google Calendar: sincronización activa, calendario propio de la app y estado de la última sincronización
   googleSync       Boolean   @default(false)
   googleCalendarId String?
   googleSyncedAt   DateTime?
   googleSyncError  String?
+  /// Leer otros calendarios de Google (solo lectura): activado y cuáles (ids de Google)
+  googleRead       Boolean   @default(false)
+  googleReadIds    String[]  @default([])
+  googleReadAt     DateTime?
+  googleReadError  String?
+  /// Sincronización con Coursera desde el navegador (marcador): hash SHA-256 de la clave personal
+  courseraTokenHash String?   @unique
+  courseraSyncedAt  DateTime?
+  /// Última respuesta cruda recibida (para diagnosticar cambios en Coursera)
+  courseraLastPayload Json?
+  /// Recordatorios push: cuándo avisar de tareas (DAY_BEFORE, SAME_DAY, TWO_HOURS) y de evaluaciones (THREE_DAYS, DAY_BEFORE, SAME_DAY)
+  remindTasks      String[]  @default(["DAY_BEFORE", "SAME_DAY"])
+  remindExams      String[]  @default(["THREE_DAYS", "DAY_BEFORE", "SAME_DAY"])
+  /// Hora de los avisos «el día anterior» y «el mismo día» (HH:mm, hora local del servidor)
+  remindEvening    String    @default("19:00")
+  remindMorning    String    @default("07:00")
 }
 
 model Period {
@@ -237,7 +255,8 @@ model Course {
   teacher         String          @default("")
   room            String          @default("")
   code            String          @default("")
-  affineFolderUrl String?
+  /// Carpeta de apuntes en la bóveda de Obsidian (ruta relativa); vacía = «<raíz>/<nombre>»
+  notesFolder     String?
   position        Int             @default(0)
   createdAt       DateTime        @default(now())
   schedule        ClassSchedule[]
@@ -246,7 +265,6 @@ model Course {
   topics          Topic[]
   lectures        Lecture[]
   events          CalendarEvent[]
-  recentDocs      RecentDoc[]
   resources       Resource[]
 
   @@unique([userId, slug])
@@ -276,6 +294,12 @@ model Task {
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseId     String?
   course       Course?     @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  /// Proyecto personal (no académico). Sin materia ni proyecto = tarea personal.
+  projectId    String?
+  project      Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  /// Sesión de estudio de un módulo de un curso en línea (Coursera…)
+  studyModuleId String?
+  studyModule   StudyModule? @relation(fields: [studyModuleId], references: [id], onDelete: SetNull)
   title        String
   emoji        String      @default("")
   description  String?
@@ -298,6 +322,56 @@ model Task {
 
   @@index([userId, dueAt])
   @@index([courseId])
+  @@index([projectId])
+  @@index([studyModuleId])
+}
+
+enum ProjectStatus {
+  ACTIVE
+  PAUSED
+  DONE
+}
+
+/// Proyecto o actividad fuera de lo académico. Sus notas viven en una carpeta de la bóveda de Obsidian.
+model Project {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug        String
+  name        String
+  emoji       String        @default("🚀")
+  color       TagColor      @default(purple)
+  description String        @default("")
+  status      ProjectStatus @default(ACTIVE)
+  /// Fecha objetivo (opcional), guardada a medianoche local
+  dueDate     DateTime?
+  /// Carpeta en la bóveda (ruta relativa); vacía = «<OBSIDIAN_PROJECTS_ROOT>/<nombre>»
+  notesFolder String?
+  position    Int           @default(0)
+  createdAt   DateTime      @default(now())
+  tasks       Task[]
+  files       ProjectFile[]
+  studyCourses StudyCourse[]
+
+  @@unique([userId, slug])
+  @@index([userId])
+}
+
+/// Archivo adjunto a un proyecto (siempre subido: el contenido está en Upload).
+model ProjectFile {
+  id        String       @id @default(cuid())
+  projectId String
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  kind      ResourceKind
+  /// Tamaño ya formateado ("1,2 MB") para mostrar
+  size      String?
+  position  Int          @default(0)
+  createdAt DateTime     @default(now())
+  uploadId  String       @unique
+  upload    Upload       @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
 }
 
 model TaskStep {
@@ -378,7 +452,7 @@ model Topic {
   @@index([courseId])
 }
 
-/// Una clase concreta (con su apunte de AFFiNE). Las clases futuras se generan del horario.
+/// Una clase concreta (con su apunte en Obsidian). Las clases futuras se generan del horario.
 model Lecture {
   id           String   @id @default(cuid())
   userId       String
@@ -390,7 +464,8 @@ model Lecture {
   emoji        String   @default("")
   topicId      String?
   topic        Topic?   @relation(fields: [topicId], references: [id], onDelete: SetNull)
-  affineDocUrl String?
+  /// Apunte en la bóveda de Obsidian (ruta relativa, p. ej. «Apuntes/Cálculo/2026-11-24 Límites.md»)
+  notePath     String?
 
   @@index([userId, date])
   @@index([courseId])
@@ -440,20 +515,6 @@ model QuickNote {
   @@index([userId])
 }
 
-/// Referencia a un documento de AFFiNE editado hace poco (solo metadatos; el contenido vive en AFFiNE).
-model RecentDoc {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  courseId  String?
-  course    Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  url       String
-  updatedAt DateTime
-
-  @@index([userId, updatedAt])
-}
-
 model FocusSession {
   id        String    @id @default(cuid())
   userId    String
@@ -496,8 +557,172 @@ model Upload {
   size      Int
   key       String    @unique
   createdAt DateTime  @default(now())
-  taskFile  TaskFile?
-  resource  Resource?
+  taskFile    TaskFile?
+  resource    Resource?
+  projectFile ProjectFile?
 
   @@index([userId])
+}
+
+/// Dispositivo suscrito a notificaciones push (Web Push). Se borra solo si el navegador la invalida.
+model PushSubscription {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  userAgent  String    @default("")
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  @@index([userId])
+}
+
+/// Recordatorio ya enviado (evita repetirlo). La clave incluye la fecha de entrega: si cambia, se vuelve a avisar.
+model ReminderLog {
+  id     String   @id @default(cuid())
+  userId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key    String
+  sentAt DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([sentAt])
+}
+
+/// Copia (solo lectura) de un evento de otro calendario de Google, para mostrarlo en el calendario de la app.
+/// Se reemplaza entera en cada lectura (ventana: 30 días atrás a 4 meses adelante).
+model ExternalEvent {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calendarId   String
+  calendarName String
+  /// Color de la app más cercano al del calendario en Google (gray, blue, …)
+  color        String    @default("blue")
+  googleId     String
+  title        String
+  start        DateTime
+  end          DateTime?
+  allDay       Boolean   @default(false)
+  location     String?
+  htmlLink     String?
+
+  @@unique([userId, calendarId, googleId])
+  @@index([userId, start])
+}
+
+enum StudyCourseStatus {
+  /// Detectado o importado: falta organizarlo (días, horas, fecha)
+  DETECTED
+  /// Con plan de estudio y proyecto
+  PLANNED
+  DONE
+  /// La persona no quiere organizarlo (la sincronización no lo vuelve a proponer)
+  IGNORED
+}
+
+/// Curso en línea (Coursera…) que se estudia como proyecto: módulos → sesiones de estudio (tareas) y notas.
+model StudyCourse {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider    String            @default("coursera")
+  /// Id del curso en el proveedor
+  externalId  String
+  slug        String
+  name        String
+  partner     String?
+  description String            @default("")
+  status      StudyCourseStatus @default(DETECTED)
+  /// Proyecto donde se estudia (varios cursos de un mismo programa comparten proyecto)
+  projectId   String?
+  project     Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  /// Programa de Coursera (especialización / certificado profesional) al que pertenece
+  programSlug  String?
+  programName  String?
+  /// Posición del curso en el programa (0 = primero) y cuántos cursos tiene
+  programIndex Int?
+  programTotal Int?
+  /// Plan elegido: { days: minutos por día (0 = lunes), start, extra (%), notes }
+  plan        Json?
+  /// Avance según el proveedor (0–100), si se pudo leer
+  progress    Int?
+  syncedAt    DateTime?
+  createdAt   DateTime          @default(now())
+  modules     StudyModule[]
+
+  @@unique([userId, provider, externalId])
+  @@index([userId])
+  @@index([projectId])
+}
+
+model StudyModule {
+  id          String      @id @default(cuid())
+  courseId    String
+  course      StudyCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  externalId  String
+  name        String
+  position    Int
+  /// Tiempo estimado por el proveedor
+  minutes     Int
+  /// Avance del módulo según el proveedor (0–100)
+  progress    Int?
+  lessons     String[]    @default([])
+  /// Minutos estimados de cada lección (mismo orden que `lessons`)
+  lessonMinutes Int[]     @default([])
+  notePath    String?
+  completedAt DateTime?
+  tasks       Task[]
+  flashcards  Flashcard[]
+  quizzes     QuizAttempt[]
+
+  @@unique([courseId, externalId])
+  @@index([courseId])
+}
+
+/// Tarjeta de repaso con repetición espaciada (SM-2 simplificado, ver lib/srs.ts).
+model Flashcard {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Nombre del mazo para mostrar («Ethical Hacking · M1», «Cálculo · Clase del 3 de mayo»)
+  deck          String
+  front         String
+  back          String
+  /// Origen: nota de Obsidian y/o módulo de un curso en línea
+  notePath      String?
+  studyModuleId String?
+  studyModule   StudyModule? @relation(fields: [studyModuleId], references: [id], onDelete: Cascade)
+  ease          Float        @default(2.5)
+  /// Días hasta la próxima repasada (0 = aprendiendo)
+  interval      Int          @default(0)
+  reps          Int          @default(0)
+  lapses        Int          @default(0)
+  due           DateTime     @default(now())
+  reviewedAt    DateTime?
+  createdAt     DateTime     @default(now())
+
+  @@index([userId, due])
+  @@index([studyModuleId])
+}
+
+/// Intento de un quiz generado por IA (las preguntas se guardan para poder repasarlas).
+model QuizAttempt {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deck          String
+  notePath      String?
+  studyModuleId String?
+  studyModule   StudyModule? @relation(fields: [studyModuleId], references: [id], onDelete: SetNull)
+  score         Int
+  total         Int
+  /// [{ question, options, answer, explanation, picked }]
+  questions     Json
+  createdAt     DateTime     @default(now())
+
+  @@index([userId])
+  @@index([studyModuleId])
 }

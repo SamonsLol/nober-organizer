@@ -217,12 +217,18 @@
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     min-height: 100dvh;
+    /* Palabras o enlaces largos se parten en vez de salirse de su tarjeta (también en filas flex/grid). */
+    overflow-wrap: anywhere;
     background:
       radial-gradient(900px 600px at 8% -10%, var(--glow-1), transparent 70%),
       radial-gradient(700px 500px at 100% 10%, var(--glow-2), transparent 70%),
       radial-gradient(900px 700px at 60% 110%, var(--glow-3), transparent 70%),
       var(--bg);
     background-attachment: fixed;
+  }
+  /* Las tablas ya se desplazan en horizontal: ahí no partir palabras a mitad. */
+  table {
+    overflow-wrap: break-word;
   }
   ::selection {
     background: var(--accent-soft);
@@ -302,3 +308,36 @@
     background-color: var(--chart-track);
   }
 }
+
+/* ───────────── Apuntes de Obsidian (modo lectura, sobre papel) ───────────── */
+.md-body { font-size: 14.5px; line-height: 1.7; color: var(--ink); overflow-wrap: anywhere; }
+.md-body > :first-child { margin-top: 0; }
+.md-body h1, .md-body h2, .md-body h3, .md-body h4 { font-weight: 600; line-height: 1.3; margin: 1.4em 0 0.5em; }
+.md-body h1 { font-size: 1.6em; }
+.md-body h2 { font-size: 1.25em; padding-bottom: 0.2em; border-bottom: 1px solid color-mix(in srgb, var(--ink) 10%, transparent); }
+.md-body h3 { font-size: 1.08em; }
+.md-body p, .md-body ul, .md-body ol, .md-body blockquote, .md-body pre, .md-body table { margin: 0.6em 0; }
+.md-body ul { list-style: disc; padding-left: 1.4em; }
+.md-body ol { list-style: decimal; padding-left: 1.6em; }
+.md-body li > ul, .md-body li > ol { margin: 0.2em 0; }
+.md-body li.task-list-item { list-style: none; margin-left: -1.3em; }
+.md-body .md-task { width: 15px; height: 15px; margin-right: 0.5em; vertical-align: -2px; accent-color: var(--accent); cursor: pointer; }
+.md-body .md-task:disabled { cursor: default; }
+.md-body li.task-list-item:has(> .md-task:checked) { color: color-mix(in srgb, var(--ink) 50%, transparent); }
+.md-body a { color: color-mix(in srgb, var(--accent) 65%, var(--ink)); text-decoration: underline; text-underline-offset: 2px; }
+.md-body a.md-wikilink { text-decoration-style: dotted; }
+.md-body blockquote { padding: 0.5em 0.9em; border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.md-body blockquote > :first-child { margin-top: 0; }
+.md-body blockquote > :last-child { margin-bottom: 0; }
+.md-body code { font-size: 0.88em; padding: 0.1em 0.35em; border-radius: 6px; background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.md-body pre { padding: 0.8em 1em; border-radius: 12px; overflow-x: auto; background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.md-body pre code { padding: 0; background: none; }
+.md-body table { border-collapse: collapse; display: block; overflow-x: auto; }
+.md-body th, .md-body td { padding: 0.35em 0.75em; border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); text-align: left; }
+.md-body th { font-weight: 600; background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.md-body hr { margin: 1.4em 0; border: 0; border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); }
+.md-body img { max-width: 100%; border-radius: 10px; }
+.md-body a.md-image { display: inline-block; text-decoration: none; }
+.md-body a.md-attachment { display: inline-flex; align-items: center; padding: 0.1em 0.7em; border-radius: 999px; text-decoration: none; background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.md-body a.md-attachment em { font-style: normal; }
+.md-body .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.2em 0; }

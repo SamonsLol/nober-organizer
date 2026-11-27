@@ -40,7 +40,8 @@ export interface Course {
   teacher: string;
   room: string;
   code: string;
-  affineFolderUrl?: string;
+  /** Carpeta de apuntes en la bóveda; vacía = «<raíz>/<nombre>» (`courseFolder()`). */
+  notesFolder?: string;
 }
 
 export interface ClassSchedule {
@@ -62,6 +63,8 @@ export interface Task {
   emoji: string;
   description?: string;
   courseId?: string;
+  /** Proyecto personal. Sin materia ni proyecto = tarea personal. */
+  projectId?: string;
   type: TaskType;
   dueAt: string; // ISO datetime
   allDay: boolean;
@@ -131,7 +134,8 @@ export interface Lecture {
   title: string;
   emoji: string;
   topicId?: string;
-  affineDocUrl?: string;
+  /** Ruta del apunte en la bóveda de Obsidian. */
+  notePath?: string;
 }
 
 export type EventKind = "CLASS" | "EXAM" | "DEADLINE" | "EVENT" | "IMPORTANT" | "HOLIDAY";
@@ -166,7 +170,8 @@ export interface RecentDoc {
   title: string;
   courseId?: string;
   updatedAt: string;
-  url: string;
+  /** Ruta de la nota en la bóveda de Obsidian. */
+  path: string;
 }
 
 export interface FocusDay {
@@ -186,4 +191,45 @@ export interface Resource {
   url: string;
   size?: string;
   addedAt: string;
+}
+
+export type ProjectStatus = "ACTIVE" | "PAUSED" | "DONE";
+
+/** Proyecto o actividad fuera de lo académico, con su carpeta de notas en Obsidian. */
+export interface Project {
+  id: string;
+  slug: string;
+  name: string;
+  emoji: string;
+  color: TagColor;
+  description: string;
+  status: ProjectStatus;
+  /** yyyy-MM-dd */
+  dueDate?: string;
+  /** Carpeta en la bóveda; vacía = «<raíz de proyectos>/<nombre>» (`projectFolder()`). */
+  notesFolder?: string;
+}
+
+/** Archivo adjunto a un proyecto. */
+export interface ProjectFile {
+  id: string;
+  name: string;
+  kind: ResourceKind;
+  size?: string;
+  url: string;
+  createdAt: string;
+}
+
+/** Evento de otro calendario de Google (solo lectura). */
+export interface ExternalItem {
+  id: string;
+  calendarName: string;
+  color: TagColor;
+  title: string;
+  start: string;
+  /** Fin (con hora) o último día incluido (todo el día). */
+  end?: string;
+  allDay: boolean;
+  location?: string;
+  url?: string;
 }

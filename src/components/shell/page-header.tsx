@@ -4,15 +4,19 @@ import type { ReactNode } from "react";
 import { Bell, Search } from "lucide-react";
 import { IconButton, NewButton } from "@/components/blocks/primitives";
 import { openCommandMenu } from "@/components/shell/command-menu";
+import { AppIcon } from "@/components/blocks/icons";
 
 /** Encabezado de página: título grande, subtítulo y acciones en píldoras. */
 export function PageHeader({
-  emoji, title, subtitle, children, user, meta,
+  emoji, title, subtitle, children, extra, user, meta,
 }: {
+  /** Clave de ícono (Lucide) o emoji antiguo. */
   emoji?: string;
   title: string;
   subtitle?: ReactNode;
   children?: ReactNode;
+  /** Acciones adicionales antes de las principales (sin quitar «Nuevo»). */
+  extra?: ReactNode;
   user?: { name: string; detail: string };
   meta?: ReactNode;
   cover?: boolean;
@@ -40,7 +44,7 @@ export function PageHeader({
       <div className="flex flex-wrap items-end justify-between gap-4 px-1">
         <div className="flex items-center gap-4">
           {emoji ? (
-            <span className="glass grid size-14 shrink-0 place-items-center !rounded-[18px] text-[28px]" aria-hidden>{emoji}</span>
+            <span className="glass grid size-14 shrink-0 place-items-center !rounded-[18px] text-text" aria-hidden><AppIcon value={emoji} fallback="book" className="size-6" /></span>
           ) : null}
           <div>
             <h1 className="text-[26px] font-medium leading-tight tracking-[-0.02em] sm:text-[30px]">{title}</h1>
@@ -48,6 +52,7 @@ export function PageHeader({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {extra}
           {children ?? <NewButton label="Nuevo" onClick={() => openCommandMenu("create")} />}
         </div>
       </div>
