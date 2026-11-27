@@ -8,8 +8,8 @@ import { Dialog, inputCls } from "@/components/blocks/dialog";
 import { cn } from "@/components/blocks/primitives";
 import { Select } from "@/components/blocks/select";
 import { toast } from "@/components/shell/toast";
-import { getStudyCourse, ignoreStudyCourse, importCourseraCourse, planStudyCourse, type StudyCourseView } from "@/lib/actions/study-courses";
-import { formatMinutes, planSessions } from "@/lib/study-plan";
+import { getProgramModules, getStudyCourse, ignoreStudyCourse, importCourseraCourse, planStudyCourse, type StudyCourseView, type StudyModuleView } from "@/lib/actions/study-courses";
+import { formatMinutes, planSessions, type PlanModule } from "@/lib/study-plan";
 import { capitalize, fmt } from "@/lib/dates";
 
 /**
@@ -62,6 +62,9 @@ function StudyDialog({ courseId: initialId, onClose }: { courseId?: string; onCl
   const [extra, setExtra] = useState(25);
   const [notes, setNotes] = useState(true);
   const [showAll, setShowAll] = useState(false);
+  const [whole, setWhole] = useState(true);
+  const [programCourses, setProgramCourses] = useState<{ id: string; name: string; index: number; modules: StudyModuleView[] }[] | null>(null);
+  const [loadingProgram, setLoadingProgram] = useState(false);
   const close = useRef(onClose);
   close.current = onClose;
 
@@ -80,6 +83,7 @@ function StudyDialog({ courseId: initialId, onClose }: { courseId?: string; onCl
         setDays(r.data.plan.days);
         setExtra(r.data.plan.extra);
         setNotes(r.data.plan.notes);
+        setWhole(r.data.plan.program ?? true);
       }
       if (!r.data.canWriteVault) setNotes(false);
     });
@@ -97,20 +101,45 @@ function StudyDialog({ courseId: initialId, onClose }: { courseId?: string; onCl
     router.refresh();
   }
 
-  const pending = useMemo(() => course?.modules.filter((m) => !m.done) ?? [], [course]);
+  // Programa completo: traer sus cursos (una vez) para la vista previa
+  const useProgram = Boolean(course?.program && whole);
+  useEffect(() => {
+    if (!useProgram || programCourses || !course) return;
+    setLoadingProgram(true);
+    getProgramModules(course.id).then((r) => {
+      setLoadingProgram(false);
+      if (!r.ok) {
+        toast(r.error);
+        setWhole(false);
+        return;
+      }
+      setProgramCourses(r.data.courses);
+    });
+  }, [useProgram, programCourses, course]);
+
+  const all: (StudyModuleView & { label: string; course: string })[] = useMemo(() => {
+    if (!course) return [];
+    if (useProgram && programCourses) {
+      return programCourses.flatMap((c) => c.modules.map((m) => ({ ...m, label: `C${c.index + 1} · M${m.position + 1}`, course: c.name })));
+    }
+    return course.modules.map((m) => ({ ...m, label: `M${m.position + 1}`, course: course.name }));
+  }, [course, useProgram, programCourses]);
+  const pending: PlanModule[] = useMemo(() => all.filter((m) => !m.done), [all]);
   const sessions = useMemo(() => planSessions(pending, { days, start, extra }), [pending, days, start, extra]);
+  const totalMin = all.reduce((a, m) => a + m.minutes, 0);
+  const pendingMin = pending.reduce((a, m) => a + m.minutes, 0);
   const byDate = useMemo(() => {
     const map = new Map<string, typeof sessions>();
     for (const s of sessions) (map.get(s.date) ?? map.set(s.date, []).get(s.date)!).push(s);
     return [...map.entries()];
   }, [sessions]);
   const weekly = days.reduce((a, b) => a + b, 0);
-  const moduleById = useMemo(() => new Map(course?.modules.map((m) => [m.id, m]) ?? []), [course]);
+  const moduleById = useMemo(() => new Map(all.map((m) => [m.id, m])), [all]);
 
   async function save() {
     if (!course) return;
     setBusy(true);
-    const r = await planStudyCourse({ id: course.id, days, start, extra, notes });
+    const r = await planStudyCourse({ id: course.id, days, start, extra, notes, program: useProgram });
     setBusy(false);
     if (!r.ok) return toast(r.error);
     toast(`Plan listo: ${r.data.sessions} sesiones hasta el ${fmt(`${r.data.lastDay}T12:00`, "d 'de' MMMM")}.`, "ok");
@@ -182,7 +211,7 @@ function StudyDialog({ courseId: initialId, onClose }: { courseId?: string; onCl
             </span>
             <button
               onClick={save}
-              disabled={busy || (pending.length > 0 && !sessions.length)}
+              disabled={busy || loadingProgram || (pending.length > 0 && !sessions.length)}
               className="ml-auto flex h-9 items-center gap-1.5 rounded-full bg-accent px-5 text-[13px] font-medium text-white hover:bg-accent-hover disabled:opacity-50"
             >
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} {planned ? "Actualizar plan" : "Crear plan"}
@@ -198,13 +227,31 @@ function StudyDialog({ courseId: initialId, onClose }: { courseId?: string; onCl
           <div className="pastel-blue flex items-start gap-3 rounded-[20px] p-4 text-on-pastel">
             <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-white/45"><GraduationCap className="size-5" /></span>
             <div className="min-w-0">
-              <div className="text-[15px] font-semibold leading-snug">{course.name}</div>
+              <div className="text-[15px] font-semibold leading-snug">{useProgram ? course.program!.name : course.name}</div>
               <div className="mt-0.5 text-[12px] text-on-pastel-muted">
-                {course.partner ? `${course.partner} · ` : ""}{course.modules.length} módulos · {formatMinutes(course.modules.reduce((a, m) => a + m.minutes, 0))} según Coursera
-                {course.modules.some((m) => m.done) ? ` · ${course.modules.filter((m) => m.done).length} hechos` : ""}
+                {course.partner ? `${course.partner} · ` : ""}
+                {useProgram && programCourses ? `${programCourses.length} cursos · ` : ""}
+                {all.length} módulos · {formatMinutes(totalMin)} según Coursera
+                {pendingMin < totalMin ? ` · faltan ${formatMinutes(pendingMin)}` : ""}
               </div>
             </div>
           </div>
+
+          {course.program ? (
+            <label className="flex cursor-pointer items-start gap-3 rounded-[14px] bg-surface-2 p-3">
+              <input type="checkbox" checked={whole} onChange={(e) => setWhole(e.target.checked)} className="peer sr-only" />
+              <span className={cn("mt-0.5 grid size-[18px] shrink-0 place-items-center rounded-[6px] border peer-focus-visible:outline-2 peer-focus-visible:outline-accent", whole ? "border-accent bg-accent text-white" : "border-border-strong")}>
+                {whole ? <Check className="size-3" strokeWidth={3} /> : null}
+              </span>
+              <span className="text-[13px]">
+                <span className="font-medium">Organizar el programa completo</span>
+                <span className="mt-0.5 block text-[12px] text-muted">
+                  Este es el curso {course.program.index + 1} de {course.program.total} de «{course.program.name}». Un solo proyecto con los {course.program.total} cursos en orden y un plan seguido.
+                  {loadingProgram ? " Trayendo los cursos…" : ""}
+                </span>
+              </span>
+            </label>
+          ) : null}
 
           <section>
             <h3 className="mb-2 text-[13px] font-medium">¿Cuánto tiempo puedes estudiar cada día?</h3>
@@ -263,18 +310,26 @@ function StudyDialog({ courseId: initialId, onClose }: { courseId?: string; onCl
 
           <section>
             <h3 className="mb-2 flex items-center gap-1.5 text-[13px] font-medium"><CalendarCheck className="size-4 text-muted" /> Así quedarían tus sesiones</h3>
-            {byDate.length ? (
+            {loadingProgram ? (
+              <p className="flex items-center gap-2 text-[12.5px] text-muted"><Loader2 className="size-4 animate-spin" /> Trayendo los cursos del programa…</p>
+            ) : byDate.length ? (
               <ol className="flex flex-col gap-1.5">
                 {(showAll ? byDate : byDate.slice(0, 8)).map(([date, list]) => (
                   <li key={date} className="grid grid-cols-[112px_minmax(0,1fr)] gap-2 rounded-[12px] bg-surface-2 px-3 py-2 text-[12.5px]">
                     <span className="tabular-nums text-faint">{capitalize(fmt(`${date}T12:00`, "EEE d MMM").replace(".", ""))}</span>
                     <span className="flex flex-col gap-0.5">
                       {list.map((s, i) => {
-                        const m = moduleById.get(s.moduleId)!;
+                        const m = moduleById.get(s.moduleId);
                         return (
-                          <span key={i}>
-                            <span className="text-faint">M{m.position + 1}</span> {m.name}
-                            {s.parts > 1 ? <span className="text-faint"> · parte {s.part}/{s.parts}</span> : null}
+                          <span key={i} title={m ? `${m.course} · ${m.name}` : undefined}>
+                            <span className="text-faint">{s.label}</span>{" "}
+                            {s.pieces.map((p, j) => (
+                              <span key={j}>
+                                {j ? <span className="text-faint"> + </span> : null}
+                                {p.name}
+                                {p.parts > 1 ? <span className="text-faint"> ({p.part}/{p.parts})</span> : null}
+                              </span>
+                            ))}
                             <span className="text-faint"> · {formatMinutes(s.minutes)}</span>
                           </span>
                         );

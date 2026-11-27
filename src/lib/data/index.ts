@@ -417,9 +417,16 @@ async function pendingStudyCourses() {
   const rows = await prisma.studyCourse.findMany({
     where: { userId, OR: [{ status: "DETECTED" }, { status: "PLANNED", projectId: null }] },
     include: { modules: { select: { minutes: true } } },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "asc" }],
   });
-  return rows.map((c) => ({ id: c.id, name: c.name, partner: c.partner ?? undefined, modules: c.modules.length, minutes: c.modules.reduce((a, m) => a + m.minutes, 0) }));
+  // Cursos de un mismo programa traídos al ver el plan: una sola fila (la del curso por el que se empezó)
+  const seen = new Set<string>();
+  return rows
+    .filter((c) => !c.programSlug || (seen.has(c.programSlug) ? false : (seen.add(c.programSlug), true)))
+    .map((c) => ({
+      id: c.id, name: c.name, partner: c.partner ?? undefined, modules: c.modules.length, minutes: c.modules.reduce((a, m) => a + m.minutes, 0),
+      program: c.programName ? { name: c.programName, index: c.programIndex ?? 0, total: c.programTotal ?? 0 } : undefined,
+    }));
 }
 
 async function getCourseraStatus() {
@@ -430,11 +437,12 @@ async function getCourseraStatus() {
   return { active: Boolean(s?.courseraTokenHash), syncedAt: s?.courseraSyncedAt?.toISOString() ?? null, courses };
 }
 
-/** Curso en línea ligado a un proyecto: módulos, avance y notas. */
-async function projectStudyCourse(projectId: string) {
+/** Cursos en línea ligados a un proyecto (uno, o todos los de un programa): módulos, avance, tarjetas y quizzes. */
+async function projectStudy(projectId: string) {
   if (!hasDatabase()) return null;
-  const c = await prisma.studyCourse.findUnique({
+  const rows = await prisma.studyCourse.findMany({
     where: { projectId },
+    orderBy: [{ programIndex: "asc" }, { createdAt: "asc" }],
     include: {
       modules: {
         orderBy: { position: "asc" },
@@ -446,22 +454,28 @@ async function projectStudyCourse(projectId: string) {
       },
     },
   });
-  if (!c) return null;
+  if (!rows.length) return null;
   const nowDate = new Date();
+  const program = rows.length > 1 || (rows[0].plan as { program?: boolean } | null)?.program;
   return {
-    id: c.id, name: c.name, partner: c.partner ?? undefined, slug: c.slug, status: c.status, progress: c.progress ?? undefined,
-    syncedAt: c.syncedAt?.toISOString(),
-    modules: c.modules.map((m) => {
-      const pending = m.tasks.filter((t) => t.status !== "DONE").sort((a, b) => +a.dueAt - +b.dueAt);
-      return {
-        id: m.id, name: m.name, position: m.position, minutes: m.minutes, notePath: m.notePath ?? undefined, progress: m.progress ?? undefined,
-        cards: m.flashcards.length,
-        cardsDue: m.flashcards.filter((f) => f.due <= nowDate).length,
-        quiz: m.quizzes[0] ? { score: m.quizzes[0].score, total: m.quizzes[0].total } : undefined,
-        done: Boolean(m.completedAt) || (m.tasks.length > 0 && !pending.length),
-        next: pending[0]?.dueAt.toISOString(),
-      };
-    }),
+    program: program && rows[0].programName ? { name: rows[0].programName, total: rows[0].programTotal ?? rows.length } : undefined,
+    courses: rows.map((c) => ({
+      id: c.id, name: c.name, partner: c.partner ?? undefined, slug: c.slug, status: c.status, progress: c.progress ?? undefined,
+      syncedAt: c.syncedAt?.toISOString(),
+      label: program ? `C${(c.programIndex ?? 0) + 1}` : undefined,
+      modules: c.modules.map((m) => {
+        const pending = m.tasks.filter((t) => t.status !== "DONE").sort((x, y) => +x.dueAt - +y.dueAt);
+        return {
+          id: m.id, name: m.name, position: m.position, minutes: m.minutes, notePath: m.notePath ?? undefined, progress: m.progress ?? undefined,
+          label: program ? `C${(c.programIndex ?? 0) + 1} · M${m.position + 1}` : `M${m.position + 1}`,
+          cards: m.flashcards.length,
+          cardsDue: m.flashcards.filter((f) => f.due <= nowDate).length,
+          quiz: m.quizzes[0] ? { score: m.quizzes[0].score, total: m.quizzes[0].total } : undefined,
+          done: Boolean(m.completedAt) || (m.tasks.length > 0 && !pending.length),
+          next: pending[0]?.dueAt.toISOString(),
+        };
+      }),
+    })),
   };
 }
 
@@ -505,7 +519,7 @@ export async function getProjectDetail(slug: string) {
         id: f.id, name: f.name, kind: f.kind, size: f.size ?? undefined, url: `/api/files/${f.uploadId}`, createdAt: f.createdAt.toISOString(),
       }))
     : [];
-  return { now: d.now, vault, project, tasks, files, study: await projectStudyCourse(project.id), ...(await projectObsidian(project, vault)) };
+  return { now: d.now, vault, project, tasks, files, study: await projectStudy(project.id), ...(await projectObsidian(project, vault)) };
 }
 
 export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
