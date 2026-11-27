@@ -159,7 +159,7 @@ npm 11 bloquea scripts de instalación: los permitidos están en `allowScripts` 
 - Backend futuro dentro de Next (Server Components + Server Actions), Prisma + PostgreSQL,
   Better Auth (correo + Google), trabajos en segundo plano con pg-boss.
 - Despliegue: Docker Compose detrás de un proxy con HTTPS. Apuntes en una bóveda de Obsidian montada en el contenedor.
-- Código abierto MIT: README para la comunidad (con capturas en `docs/screenshots`), `CONTRIBUTING.md`, `LICENSE`.
+- Repo personal y privado: sin README, LICENSE ni CONTRIBUTING (`"license": "UNLICENSED"`). La versión pública (AGPL, README en inglés) vive en el repo `nober-organizer` (remoto `upstream`); al pasar cambios allá se conservan sus README, licencia y CONTRIBUTING.
 - Escala de notas por defecto 1.0–5.0, aprueba con 3.0, 4 períodos de 25 %. Todo configurable (`GradingScale`).
 - Tareas y "assignments" son un solo modelo `Task` con `type`; las notas viven en `Assessment`.
 - UI en español; nombres de rutas en inglés.
