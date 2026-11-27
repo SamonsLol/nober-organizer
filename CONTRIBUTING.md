@@ -28,7 +28,7 @@ y revisa tu cambio en el navegador en **modo oscuro, claro y móvil** (~390 px).
   `run()` y filtrada por `userId`. El cliente aplica el cambio al instante y lo revierte si la acción falla.
 - **Esquema**: si cambias `prisma/schema.prisma`, crea la migración con `npm run db:migrate -- --name <nombre>` e
   inclúyela en el pull request.
-- **AFFiNE**: no escribas URLs sueltas; usa `src/lib/affine.ts` y `<AffineLink>`.
+- **Obsidian**: el disco solo se toca desde `src/lib/vault.ts`; en la interfaz usa `<NoteLink>` / `openNote()`.
 - Commits pequeños y con mensaje claro.
 
 ## Reportar errores

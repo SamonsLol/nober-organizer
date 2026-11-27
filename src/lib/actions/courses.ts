@@ -5,7 +5,9 @@ import { z } from "zod";
 import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { requireUserId } from "@/lib/session";
 import { UserError, run, type Result } from "@/lib/actions/result";
-import { isAffineUrl } from "@/lib/affine";
+import { trimSlashes } from "@/lib/notes";
+import { firstFree, slugify as toSlug } from "@/lib/slug";
+import { cleanPath } from "@/lib/vault";
 import { removeUploads } from "@/lib/storage";
 
 /**
@@ -28,7 +30,7 @@ const courseInput = z.object({
   teacher: z.string().trim().max(80),
   room: z.string().trim().max(40),
   code: z.string().trim().max(20),
-  affineFolderUrl: z.string().trim().max(500).optional(),
+  notesFolder: z.string().trim().max(300).optional(),
   schedule: z
     .array(z.object({ weekday: z.number().int().min(1).max(5), start: hhmm, end: hhmm, room: z.string().trim().max(40) }))
     .max(30),
@@ -36,17 +38,7 @@ const courseInput = z.object({
 
 export type CourseInput = z.input<typeof courseInput>;
 
-function slugify(name: string) {
-  return (
-    name
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 40) || "materia"
-  );
-}
+const slugify = (name: string) => toSlug(name, "materia");
 
 const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
 const overlaps = (a: { start: string; end: string }, b: { start: string; end: string }) =>
@@ -55,8 +47,14 @@ const overlaps = (a: { start: string; end: string }, b: { start: string; end: st
 export async function saveCourse(input: CourseInput): Promise<Result<{ id: string; slug: string }>> {
   return run(async () => {
     const data = courseInput.parse(input);
-    const folder = data.affineFolderUrl || undefined;
-    if (folder && !isAffineUrl(folder)) throw new UserError("La carpeta debe ser un enlace de tu AFFiNE.");
+    let folder = data.notesFolder ? trimSlashes(data.notesFolder) : undefined;
+    if (folder) {
+      try {
+        folder = cleanPath(folder, { md: false });
+      } catch {
+        throw new UserError("La carpeta de apuntes debe ser una ruta dentro de la bóveda (p. ej. «Apuntes/Cálculo»).");
+      }
+    }
 
     // Horario: cada bloque empieza antes de terminar y no se cruza con otro de la misma materia
     for (const [i, s] of data.schedule.entries()) {
@@ -81,7 +79,7 @@ export async function saveCourse(input: CourseInput): Promise<Result<{ id: strin
 
     const fields = {
       name: data.name, emoji: data.emoji, color: data.color, cover: data.cover,
-      teacher: data.teacher, room: data.room, code: data.code, affineFolderUrl: folder ?? null,
+      teacher: data.teacher, room: data.room, code: data.code, notesFolder: folder ?? null,
     };
     const rows = data.schedule.map((s) => ({ userId, weekday: s.weekday, start: s.start, end: s.end, room: s.room || data.room }));
 
@@ -107,10 +105,7 @@ export async function saveCourse(input: CourseInput): Promise<Result<{ id: strin
 
 async function uniqueSlug(userId: string, base: string) {
   const taken = new Set((await prisma.course.findMany({ where: { userId, slug: { startsWith: base } }, select: { slug: true } })).map((c) => c.slug));
-  if (!taken.has(base)) return base;
-  let n = 2;
-  while (taken.has(`${base}-${n}`)) n++;
-  return `${base}-${n}`;
+  return firstFree(base, taken);
 }
 
 /** Lo que se perdería al eliminar (para el aviso de confirmación). */

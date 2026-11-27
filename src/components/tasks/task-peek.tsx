@@ -3,18 +3,24 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Check, ChevronDown, ExternalLink, Link2, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { Check, ExternalLink, Link2, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
 import { Tag, cn } from "@/components/blocks/primitives";
 import { KIND, PRIORITY, RESOURCE_KIND, TASK_STATUS, TASK_TYPE, toneClass } from "@/components/blocks/shared";
 import { deadline, toDate } from "@/lib/dates";
-import type { Assessment, Course, Priority, Task, TaskStatus, TaskType } from "@/lib/types";
+import type { Assessment, Course, Priority, Project, Task, TaskStatus, TaskStep, TaskType } from "@/lib/types";
+import { useStepSuggest } from "@/components/ai/step-suggest";
+import { Select, type SelectOption } from "@/components/blocks/select";
+import { IconPicker } from "@/components/blocks/icon-picker";
+import { Ico } from "@/components/blocks/icons";
 
 /** Campos de una tarea que se editan desde el panel. */
-export type TaskEdit = Partial<Pick<Task, "title" | "emoji" | "description" | "courseId" | "type" | "dueAt" | "allDay" | "priority" | "status" | "tags" | "note">>;
+export type TaskEdit = Partial<Pick<Task, "title" | "emoji" | "description" | "courseId" | "projectId" | "type" | "dueAt" | "allDay" | "priority" | "status" | "tags" | "note">>;
 
 export interface TaskPeekActions {
   onEdit: (patch: TaskEdit) => void;
   onAddStep: (title: string) => Promise<boolean>;
+  /** Pasos ya guardados (p. ej. los que agregó la IA). */
+  onStepsAdded: (steps: TaskStep[]) => void;
   onToggleStep: (stepId: string) => void;
   onDeleteStep: (stepId: string) => void;
   onAddLink: (url: string, label?: string) => Promise<boolean>;
@@ -26,17 +32,20 @@ export interface TaskPeekActions {
 
 /** Panel lateral con el detalle de una tarea (estilo "side peek"). Todo se guarda al momento. */
 export function TaskPeek({
-  task: t, course, courses, assessment, now, onClose, ...act
+  task: t, course, courses, project, projects = [], assessment, now, onClose, ...act
 }: {
   task: Task;
   course?: Course;
   courses: Course[];
+  project?: Project;
+  projects?: Project[];
   assessment?: Assessment;
   now: Date;
   onClose: () => void;
 } & TaskPeekActions) {
   const panel = useRef<HTMLElement>(null);
   const dl = deadline(t.dueAt, t.status === "DONE", now);
+  const ai = useStepSuggest(t.id, act.onStepsAdded);
 
   const close = useRef(onClose);
   close.current = onClose;
@@ -75,7 +84,7 @@ export function TaskPeek({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-6 pt-5">
-          <EmojiField value={t.emoji} onSave={(emoji) => act.onEdit({ emoji })} />
+          <EmojiField value={t.emoji} fallback={TASK_TYPE[t.type].emoji} onSave={(emoji) => act.onEdit({ emoji })} />
           <TitleField value={t.title} done={t.status === "DONE"} onSave={(title) => act.onEdit({ title })} />
 
           {/* Estado */}
@@ -103,7 +112,7 @@ export function TaskPeek({
                 label="Materia"
                 value={t.courseId ?? ""}
                 onChange={(v) => act.onEdit({ courseId: v || undefined })}
-                options={[{ value: "", label: "Personal" }, ...courses.map((c) => ({ value: c.id, label: `${c.emoji} ${c.name}` }))]}
+                options={[{ value: "", label: "Personal" }, ...courses.map((c) => ({ value: c.id, label: c.name, emoji: c.emoji, color: c.color }))]}
               >
                 <CourseTag course={course} />
               </PropSelect>
@@ -111,14 +120,29 @@ export function TaskPeek({
                 <Link href={`/courses/${course.slug}?tab=tareas`} className="ml-1 text-[12px] text-faint hover:text-text">Ver</Link>
               ) : null}
             </Prop>
+            {projects.length || project ? (
+              <Prop label="Proyecto">
+                <PropSelect
+                  label="Proyecto"
+                  value={t.projectId ?? ""}
+                  onChange={(v) => act.onEdit({ projectId: v || undefined })}
+                  options={[{ value: "", label: "Ninguno" }, ...projects.map((p) => ({ value: p.id, label: p.name, emoji: p.emoji, color: p.color }))]}
+                >
+                  {project ? <ProjectTag project={project} /> : <Tag>Ninguno</Tag>}
+                </PropSelect>
+                {project ? (
+                  <Link href={`/projects/${project.slug}`} className="ml-1 text-[12px] text-faint hover:text-text">Ver</Link>
+                ) : null}
+              </Prop>
+            ) : null}
             <Prop label="Tipo">
               <PropSelect
                 label="Tipo"
                 value={t.type}
                 onChange={(v) => act.onEdit({ type: v as TaskType })}
-                options={(Object.keys(TASK_TYPE) as TaskType[]).map((k) => ({ value: k, label: `${TASK_TYPE[k].emoji} ${TASK_TYPE[k].label}` }))}
+                options={(Object.keys(TASK_TYPE) as TaskType[]).map((k) => ({ value: k, label: TASK_TYPE[k].label, emoji: TASK_TYPE[k].emoji }))}
               >
-                {TASK_TYPE[t.type].emoji} {TASK_TYPE[t.type].label}
+                <Ico value={TASK_TYPE[t.type].emoji} />{TASK_TYPE[t.type].label}
               </PropSelect>
             </Prop>
             <Prop label="Prioridad">
@@ -159,7 +183,15 @@ export function TaskPeek({
           </Block>
 
           {/* Pasos */}
-          <Block title="Pasos" right={t.subtasks ? <span className="text-[12px] tabular-nums text-faint">{t.subtasks.done}/{t.subtasks.total}</span> : null}>
+          <Block
+            title="Pasos"
+            right={
+              <span className="flex items-center gap-1.5">
+                {ai.button}
+                {t.subtasks ? <span className="text-[12px] tabular-nums text-faint">{t.subtasks.done}/{t.subtasks.total}</span> : null}
+              </span>
+            }
+          >
             {t.subtasks ? (
               <div className="mb-2 h-1 overflow-hidden rounded-full bg-[var(--chart-track)]">
                 <div className="h-full rounded-full bg-chart-1 transition-[width]" style={{ width: `${(t.subtasks.done / t.subtasks.total) * 100}%` }} />
@@ -180,6 +212,7 @@ export function TaskPeek({
               ))}
             </ul>
             <AddRow placeholder="Agregar paso" onAdd={act.onAddStep} />
+            {ai.panel}
           </Block>
 
           {/* Archivos */}
@@ -241,9 +274,18 @@ export function TaskPeek({
   );
 }
 
+export function ProjectTag({ project }: { project: Project }) {
+  return <Tag color={project.color} className="max-w-full"><span className="truncate"><Ico value={project.emoji} fallback="rocket" />{project.name}</span></Tag>;
+}
+
+/** Materia, si no proyecto, si no «Personal». */
+export function AreaTag({ course, project }: { course?: Course; project?: Project }) {
+  return course || !project ? <CourseTag course={course} /> : <ProjectTag project={project} />;
+}
+
 export function CourseTag({ course }: { course?: Course }) {
   return course ? (
-    <Tag color={course.color} className="max-w-full"><span className="truncate">{course.emoji} {course.name}</span></Tag>
+    <Tag color={course.color} className="max-w-full"><span className="truncate"><Ico value={course.emoji} fallback="book" />{course.name}</span></Tag>
   ) : (
     <Tag>Personal</Tag>
   );
@@ -260,27 +302,26 @@ function Prop({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** Valor que se ve como texto y se cambia con un <select> nativo superpuesto (accesible y cómodo en móvil). */
+/** Valor que se ve como etiqueta y se cambia con el menú desplegable de la app. */
 function PropSelect({ label, value, options, onChange, children }: {
   label: string;
   value: string;
-  options: { value: string; label: string }[];
+  options: SelectOption<string>[];
   onChange: (v: string) => void;
   children: ReactNode;
 }) {
   return (
-    <span className="relative inline-flex min-w-0 max-w-full items-center gap-1 rounded-[10px] px-2 py-1 transition-colors focus-within:bg-surface-hover hover:bg-surface-hover">
+    <Select
+      label={label}
+      variant="bare"
+      value={value}
+      onChange={onChange}
+      options={options}
+      menuWidth={220}
+      className="max-w-full gap-1 rounded-[10px] px-2 py-1 hover:bg-surface-hover focus-visible:bg-surface-hover"
+    >
       <span className="flex min-w-0 items-center">{children}</span>
-      <ChevronDown className="size-3 shrink-0 text-faint" />
-      <select
-        aria-label={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="absolute inset-0 cursor-pointer appearance-none opacity-0"
-      >
-        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    </span>
+    </Select>
   );
 }
 
@@ -345,20 +386,8 @@ function TagsField({ tags, onSave }: { tags: string[]; onSave: (tags: string[]) 
   );
 }
 
-function EmojiField({ value, onSave }: { value: string; onSave: (v: string) => void }) {
-  const [draft, setDraft] = useState(value);
-  return (
-    <input
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => draft.trim() !== value && onSave(draft.trim())}
-      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-      placeholder="🙂"
-      aria-label="Emoji"
-      maxLength={8}
-      className="-ml-1 w-16 rounded-[12px] bg-transparent px-1 text-[34px] leading-none outline-none transition-colors placeholder:opacity-30 hover:bg-surface-hover focus:bg-surface-2"
-    />
-  );
+function EmojiField({ value, fallback, onSave }: { value: string; fallback: string; onSave: (v: string) => void }) {
+  return <IconPicker value={value} fallback={fallback} onChange={(v) => v !== value && onSave(v)} label="Ícono de la tarea" className="size-12 rounded-[14px] [&_svg]:size-6" />;
 }
 
 function TitleField({ value, done, onSave }: { value: string; done: boolean; onSave: (v: string) => void }) {

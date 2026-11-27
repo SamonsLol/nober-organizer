@@ -5,12 +5,13 @@ import { z } from "zod";
 import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { requireUserId } from "@/lib/session";
 import { UserError, run, type Result } from "@/lib/actions/result";
-import { isAffineUrl } from "@/lib/affine";
+import { parseNoteInput } from "@/lib/notes";
+import { noteExists, VaultError } from "@/lib/vault";
 import { formatBytes, removeUploads } from "@/lib/storage";
 import type { Goal, Lecture, QuickNote, Resource, Topic } from "@/lib/types";
 
 /**
- * Lo pequeño del día a día: temas, clases (con su apunte de AFFiNE), recursos, metas y pensamientos.
+ * Lo pequeño del día a día: temas, clases (con su apunte en Obsidian), recursos, metas y pensamientos.
  * Mismo patrón que el resto: validar, comprobar dueño, guardar, `revalidatePath`.
  */
 
@@ -77,23 +78,28 @@ const lectureInput = z.object({
   title: z.string().trim().min(1, "Escribe de qué fue la clase.").max(160),
   emoji: z.string().trim().max(16),
   topicId: id.nullable(),
-  affineDocUrl: z.string().trim().max(500).nullable(),
+  notePath: z.string().trim().max(500).nullable(),
 });
 
 export async function saveLecture(input: z.input<typeof lectureInput>): Promise<Result<Lecture>> {
   return run(async () => {
     const data = lectureInput.parse(input);
-    const doc = data.affineDocUrl || null;
-    if (doc && !isAffineUrl(doc)) throw new UserError("El apunte debe ser un enlace de tu AFFiNE.");
+    const doc = data.notePath ? parseNoteInput(data.notePath) || null : null;
+    if (doc && hasDatabase()) {
+      const exists = await noteExists(doc).catch((e) => {
+        throw e instanceof VaultError ? new UserError(e.message) : e;
+      });
+      if (!exists) throw new UserError("No encuentro esa nota en la bóveda. Copia su ruta (o el enlace obsidian://) desde Obsidian.");
+    }
     const domain = (lectureId: string): Lecture => ({
       id: lectureId, courseId: data.courseId, date: data.date, title: data.title, emoji: data.emoji,
-      topicId: data.topicId ?? undefined, affineDocUrl: doc ?? undefined,
+      topicId: data.topicId ?? undefined, notePath: doc ?? undefined,
     });
     if (!hasDatabase()) return domain(data.id ?? newId());
     const userId = await requireUserId();
     await ownCourse(userId, data.courseId);
     await ownTopic(userId, data.topicId, data.courseId);
-    const fields = { courseId: data.courseId, date: new Date(data.date), title: data.title, emoji: data.emoji, topicId: data.topicId, affineDocUrl: doc };
+    const fields = { courseId: data.courseId, date: new Date(data.date), title: data.title, emoji: data.emoji, topicId: data.topicId, notePath: doc };
     let lectureId = data.id;
     if (lectureId) gone((await prisma.lecture.updateMany({ where: { id: lectureId, userId }, data: fields })).count, "Esa clase");
     else lectureId = (await prisma.lecture.create({ data: { ...fields, userId } })).id;

@@ -15,7 +15,7 @@ export default async function CalendarPage({
   const [{ view, d }, data] = await Promise.all([searchParams, getCalendarPage()]);
   return (
     <div className="pb-16">
-      <PageHeader emoji="🗓️" title="Calendario" subtitle={`Clases, entregas, exámenes y fechas importantes · ${data.period.name}`} />
+      <PageHeader emoji="calendar-days" title="Calendario" subtitle={`Clases, entregas, exámenes y fechas importantes · ${data.period.name}`} />
       <div className="mx-auto mt-6 w-full max-w-[1480px] px-4 sm:px-6">
         <CalendarView
           data={data}

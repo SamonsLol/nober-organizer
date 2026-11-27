@@ -14,6 +14,8 @@ const google =
           // Refresh token para sincronizar Google Calendar sin pedir permiso cada hora
           accessType: "offline" as const,
           prompt: "select_account consent" as const,
+          // Con el registro cerrado, «Continuar con Google» solo entra a cuentas existentes (vincular sigue funcionando)
+          disableSignUp: process.env.AUTH_DISABLE_SIGNUP === "true",
         },
       }
     : undefined;

@@ -5,7 +5,7 @@ import { CalendarDays, Check, ChevronRight, Columns3, Link2, List, ListChecks, P
 import { addDays, startOfDay } from "date-fns";
 import { FilterMenu, GhostAdd, Tag, ViewTabs, cn } from "@/components/blocks/primitives";
 import { PRIORITY, TASK_STATUS, TASK_TYPE, toneClass } from "@/components/blocks/shared";
-import { CourseTag, TaskPeek, type TaskEdit } from "@/components/tasks/task-peek";
+import { AreaTag, TaskPeek, type TaskEdit } from "@/components/tasks/task-peek";
 import { toast } from "@/components/shell/toast";
 import {
   addTaskLink, addTaskStep, attachTaskFile, createTask, deleteTask, deleteTaskFile, deleteTaskLink, deleteTaskStep,
@@ -15,7 +15,8 @@ import type { Result } from "@/lib/actions/result";
 import { uploadFile } from "@/lib/upload-client";
 import { capitalize, deadline, fmt, toDate } from "@/lib/dates";
 import type { TasksPageData } from "@/lib/data";
-import type { Course, Priority, Task, TaskStatus, TaskType } from "@/lib/types";
+import type { Course, Priority, Project, Task, TaskStatus, TaskStep, TaskType } from "@/lib/types";
+import { Ico } from "@/components/blocks/icons";
 
 export type TasksViewId = "lista" | "tablero" | "fecha";
 
@@ -25,27 +26,31 @@ const VIEWS = [
   { id: "fecha" as const, label: "Por fecha", icon: CalendarDays },
 ];
 
-const PERSONAL = "personal"; // valor del filtro de materia para tareas sin materia
+const PERSONAL = "personal"; // valor del filtro de materia para tareas sin materia ni proyecto
+const NONE = "none"; // valor del filtro de proyecto para tareas sin proyecto
 
 interface Filters {
   course: string[];
+  project: string[];
   type: TaskType[];
   priority: Priority[];
   tag: string[];
 }
 
 export function TasksView({
-  data, initialView, initialTask, initialCourse, startNew,
+  data, initialView, initialTask, initialCourse, initialProject, startNew,
 }: {
   data: TasksPageData;
   initialView: TasksViewId;
   initialTask?: string;
   initialCourse?: string;
+  initialProject?: string;
   /** Abrir directamente el campo "Nueva tarea" (desde ⌘K → Nueva tarea). */
   startNew?: boolean;
 }) {
   const now = useMemo(() => new Date(data.now), [data.now]);
   const courseById = useMemo(() => Object.fromEntries(data.courses.map((c) => [c.id, c])) as Record<string, Course>, [data.courses]);
+  const projectById = useMemo(() => Object.fromEntries(data.projects.map((p) => [p.id, p])) as Record<string, Project>, [data.projects]);
 
   // Estado local optimista: el cambio se ve al instante y se guarda en segundo plano (lib/actions/tasks).
   const [tasks, setTasks] = useState<Task[]>(data.tasks);
@@ -54,6 +59,7 @@ export function TasksView({
   const [q, setQ] = useState("");
   const [filters, setFilters] = useState<Filters>({
     course: initialCourse && courseById[initialCourse] ? [initialCourse] : [],
+    project: initialProject && projectById[initialProject] ? [initialProject] : [],
     type: [], priority: [], tag: [],
   });
 
@@ -65,8 +71,9 @@ export function TasksView({
     set("task", openId);
     set("new", undefined);
     set("course", filters.course.length === 1 && filters.course[0] !== PERSONAL ? filters.course[0] : undefined);
+    set("project", filters.project.length === 1 && filters.project[0] !== NONE ? filters.project[0] : undefined);
     window.history.replaceState(null, "", url);
-  }, [view, openId, filters.course]);
+  }, [view, openId, filters.course, filters.project]);
 
   /* ── Escritura: optimista + Server Action; si falla, se vuelve al estado anterior ── */
   const tasksRef = useRef(tasks);
@@ -93,6 +100,7 @@ export function TasksView({
         // En el servidor "vacío" es null; en el cliente, undefined
         ...("description" in patch ? { description: patch.description ?? null } : {}),
         ...("courseId" in patch ? { courseId: patch.courseId ?? null } : {}),
+        ...("projectId" in patch ? { projectId: patch.projectId ?? null } : {}),
         ...("note" in patch ? { note: patch.note ?? null } : {}),
       }),
     );
@@ -116,7 +124,8 @@ export function TasksView({
     const due = new Date();
     due.setHours(23, 59, 0, 0);
     const courseId = filters.course.length === 1 && filters.course[0] !== PERSONAL ? filters.course[0] : null;
-    const r = await createTask({ title, status, courseId, dueAt: due.toISOString() });
+    const projectId = filters.project.length === 1 && filters.project[0] !== NONE ? filters.project[0] : null;
+    const r = await createTask({ title, status, courseId, projectId, dueAt: due.toISOString() });
     if (!r.ok) {
       toast(r.error);
       return false;
@@ -144,6 +153,7 @@ export function TasksView({
       local(t.id, (cur) => ({ steps: [...(cur.steps ?? []), r.data] }));
       return true;
     },
+    onStepsAdded: (steps: TaskStep[]) => local(t.id, (cur) => ({ steps: [...(cur.steps ?? []), ...steps] })),
     onAddLink: async (url: string, label?: string) => {
       const r = await addTaskLink(t.id, { url: /^https?:\/\//i.test(url) ? url : `https://${url}`, label });
       if (!r.ok) {
@@ -179,20 +189,21 @@ export function TasksView({
     const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
     const needle = norm(q.trim());
     return tasks.filter((t) => {
-      if (needle && !norm(`${t.title} ${t.tags.join(" ")} ${t.courseId ? courseById[t.courseId]?.name : ""}`).includes(needle)) return false;
-      if (filters.course.length && !filters.course.includes(t.courseId ?? PERSONAL)) return false;
+      if (needle && !norm(`${t.title} ${t.tags.join(" ")} ${t.courseId ? courseById[t.courseId]?.name : ""} ${t.projectId ? projectById[t.projectId]?.name : ""}`).includes(needle)) return false;
+      if (filters.course.length && !filters.course.includes(t.courseId ?? (t.projectId ? "" : PERSONAL))) return false;
+      if (filters.project.length && !filters.project.includes(t.projectId ?? NONE)) return false;
       if (filters.type.length && !filters.type.includes(t.type)) return false;
       if (filters.priority.length && !filters.priority.includes(t.priority)) return false;
       if (filters.tag.length && !t.tags.some((g) => filters.tag.includes(g))) return false;
       return true;
     });
-  }, [tasks, q, filters, courseById]);
+  }, [tasks, q, filters, courseById, projectById]);
 
   const filtering = q.trim() !== "" || Object.values(filters).some((f) => f.length > 0);
   const open = tasks.find((t) => t.id === openId);
   const assessment = open?.assessmentId ? data.assessments.find((a) => a.id === open.assessmentId) : undefined;
 
-  const rowProps = { now, courseById, onOpen: setOpenId, onToggle: (t: Task) => setStatus(t.id, t.status === "DONE" ? "TODO" : "DONE"), openId };
+  const rowProps = { now, courseById, projectById, onOpen: setOpenId, onToggle: (t: Task) => setStatus(t.id, t.status === "DONE" ? "TODO" : "DONE"), openId };
   const tags = useMemo(() => [...new Set(tasks.flatMap((t) => t.tags))].sort((a, b) => a.localeCompare(b, "es")), [tasks]);
 
   return (
@@ -228,6 +239,17 @@ export function TasksView({
             selected={filters.course}
             onChange={(course) => setFilters((f) => ({ ...f, course }))}
           />
+          {data.projects.length ? (
+            <FilterMenu
+              label="Proyecto"
+              options={[
+                ...data.projects.map((p) => ({ value: p.id, label: p.name, color: p.color })),
+                { value: NONE, label: "Sin proyecto", color: "gray" as const },
+              ]}
+              selected={filters.project}
+              onChange={(project) => setFilters((f) => ({ ...f, project }))}
+            />
+          ) : null}
           <FilterMenu
             label="Tipo"
             options={(Object.keys(TASK_TYPE) as TaskType[]).map((k) => ({ value: k, label: TASK_TYPE[k].label, emoji: TASK_TYPE[k].emoji }))}
@@ -250,7 +272,7 @@ export function TasksView({
             <button
               onClick={() => {
                 setQ("");
-                setFilters({ course: [], type: [], priority: [], tag: [] });
+                setFilters({ course: [], project: [], type: [], priority: [], tag: [] });
               }}
               className="h-8 rounded-full px-3 text-[12.5px] text-faint hover:text-text"
             >
@@ -279,6 +301,8 @@ export function TasksView({
           task={open}
           course={open.courseId ? courseById[open.courseId] : undefined}
           courses={data.courses}
+          project={open.projectId ? projectById[open.projectId] : undefined}
+          projects={data.projects.filter((p) => p.status !== "DONE" || p.id === open.projectId)}
           assessment={assessment}
           now={now}
           onClose={() => setOpenId(undefined)}
@@ -326,6 +350,7 @@ function Summary({ tasks, now, week }: { tasks: Task[]; now: Date; week: Date })
 interface RowProps {
   now: Date;
   courseById: Record<string, Course>;
+  projectById: Record<string, Project>;
   openId?: string;
   onOpen: (id: string) => void;
   onToggle: (t: Task) => void;
@@ -434,7 +459,7 @@ function ListView({ tasks, onCreate, startNew, ...p }: RowProps & { tasks: Task[
         <span className="text-right">Plazo</span>
       </div>
       {pending.map((t) => <ListRow key={t.id} t={t} {...p} />)}
-      {pending.length === 0 ? <p className="border-t border-border py-4 text-center text-[13px] text-faint">Nada pendiente. 🎉</p> : null}
+      {pending.length === 0 ? <p className="border-t border-border py-4 text-center text-[13px] text-faint">Nada pendiente.</p> : null}
       <NewTask onCreate={onCreate} autoFocus={startNew} className="my-1.5" />
       {done.length ? (
         <>
@@ -449,7 +474,7 @@ function ListView({ tasks, onCreate, startNew, ...p }: RowProps & { tasks: Task[
   );
 }
 
-function ListRow({ t, now, courseById, openId, onOpen, onToggle }: RowProps & { t: Task }) {
+function ListRow({ t, now, courseById, projectById, openId, onOpen, onToggle }: RowProps & { t: Task }) {
   const dl = deadline(t.dueAt, t.status === "DONE", now);
   const done = t.status === "DONE";
   return (
@@ -466,11 +491,11 @@ function ListRow({ t, now, courseById, openId, onOpen, onToggle }: RowProps & { 
     >
       <CheckButton task={t} onToggle={onToggle} />
       <div className="min-w-0">
-        <div className={cn("truncate text-[13.5px]", done && "text-faint line-through")}>{t.emoji} {t.title}</div>
+        <div className={cn("truncate text-[13.5px]", done && "text-faint line-through")}><Ico value={t.emoji} />{t.title}</div>
         <Meta t={t} />
-        <div className="mt-1 md:hidden"><CourseTag course={t.courseId ? courseById[t.courseId] : undefined} /></div>
+        <div className="mt-1 md:hidden"><AreaTag course={t.courseId ? courseById[t.courseId] : undefined} project={t.projectId ? projectById[t.projectId] : undefined} /></div>
       </div>
-      <div className="hidden min-w-0 md:block"><CourseTag course={t.courseId ? courseById[t.courseId] : undefined} /></div>
+      <div className="hidden min-w-0 md:block"><AreaTag course={t.courseId ? courseById[t.courseId] : undefined} project={t.projectId ? projectById[t.projectId] : undefined} /></div>
       <span className="hidden text-[12.5px] text-muted md:block ">{TASK_TYPE[t.type].label}</span>
       <span className={cn("hidden text-[12.5px] md:block", PRIORITY[t.priority].tone)}>{PRIORITY[t.priority].label}</span>
       <span className="hidden whitespace-nowrap text-[12.5px] text-muted md:block">{dueLabel(t)}</span>
@@ -526,7 +551,7 @@ function BoardView({ tasks, onMove, onCreate, ...p }: RowProps & { tasks: Task[]
   );
 }
 
-function BoardCard({ t, now, courseById, openId, onOpen, onToggle }: RowProps & { t: Task }) {
+function BoardCard({ t, now, courseById, projectById, openId, onOpen, onToggle }: RowProps & { t: Task }) {
   const dl = deadline(t.dueAt, t.status === "DONE", now);
   const course = t.courseId ? courseById[t.courseId] : undefined;
   const done = t.status === "DONE";
@@ -547,12 +572,12 @@ function BoardCard({ t, now, courseById, openId, onOpen, onToggle }: RowProps & 
       )}
     >
       <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1"><CourseTag course={course} /></div>
+        <div className="min-w-0 flex-1"><AreaTag course={course} project={t.projectId ? projectById[t.projectId] : undefined} /></div>
         <span className={cn("text-[11.5px]", PRIORITY[t.priority].tone)}>{PRIORITY[t.priority].label}</span>
       </div>
       <div className="flex items-start gap-2.5">
         <CheckButton task={t} onToggle={onToggle} />
-        <div className={cn("-mt-0.5 text-[14px] leading-snug", done && "text-faint line-through")}>{t.emoji} {t.title}</div>
+        <div className={cn("-mt-0.5 text-[14px] leading-snug", done && "text-faint line-through")}><Ico value={t.emoji} />{t.title}</div>
       </div>
       {t.subtasks ? (
         <div className="flex items-center gap-2.5">
@@ -611,7 +636,7 @@ function DateView({ tasks, week, onCreate, ...p }: RowProps & { tasks: Task[]; w
           </div>
         );
       })}
-      {groups.size === 0 ? <p className="py-4 text-center text-[13px] text-faint">Nada pendiente. 🎉</p> : null}
+      {groups.size === 0 ? <p className="py-4 text-center text-[13px] text-faint">Nada pendiente.</p> : null}
       <NewTask onCreate={onCreate} />
       {done.length ? (
         <div>
@@ -626,7 +651,7 @@ function DateView({ tasks, week, onCreate, ...p }: RowProps & { tasks: Task[]; w
   );
 }
 
-function DateRow({ t, now, courseById, openId, onOpen, onToggle }: RowProps & { t: Task }) {
+function DateRow({ t, now, courseById, projectById, openId, onOpen, onToggle }: RowProps & { t: Task }) {
   const dl = deadline(t.dueAt, t.status === "DONE", now);
   const done = t.status === "DONE";
   return (
@@ -646,10 +671,10 @@ function DateRow({ t, now, courseById, openId, onOpen, onToggle }: RowProps & { 
         <div className="text-faint">{t.allDay ? "Todo el día" : fmt(t.dueAt, "HH:mm")}</div>
       </div>
       <div className="min-w-0 flex-1">
-        <div className={cn("truncate text-[13.5px]", done && "text-faint line-through")}>{t.emoji} {t.title}</div>
+        <div className={cn("truncate text-[13.5px]", done && "text-faint line-through")}><Ico value={t.emoji} />{t.title}</div>
         <Meta t={t} />
       </div>
-      <div className="hidden max-w-[180px] sm:block"><CourseTag course={t.courseId ? courseById[t.courseId] : undefined} /></div>
+      <div className="hidden max-w-[180px] sm:block"><AreaTag course={t.courseId ? courseById[t.courseId] : undefined} project={t.projectId ? projectById[t.projectId] : undefined} /></div>
       <span className={cn("hidden w-24 text-right text-[12px] sm:block", toneClass[dl.tone])}>{dl.label}</span>
     </div>
   );

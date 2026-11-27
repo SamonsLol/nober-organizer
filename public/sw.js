@@ -1,7 +1,7 @@
 // Service worker de Nober Organizer.
 // Solo guarda archivos estáticos (JS, CSS, iconos) para abrir rápido; nunca datos del usuario ni páginas con datos.
-// Sin conexión, las páginas muestran /offline.html.
-const VERSION = "nober-v1";
+// Sin conexión, las páginas muestran /offline.html. También recibe los recordatorios push.
+const VERSION = "nober-v2";
 const STATIC = `${VERSION}-static`;
 const OFFLINE_URL = "/offline.html";
 
@@ -49,4 +49,38 @@ self.addEventListener("fetch", (event) => {
     );
   }
   // Todo lo demás (API, archivos del usuario, datos): directo a la red, sin guardar
+});
+
+// ── Recordatorios push (payload JSON: { title, body, url, tag }) ──
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "Nober", body: event.data ? event.data.text() : "" };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Nober", {
+      body: data.body || "",
+      tag: data.tag,
+      renotify: Boolean(data.tag),
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      lang: "es-CO",
+      data: { url: data.url || "/" },
+    }),
+  );
+});
+
+// Al tocarla: enfocar una ventana de la app (y llevarla a la ruta) o abrir una nueva
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || "/", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
+      const win = wins.find((w) => new URL(w.url).origin === self.location.origin);
+      if (win) return win.focus().then((w) => (w && "navigate" in w ? w.navigate(target) : undefined));
+      return self.clients.openWindow(target);
+    }),
+  );
 });

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, History, IdCard, NotebookPen, PanelRight, Pause, Play, RotateCcw } from "lucide-react";
-import { AffineLink } from "@/components/affine/affine";
+import { History, IdCard, NotebookPen, PanelRight, Pause, Play, RotateCcw } from "lucide-react";
+import { NoteLink } from "@/components/notes/note-panel";
 import Link from "next/link";
 import { EmptyHint, Section, Tag, ViewTabs, cn } from "@/components/blocks/primitives";
 import { PREP } from "@/components/blocks/shared";
@@ -10,6 +10,9 @@ import { capitalize, relativeAgo } from "@/lib/dates";
 import { formatGrade, gradeTone } from "@/lib/grades";
 import type { DashboardData } from "@/lib/data";
 import type { Preparation } from "@/lib/types";
+import { Select } from "@/components/blocks/select";
+import { Ico } from "@/components/blocks/icons";
+import { AppIcon } from "@/components/blocks/icons";
 
 /* ───────────── Perfil ───────────── */
 
@@ -72,7 +75,7 @@ export function ProfileCard({ data }: { data: DashboardData }) {
             const c = data.courseById[a.courseId];
             return (
               <div key={a.id} className="flex items-center gap-2 py-1 text-[12.5px]">
-                <span className="w-4 text-center">{c.emoji}</span>
+                <span className="w-4 text-center"><Ico value={c.emoji} fallback="book" className="mr-0" /></span>
                 <span className="min-w-0 flex-1 truncate">{a.title}</span>
                 <span className={cn("tabular-nums", tone(a.score))}>{formatGrade(a.score, scale)}</span>
               </div>
@@ -145,19 +148,14 @@ export function FocusTimer() {
     <div className="relative overflow-hidden rounded-[24px] border border-panel-border text-white shadow-[var(--shadow-panel)]" style={{ background: MOODS[mood].bg }}>
       <div className="absolute inset-0 backdrop-blur-[2px]" />
       <div className="relative flex flex-col items-center gap-3 px-4 pb-4 pt-3">
-        <label className="relative flex items-center">
-          <select
-            value={mood}
-            onChange={(e) => setMood(e.target.value as keyof typeof MOODS)}
-            className="h-7 appearance-none rounded-full bg-white/15 pl-3 pr-7 text-[12.5px] text-white outline-none backdrop-blur"
-            aria-label="Ambiente del temporizador"
-          >
-            {Object.entries(MOODS).map(([k, v]) => (
-              <option key={k} value={k} className="text-black">{v.label}</option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2 size-3.5 opacity-80" />
-        </label>
+        <Select<keyof typeof MOODS>
+          label="Ambiente del temporizador"
+          variant="bare"
+          className="h-7 rounded-full bg-white/15 pl-3 pr-2.5 text-[12.5px] text-white backdrop-blur hover:bg-white/25"
+          value={mood}
+          onChange={setMood}
+          options={(Object.keys(MOODS) as (keyof typeof MOODS)[]).map((k) => ({ value: k, label: MOODS[k].label }))}
+        />
 
         <div className="text-[44px] font-semibold leading-none tabular-nums tracking-tight drop-shadow-sm" aria-live="polite">
           {mm}:{ss}
@@ -203,7 +201,7 @@ export function FocusTimer() {
   );
 }
 
-/* ───────────── Recientes: temas y apuntes (AFFiNE) ───────────── */
+/* ───────────── Recientes: temas y apuntes (Obsidian) ───────────── */
 
 
 export function RecentPanel({ data }: { data: DashboardData }) {
@@ -221,7 +219,7 @@ export function RecentPanel({ data }: { data: DashboardData }) {
       {view === "topics" && data.topics.length === 0 ? (
         <EmptyHint>Los temas que estudies (desde la pestaña «Temas» de cada materia) aparecen aquí.</EmptyHint>
       ) : view === "docs" && data.recentDocs.length === 0 ? (
-        <EmptyHint>Los apuntes de AFFiNE editados hace poco aparecerán aquí.</EmptyHint>
+        <EmptyHint>Los apuntes de tus materias editados hace poco (aquí o en Obsidian) aparecerán aquí.</EmptyHint>
       ) : view === "topics" ? (
         <div className="flex flex-col gap-1.5">
           {data.topics.slice(0, 7).map((t) => {
@@ -231,12 +229,12 @@ export function RecentPanel({ data }: { data: DashboardData }) {
               <div key={t.id} className="rounded-md border border-border bg-surface-2 px-2.5 py-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="text-[13px] font-medium leading-snug">
-                    {t.emoji} {t.title}
+                    <Ico value={t.emoji} />{t.title}
                   </div>
                   <Tag color={p.color} className="shrink-0">{p.label}</Tag>
                 </div>
                 <div className="mt-1 flex items-center justify-between text-[11.5px] text-faint">
-                  <span>{c.emoji} {c.name}</span>
+                  <span><Ico value={c.emoji} fallback="book" />{c.name}</span>
                   <span>{t.lastStudiedAt ? relativeAgo(t.lastStudiedAt) : ""}</span>
                 </div>
               </div>
@@ -248,29 +246,29 @@ export function RecentPanel({ data }: { data: DashboardData }) {
           {data.recentDocs.map((doc) => {
             const c = doc.courseId ? data.courseById[doc.courseId] : undefined;
             return (
-              <AffineLink
+              <NoteLink
                 key={doc.id}
-                href={doc.url}
+                path={doc.path}
                 title={doc.title}
                 meta={`${c ? `${c.name} · ` : ""}${capitalize(relativeAgo(doc.updatedAt))}`}
                 emoji={c?.emoji}
                 color={c?.color}
                 className="group flex items-start gap-2 rounded-md px-1.5 py-1.5 hover:bg-surface-hover"
               >
-                <span className="mt-px w-4 text-center text-[13px]">📄</span>
+                <AppIcon value="file-text" className="mt-0.5 size-3.5 text-muted" />
                 <div className="min-w-0 flex-1 leading-tight">
                   <div className="truncate text-[13px]">{doc.title}</div>
                   <div className="mt-0.5 text-[11.5px] text-faint">
-                    {c ? `${c.emoji} ${c.name} · ` : ""}
+                    {c ? <><Ico value={c.emoji} fallback="book" />{c.name} · </> : null}
                     {capitalize(relativeAgo(doc.updatedAt))}
                   </div>
                 </div>
                 <PanelRight className="mt-0.5 size-3.5 text-faint opacity-0 group-hover:opacity-100" />
-              </AffineLink>
+              </NoteLink>
             );
           })}
           <p className="mt-1.5 px-1.5 text-[11.5px] leading-snug text-faint">
-            Desde AFFiNE · en la Fase 4 esta lista vendrá de tu servidor.
+            De las carpetas de tus materias en Obsidian.
           </p>
         </div>
       )}

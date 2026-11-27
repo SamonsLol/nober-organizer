@@ -1,16 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarDays, ExternalLink, FolderOpen, LayoutGrid, Loader2, NotebookPen, Search, X } from "lucide-react";
-import { AffineInline, AffineLink, openAffine, type AffineDoc } from "@/components/affine/affine";
+import { CalendarDays, FolderOpen, LayoutGrid, Loader2, NotebookPen, Search, X } from "lucide-react";
+import Link from "next/link";
+import { NoteInline, NoteLink, openNote, type NoteDoc } from "@/components/notes/note-panel";
+import { OpenObsidian } from "@/components/notes/open-obsidian";
 import { FilterMenu, Section, ViewTabs, cn } from "@/components/blocks/primitives";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/shell/toast";
-import { prepareClassNote } from "@/lib/actions/affine";
-import { AFFINE_HOME } from "@/lib/affine";
+import { prepareClassNote } from "@/lib/actions/notes";
+import { courseFolder, obsidianUri } from "@/lib/notes";
 import { capitalize, fmt, friendlyDay, relativeAgo } from "@/lib/dates";
 import type { NotesPageData } from "@/lib/data";
 import type { Course } from "@/lib/types";
+import { Ico } from "@/components/blocks/icons";
+import { AppIcon } from "@/components/blocks/icons";
 
 type Lecture = NotesPageData["lectures"][number];
 
@@ -22,10 +26,11 @@ export function NotesView({ data }: { data: NotesPageData }) {
   const courseById = useMemo(() => Object.fromEntries(data.courses.map((c) => [c.id, c])) as Record<string, Course>, [data.courses]);
   const topicById = useMemo(() => Object.fromEntries(data.topics.map((t) => [t.id, t])), [data.topics]);
 
-  const asDoc = (l: Lecture): AffineDoc => {
+  const asDoc = (l: Lecture): NoteDoc => {
     const c = courseById[l.courseId];
     return {
-      url: l.affineDocUrl ?? data.affineBase,
+      path: l.notePath ?? "",
+      lectureId: l.id,
       title: l.title,
       meta: `${c.name} · ${capitalize(fmt(l.date, "EEE d MMM · HH:mm").replace(".", ""))}`,
       emoji: l.emoji,
@@ -36,11 +41,11 @@ export function NotesView({ data }: { data: NotesPageData }) {
   const [view, setView] = useState<"fecha" | "materia">("fecha");
   const [q, setQ] = useState("");
   const [courses, setCourses] = useState<string[]>([]);
-  const [reading, setReading] = useState<AffineDoc | null>(() => (data.lectures[0] ? asDoc(data.lectures[0]) : null));
+  const [reading, setReading] = useState<NoteDoc | null>(() => (data.lectures[0] ? asDoc(data.lectures[0]) : null));
 
-  const open = (doc: AffineDoc) => {
+  const open = (doc: NoteDoc) => {
     if (window.matchMedia(READER_MQ).matches) setReading(doc);
-    else openAffine(doc);
+    else openNote(doc);
   };
 
   const lectures = useMemo(() => {
@@ -53,7 +58,7 @@ export function NotesView({ data }: { data: NotesPageData }) {
     );
   }, [data.lectures, q, courses, courseById, topicById]);
 
-  const current = reading?.url;
+  const current = reading?.path;
 
   return (
     <div className="flex flex-col gap-5">
@@ -84,21 +89,21 @@ export function NotesView({ data }: { data: NotesPageData }) {
           <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
             {lectures.length === 0 ? (
               <p className="px-4 py-10 text-center text-[13px] text-faint">
-                {data.lectures.length ? "Ningún apunte coincide." : "Aún no hay apuntes de clase. Registra cada clase en la pestaña «Clases» de su materia y enlaza su documento de AFFiNE."}
+                {data.lectures.length ? "Ningún apunte coincide." : "Aún no hay apuntes de clase. Créalos con «Preparar» (abajo) o desde la pestaña «Clases» de cada materia."}
               </p>
             ) : view === "fecha" ? (
-              <ByDate lectures={lectures} courseById={courseById} topicById={topicById} current={current} onOpen={(l) => open(asDoc(l))} />
+              <ByDate vault={data.vault.name} lectures={lectures} courseById={courseById} topicById={topicById} current={current} onOpen={(l) => open(asDoc(l))} />
             ) : (
-              <ByCourse lectures={lectures} courses={data.courses.filter((c) => courses.length === 0 || courses.includes(c.id))} current={current} onOpen={(l) => open(asDoc(l))} />
+              <ByCourse lectures={lectures} courses={data.courses.filter((c) => courses.length === 0 || courses.includes(c.id))} root={data.vault.root} current={current} onOpen={(l) => open(asDoc(l))} />
             )}
           </div>
-          <p className="mt-2 text-[11.5px] text-faint">{lectures.length} apuntes · Ctrl + clic abre en pestaña nueva</p>
+          <p className="mt-2 text-[11.5px] text-faint">{lectures.length} apuntes · se guardan en tu bóveda de Obsidian</p>
         </section>
 
         {/* Lector (solo escritorio ancho) */}
         <section className="glass sticky top-5 hidden min-w-0 flex-col p-3 xl:flex">
           {reading ? (
-            <AffineInline key={reading.url} doc={reading} height="calc(100dvh - 220px)" />
+            <NoteInline key={reading.path} doc={reading} height="calc(100dvh - 220px)" />
           ) : (
             <p className="py-20 text-center text-[13px] text-faint">Elige un apunte para leerlo aquí.</p>
           )}
@@ -111,8 +116,9 @@ export function NotesView({ data }: { data: NotesPageData }) {
           <ul className="flex flex-col gap-2">
             {data.nextClasses.map((c) => {
               const course = courseById[c.courseId!];
-              const doc: AffineDoc = {
-                url: c.external && c.href ? c.href : course.affineFolderUrl ?? data.affineBase,
+              const doc: NoteDoc = {
+                path: c.note?.path ?? "",
+                lectureId: c.note?.lectureId,
                 title: c.detail ?? course.name,
                 meta: `${course.name} · ${capitalize(friendlyDay(c.start, now))} ${fmt(c.start, "HH:mm")}`,
                 emoji: course.emoji,
@@ -120,18 +126,23 @@ export function NotesView({ data }: { data: NotesPageData }) {
               };
               return (
                 <li key={c.id} className="flex items-center gap-3 rounded-[14px] bg-surface-2 px-3 py-2.5">
-                  <span className={cn("grid size-9 shrink-0 place-items-center rounded-[11px] text-[15px] text-on-pastel", `pastel-${course.color}`)}>{course.emoji}</span>
+                  <span className={cn("grid size-9 shrink-0 place-items-center rounded-[11px] text-[15px] text-on-pastel", `pastel-${course.color}`)}><Ico value={course.emoji} fallback="book" className="mr-0" /></span>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[13px]">{course.name}</div>
                     <div className="text-[11.5px] text-faint">{capitalize(friendlyDay(c.start, now))} · {fmt(c.start, "HH:mm")}</div>
                   </div>
-                  {!(c.external && c.href) && data.affine.connected ? (
+                  {c.note ? (
+                    <NoteLink {...doc} className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-pill px-2.5 text-[11.5px] hover:bg-pill-hover">
+                      <NotebookPen className="size-3.5" />
+                      Abrir
+                    </NoteLink>
+                  ) : data.vault.canWrite ? (
                     <PrepareButton courseId={course.id} start={c.start} doc={doc} />
                   ) : (
-                    <AffineLink href={doc.url} {...doc} className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-pill px-2.5 text-[11.5px] hover:bg-pill-hover">
+                    <Link href={`/courses/${course.slug}?tab=clases`} className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-pill px-2.5 text-[11.5px] hover:bg-pill-hover">
                       <NotebookPen className="size-3.5" />
-                      {c.external && c.href ? "Abrir" : "Preparar"}
-                    </AffineLink>
+                      Clases
+                    </Link>
                   )}
                 </li>
               );
@@ -140,15 +151,15 @@ export function NotesView({ data }: { data: NotesPageData }) {
         </Section>
 
         <Section title="Editados hace poco">
-          {data.recentDocs.length === 0 ? <p className="text-[12.5px] text-faint">Aquí aparecen los apuntes que crees desde la app (con AFFiNE conectado en Ajustes).</p> : null}
+          {data.recentDocs.length === 0 ? <p className="text-[12.5px] text-faint">Aquí aparecen las notas de las carpetas de tus materias que cambien (aquí o en Obsidian).</p> : null}
           <ul className="flex flex-col gap-0.5">
             {data.recentDocs.map((doc) => {
               const c = doc.courseId ? courseById[doc.courseId] : undefined;
-              const d: AffineDoc = { url: doc.url, title: doc.title, meta: `${c ? `${c.name} · ` : ""}${capitalize(relativeAgo(doc.updatedAt))}`, emoji: c?.emoji, color: c?.color };
+              const d: NoteDoc = { path: doc.path, title: doc.title, meta: `${c ? `${c.name} · ` : ""}${capitalize(relativeAgo(doc.updatedAt))}`, emoji: c?.emoji, color: c?.color };
               return (
                 <li key={doc.id}>
-                  <button onClick={() => open(d)} className={cn("flex w-full items-center gap-2.5 rounded-[12px] px-2 py-2 text-left hover:bg-surface-hover", current === doc.url && "bg-surface-hover")}>
-                    <span className="text-[14px]">📝</span>
+                  <button onClick={() => open(d)} className={cn("flex w-full items-center gap-2.5 rounded-[12px] px-2 py-2 text-left hover:bg-surface-hover", current === doc.path && "bg-surface-hover")}>
+                    <AppIcon value="notebook-pen" className="size-4 text-muted" />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[13px]">{doc.title}</div>
                       <div className="truncate text-[11.5px] text-faint">{d.meta}</div>
@@ -161,16 +172,18 @@ export function NotesView({ data }: { data: NotesPageData }) {
         </Section>
 
         <div className="rounded-[24px] border border-dashed border-border-strong p-5 text-[12.5px] leading-relaxed text-muted">
-          <div className="mb-1.5 flex items-center gap-2 text-[13px] font-medium text-text"><FolderOpen className="size-4" /> Tus apuntes viven en AFFiNE</div>
-          Se leen y editan aquí mismo, embebidos. La app solo guarda los enlaces: el contenido nunca se copia.
-          En la Fase 4 «Preparar» creará el documento de la clase automáticamente.
+          <div className="mb-1.5 flex items-center gap-2 text-[13px] font-medium text-text"><FolderOpen className="size-4" /> Tus apuntes viven en Obsidian</div>
+          Cada clase es una nota .md en <span className="break-all font-mono text-[11.5px]">{data.vault.root || "la bóveda"}/&lt;materia&gt;/</span>.
+          Se leen y editan aquí (con autoguardado) y tu sincronización de Obsidian las lleva al celular y al computador.
+          «Preparar» crea la nota de la próxima clase con su plantilla.
         </div>
       </div>
     </div>
   );
 }
 
-function ByDate({ lectures, courseById, topicById, current, onOpen }: {
+function ByDate({ vault, lectures, courseById, topicById, current, onOpen }: {
+  vault: string;
   lectures: Lecture[];
   courseById: Record<string, Course>;
   topicById: Record<string, NotesPageData["topics"][number]>;
@@ -191,12 +204,12 @@ function ByDate({ lectures, courseById, topicById, current, onOpen }: {
             {list.map((l) => {
               const c = courseById[l.courseId];
               const topic = l.topicId ? topicById[l.topicId] : undefined;
-              const active = current === l.affineDocUrl;
+              const active = current === l.notePath;
               return (
                 <li key={l.id} className="border-t border-border first:border-t-0">
                   <div className={cn("group flex items-center gap-2.5 rounded-[14px] px-2 py-2 hover:bg-surface-hover", active && "bg-accent-soft hover:bg-accent-soft")}>
                     <button onClick={() => onOpen(l)} aria-current={active || undefined} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-2 text-[14px]">{l.emoji}</span>
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-2 text-[14px]"><Ico value={l.emoji} className="mr-0" /></span>
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-[13px]">{l.title}</div>
                         <div className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-faint">
@@ -205,8 +218,8 @@ function ByDate({ lectures, courseById, topicById, current, onOpen }: {
                         </div>
                       </div>
                     </button>
-                    <a href={l.affineDocUrl} target="_blank" rel="noreferrer" aria-label="Abrir en pestaña nueva" title="Abrir en pestaña nueva" className="grid size-7 shrink-0 place-items-center rounded-full text-faint opacity-0 hover:bg-pill hover:text-text group-hover:opacity-100 focus:opacity-100">
-                      <ExternalLink className="size-3.5" />
+                    <a href={obsidianUri(vault, l.notePath ?? "")} aria-label="Abrir en Obsidian" title="Abrir en la app de Obsidian" className="grid size-7 shrink-0 place-items-center rounded-full text-faint opacity-0 hover:bg-pill hover:text-text group-hover:opacity-100 focus:opacity-100">
+                      <NotebookPen className="size-3.5" />
                     </a>
                   </div>
                 </li>
@@ -219,7 +232,7 @@ function ByDate({ lectures, courseById, topicById, current, onOpen }: {
   );
 }
 
-function ByCourse({ lectures, courses, current, onOpen }: { lectures: Lecture[]; courses: Course[]; current?: string; onOpen: (l: Lecture) => void }) {
+function ByCourse({ lectures, courses, root, current, onOpen }: { lectures: Lecture[]; courses: Course[]; root: string; current?: string; onOpen: (l: Lecture) => void }) {
   return (
     <div className="flex flex-col gap-3">
       {courses.map((c) => {
@@ -228,18 +241,18 @@ function ByCourse({ lectures, courses, current, onOpen }: { lectures: Lecture[];
         return (
           <div key={c.id} className="flex flex-col rounded-[18px] bg-surface-2 p-2.5">
             <div className="mb-1 flex items-center gap-2 px-1">
-              <span className={cn("grid size-7 place-items-center rounded-[9px] text-[13px] text-on-pastel", `pastel-${c.color}`)}>{c.emoji}</span>
+              <span className={cn("grid size-7 place-items-center rounded-[9px] text-[13px] text-on-pastel", `pastel-${c.color}`)}><Ico value={c.emoji} fallback="book" className="mr-0" /></span>
               <span className="text-[13.5px] font-medium">{c.name}</span>
               <span className="text-[12px] text-faint">{list.length}</span>
-              <AffineLink href={c.affineFolderUrl ?? AFFINE_HOME} title={`${c.name} — carpeta`} meta="AFFiNE" emoji={c.emoji} color={c.color} size="full" className="ml-auto rounded-full px-2 py-1 text-[11.5px] text-muted hover:bg-pill hover:text-text">
+              <OpenObsidian folder={courseFolder(c, root)} className="ml-auto rounded-full px-2 py-1 text-[11.5px] text-muted hover:bg-pill hover:text-text">
                 Carpeta
-              </AffineLink>
+              </OpenObsidian>
             </div>
             <ul className="flex flex-col">
               {list.slice(0, 5).map((l) => (
                 <li key={l.id}>
-                  <button onClick={() => onOpen(l)} className={cn("flex w-full items-center gap-2.5 rounded-[12px] px-2 py-1.5 text-left hover:bg-surface-hover", current === l.affineDocUrl && "bg-accent-soft hover:bg-accent-soft")}>
-                    <span className="text-[13px]">{l.emoji}</span>
+                  <button onClick={() => onOpen(l)} className={cn("flex w-full items-center gap-2.5 rounded-[12px] px-2 py-1.5 text-left hover:bg-surface-hover", current === l.notePath && "bg-accent-soft hover:bg-accent-soft")}>
+                    <span className="text-[13px]"><Ico value={l.emoji} className="mr-0" /></span>
                     <span className="min-w-0 flex-1 truncate text-[13px]">{l.title}</span>
                     <span className="shrink-0 text-[11.5px] text-faint">{fmt(l.date, "d MMM").replace(".", "")}</span>
                   </button>
@@ -254,8 +267,8 @@ function ByCourse({ lectures, courses, current, onOpen }: { lectures: Lecture[];
   );
 }
 
-/** «Preparar» con AFFiNE conectado: crea la clase y su apunte, y lo abre en el panel. */
-function PrepareButton({ courseId, start, doc }: { courseId: string; start: string; doc: AffineDoc }) {
+/** «Preparar»: crea la clase y su nota en Obsidian, y la abre en el panel. */
+function PrepareButton({ courseId, start, doc }: { courseId: string; start: string; doc: NoteDoc }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   return (
@@ -265,7 +278,7 @@ function PrepareButton({ courseId, start, doc }: { courseId: string; start: stri
         const r = await prepareClassNote({ courseId, start });
         setBusy(false);
         if (!r.ok) return toast(r.error);
-        openAffine({ ...doc, url: r.data.url });
+        openNote({ ...doc, path: r.data.path, lectureId: r.data.lectureId });
         router.refresh();
       }}
       disabled={busy}

@@ -7,8 +7,11 @@ import { cn } from "@/components/blocks/primitives";
 import { CourseCover } from "@/components/illustrations/course-cover";
 import { toast } from "@/components/shell/toast";
 import { courseUsage, deleteCourse, saveCourse } from "@/lib/actions/courses";
-import { AFFINE_ORIGIN } from "@/lib/affine";
+import { useVault } from "@/components/notes/vault-context";
+import { courseFolder } from "@/lib/notes";
 import type { ClassSchedule, Course, CoverKind, TagColor } from "@/lib/types";
+import { Select } from "@/components/blocks/select";
+import { IconPicker } from "@/components/blocks/icon-picker";
 
 /* ───────────── Apertura desde cualquier parte ───────────── */
 
@@ -54,13 +57,14 @@ function CourseEditor({ init, onClose }: { init: Init; onClose: () => void }) {
   const router = useRouter();
   const c = init?.course;
   const [name, setName] = useState(c?.name ?? "");
-  const [emoji, setEmoji] = useState(c?.emoji ?? "📘");
+  const [emoji, setEmoji] = useState(c?.emoji ?? "book");
   const [color, setColor] = useState<TagColor>(c?.color ?? "blue");
   const [cover, setCover] = useState<CoverKind>(c?.cover ?? "math");
   const [teacher, setTeacher] = useState(c?.teacher ?? "");
   const [room, setRoom] = useState(c?.room ?? "");
   const [code, setCode] = useState(c?.code ?? "");
-  const [folder, setFolder] = useState(c?.affineFolderUrl ?? "");
+  const [folder, setFolder] = useState(c?.notesFolder ?? "");
+  const vault = useVault();
   const seq = useRef(0);
   const [rows, setRows] = useState<Row[]>(() =>
     (init?.schedule ?? []).map((s) => ({ key: seq.current++, weekday: s.weekday, start: s.start, end: s.end, room: s.room === c?.room ? "" : s.room })),
@@ -88,7 +92,7 @@ function CourseEditor({ init, onClose }: { init: Init; onClose: () => void }) {
   async function save() {
     setBusy(true);
     const r = await saveCourse({
-      id: c?.id, name, emoji, color, cover, teacher, room, code, affineFolderUrl: folder,
+      id: c?.id, name, emoji, color, cover, teacher, room, code, notesFolder: folder,
       schedule: rows.map(({ weekday, start, end, room }) => ({ weekday, start, end, room })),
     });
     setBusy(false);
@@ -111,18 +115,12 @@ function CourseEditor({ init, onClose }: { init: Init; onClose: () => void }) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-5 pt-4">
-          {/* Vista previa de la portada con nombre y emoji */}
+          {/* Vista previa de la portada con nombre e ícono */}
           <div className={cn("relative h-[96px] overflow-hidden rounded-[18px]", `pastel-${color}`)}>
             <CourseCover kind={cover} tint={color} className="absolute inset-0 size-full" />
           </div>
           <div className="-mt-6 px-3">
-            <input
-              value={emoji}
-              onChange={(e) => setEmoji(e.target.value)}
-              aria-label="Emoji"
-              maxLength={8}
-              className="relative size-12 shrink-0 rounded-[14px] border border-border bg-panel-strong text-center text-[24px] outline-none focus:border-accent"
-            />
+            <IconPicker value={emoji} onChange={setEmoji} fallback="book" label="Ícono de la materia" className="relative size-12 rounded-[14px] bg-panel-strong" />
           </div>
           <div className="mt-2">
             <input
@@ -178,16 +176,14 @@ function CourseEditor({ init, onClose }: { init: Init; onClose: () => void }) {
             <Field label="Código"><Input value={code} onChange={setCode} placeholder="MAT-11" /></Field>
           </div>
           <div className="mt-3">
-            <Field label="Carpeta en AFFiNE (opcional)"><Input value={folder} onChange={setFolder} placeholder={`${AFFINE_ORIGIN}/workspace/…`} /></Field>
+            <Field label="Carpeta de apuntes en Obsidian (opcional)"><Input value={folder} onChange={setFolder} placeholder={courseFolder({ name: name || "Materia" }, vault.root)} /></Field>
           </div>
 
           <Group label="Horario semanal" right={<span className="text-[12px] text-faint">{rows.length} {rows.length === 1 ? "clase" : "clases"}</span>}>
             <div className="flex flex-col gap-2">
               {rows.map((r) => (
                 <div key={r.key} className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_32px] items-center gap-2 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]">
-                  <select aria-label="Día" value={r.weekday} onChange={(e) => editRow(r.key, { weekday: Number(e.target.value) })} className={inputCls}>
-                    {DAYS.map((d) => <option key={d.n} value={d.n}>{d.label}</option>)}
-                  </select>
+                  <Select<number> label="Día" value={r.weekday} onChange={(weekday) => editRow(r.key, { weekday })} options={DAYS.map((d) => ({ value: d.n, label: d.label }))} />
                   <input aria-label="Empieza" type="time" value={r.start} onChange={(e) => editRow(r.key, { start: e.target.value })} className={cn(inputCls, "[color-scheme:inherit]")} />
                   <input aria-label="Termina" type="time" value={r.end} onChange={(e) => editRow(r.key, { end: e.target.value })} className={cn(inputCls, "[color-scheme:inherit]")} />
                   <input aria-label="Aula de esta clase" value={r.room} onChange={(e) => editRow(r.key, { room: e.target.value })} placeholder={room || "Aula"} className={cn(inputCls, "max-sm:col-span-3 max-sm:row-start-2")} />
@@ -243,7 +239,7 @@ function DeleteCourse({ course, onDeleted }: { course: Course; onDeleted: () => 
     setLoss(
       (parts.length ? `Se borrarán ${parts.join(", ")}.` : "No tiene evaluaciones ni clases registradas.") +
         (u.tasks ? ` Sus ${u.tasks} tareas quedarán como personales.` : "") +
-        " Los apuntes de AFFiNE no se tocan.",
+        " Sus notas en Obsidian no se tocan.",
     );
     setStep("confirm");
   }

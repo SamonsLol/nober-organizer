@@ -8,6 +8,10 @@ import { cn } from "@/components/blocks/primitives";
 import { toast } from "@/components/shell/toast";
 import { deleteEvent, saveEvent } from "@/lib/actions/events";
 import type { CalendarEvent, Course, EventKind } from "@/lib/types";
+import { Select } from "@/components/blocks/select";
+import { IconPicker } from "@/components/blocks/icon-picker";
+import { AppIcon } from "@/components/blocks/icons";
+import { Ico } from "@/components/blocks/icons";
 
 /* ───────────── Apertura desde cualquier parte ───────────── */
 
@@ -39,10 +43,10 @@ export function EventEditorHost({ courses }: { courses: Course[] }) {
 type Kind = Exclude<EventKind, "CLASS" | "DEADLINE">;
 
 const KINDS: { id: Kind; label: string; emoji: string; hint: string }[] = [
-  { id: "EVENT", label: "Evento", emoji: "🎉", hint: "Salidas, reuniones, actos." },
-  { id: "IMPORTANT", label: "Fecha importante", emoji: "📌", hint: "Cierres de período, boletines, inscripciones." },
-  { id: "EXAM", label: "Prueba externa", emoji: "🎯", hint: "Simulacros, Saber 11, pruebas fuera de una materia." },
-  { id: "HOLIDAY", label: "Festivo / sin clases", emoji: "🌴", hint: "Ese día (o días) no se generan clases." },
+  { id: "EVENT", label: "Evento", emoji: "party-popper", hint: "Salidas, reuniones, actos." },
+  { id: "IMPORTANT", label: "Fecha importante", emoji: "pin", hint: "Cierres de período, boletines, inscripciones." },
+  { id: "EXAM", label: "Prueba externa", emoji: "target", hint: "Simulacros, Saber 11, pruebas fuera de una materia." },
+  { id: "HOLIDAY", label: "Festivo / sin clases", emoji: "sun", hint: "Ese día (o días) no se generan clases." },
 ];
 
 const day = (d: Date) => format(d, "yyyy-MM-dd");
@@ -124,14 +128,7 @@ function EventEditor({ init, courses, onClose }: { init: EventEditorInit; course
 
         <div className="flex-1 overflow-y-auto px-5 pb-5 pt-4">
           <div className="flex items-center gap-2">
-            <input
-              value={emoji}
-              onChange={(ev) => setEmoji(ev.target.value)}
-              placeholder={KINDS.find((k) => k.id === kind)!.emoji}
-              aria-label="Emoji"
-              maxLength={8}
-              className="size-11 shrink-0 rounded-[12px] border border-border bg-surface-2 text-center text-[20px] outline-none placeholder:opacity-50 focus:border-accent"
-            />
+            <IconPicker value={emoji} onChange={setEmoji} fallback={KINDS.find((k) => k.id === kind)!.emoji} label="Ícono del evento" />
             <input
               autoFocus
               value={title}
@@ -156,7 +153,7 @@ function EventEditor({ init, courses, onClose }: { init: EventEditorInit; course
                   kind === k.id ? "bg-pill-active font-medium text-pill-active-fg" : "bg-surface-2 text-muted hover:text-text",
                 )}
               >
-                <span>{k.emoji}</span>
+                <AppIcon value={k.emoji} className="size-3.5" />
                 <span className="truncate">{k.label}</span>
               </button>
             ))}
@@ -190,10 +187,7 @@ function EventEditor({ init, courses, onClose }: { init: EventEditorInit; course
               <input value={location} onChange={(ev) => setLocation(ev.target.value)} placeholder="Coliseo" className={cn(inputCls, "placeholder:text-faint")} />
             </Field>
             <Field label="Materia (opcional)">
-              <select value={courseId} onChange={(ev) => setCourseId(ev.target.value)} className={inputCls}>
-                <option value="">General</option>
-                {courses.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
-              </select>
+              <Select label="Materia" value={courseId} onChange={setCourseId} options={[{ value: "", label: "General" }, ...courses.map((c) => ({ value: c.id, label: c.name, emoji: c.emoji, color: c.color }))]} />
             </Field>
           </div>
         </div>

@@ -8,6 +8,7 @@ import { openAssessmentEditor } from "@/components/grades/assessment-editor";
 import { capitalize, fmt } from "@/lib/dates";
 import { formatGrade, gradeTone, scoreInScale, type CourseGrade } from "@/lib/grades";
 import type { Assessment, GradingScale, Period } from "@/lib/types";
+import { Ico } from "@/components/blocks/icons";
 
 /** Evaluaciones de una materia por período: clic para editar, «Registrar» para poner la nota. */
 export function AssessmentTable({
@@ -57,7 +58,7 @@ export function AssessmentTable({
                 return (
                   <tr key={a.id} onClick={() => open(a)} className="cursor-pointer border-t border-border transition-colors hover:bg-surface-hover">
                     <td className="px-2 py-2.5">
-                      <button onClick={(e) => (e.stopPropagation(), open(a))} className="text-left hover:underline">{k.emoji} {a.title}</button>
+                      <button onClick={(e) => (e.stopPropagation(), open(a))} className="text-left hover:underline"><Ico value={k.emoji} />{a.title}</button>
                       <div className="mt-1 flex items-center gap-2 text-[11.5px] text-faint sm:hidden">
                         <Tag color={k.color}>{k.label}</Tag>
                         {date}

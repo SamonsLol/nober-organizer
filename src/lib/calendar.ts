@@ -1,21 +1,22 @@
 import { addMinutes, eachDayOfInterval, formatISO, isWithinInterval, parseISO, setHours, setMinutes, startOfDay } from "date-fns";
 import { dayKey, fmt, toDate } from "@/lib/dates";
-import type { Assessment, CalendarEvent, ClassSchedule, Course, Lecture, Period, Task } from "@/lib/types";
+import type { Assessment, CalendarEvent, ClassSchedule, Course, ExternalItem, Lecture, Period, TagColor, Task } from "@/lib/types";
 
 /**
  * Modelo del calendario: todo (clases, tareas, evaluaciones, eventos) se normaliza a `CalItem`.
  * Sin "server-only": las clases se expanden en el cliente para el rango visible.
  */
 
-export type CalKind = "CLASS" | "TASK" | "EXAM" | "DEADLINE" | "EVENT" | "IMPORTANT";
+export type CalKind = "CLASS" | "TASK" | "EXAM" | "DEADLINE" | "EVENT" | "IMPORTANT" | "GOOGLE";
 
 export const CAL_KIND: Record<CalKind, { label: string; one: string; emoji: string }> = {
-  CLASS: { label: "Clases", one: "Clase", emoji: "🏫" },
-  TASK: { label: "Tareas", one: "Tarea", emoji: "📝" },
-  EXAM: { label: "Exámenes", one: "Examen", emoji: "🎯" },
-  DEADLINE: { label: "Entregas", one: "Entrega", emoji: "📦" },
-  EVENT: { label: "Eventos", one: "Evento", emoji: "🎉" },
-  IMPORTANT: { label: "Fechas importantes", one: "Importante", emoji: "📌" },
+  CLASS: { label: "Clases", one: "Clase", emoji: "school" },
+  TASK: { label: "Tareas", one: "Tarea", emoji: "notebook-pen" },
+  EXAM: { label: "Exámenes", one: "Examen", emoji: "target" },
+  DEADLINE: { label: "Entregas", one: "Entrega", emoji: "package" },
+  EVENT: { label: "Eventos", one: "Evento", emoji: "party-popper" },
+  IMPORTANT: { label: "Fechas importantes", one: "Importante", emoji: "pin" },
+  GOOGLE: { label: "Google Calendar", one: "Google", emoji: "calendar" },
 };
 
 export interface CalItem {
@@ -31,7 +32,11 @@ export interface CalItem {
   detail?: string;
   href?: string;
   external?: boolean;
+  /** Clase con apunte en Obsidian: se abre en el panel de apuntes. */
+  note?: { path: string; lectureId: string };
   done?: boolean;
+  /** Color propio (eventos de Google: el de su calendario). */
+  color?: TagColor;
   /** Evento original (los eventos se editan desde el calendario). */
   event?: CalendarEvent;
 }
@@ -50,7 +55,9 @@ export function holidayKeys(events: CalendarEvent[]): string[] {
 }
 
 /** Tareas, evaluaciones y eventos → CalItem. Una evaluación ligada a una tarea no se repite. */
-export function buildItems({ tasks, assessments, events, courses }: {
+export function buildItems({ tasks, assessments, events, courses, external = [] }: {
+  /** Eventos de otros calendarios de Google (solo lectura). */
+  external?: ExternalItem[];
   tasks: Task[];
   assessments: Assessment[];
   events: CalendarEvent[];
@@ -82,7 +89,7 @@ export function buildItems({ tasks, assessments, events, courses }: {
       id: a.id,
       kind: a.kind === "EXAM" || a.kind === "QUIZ" ? "EXAM" : "DEADLINE",
       title: a.title,
-      emoji: a.kind === "EXAM" ? "🎯" : a.kind === "QUIZ" ? "⏱️" : "📦",
+      emoji: a.kind === "EXAM" ? "target" : a.kind === "QUIZ" ? "clock" : "package",
       start: a.date!,
       allDay: true,
       courseId: a.courseId,
@@ -112,7 +119,26 @@ export function buildItems({ tasks, assessments, events, courses }: {
     }));
   });
 
-  return [...fromTasks, ...fromAssessments, ...fromEvents];
+  // Google: de solo lectura, abren el evento en Google Calendar; los de varios días, en cada día
+  const fromGoogle: CalItem[] = external.flatMap((x) => {
+    const days = x.allDay ? eventDays({ start: x.start, end: x.end, allDay: true }) : [dayKey(x.start)];
+    return days.map((k, n) => ({
+      id: days.length > 1 ? `g:${x.id}:${k}` : `g:${x.id}`,
+      kind: "GOOGLE" as const,
+      title: x.title,
+      emoji: "calendar",
+      start: n === 0 ? x.start : formatISO(startOfDay(parseISO(k))),
+      end: x.allDay ? undefined : x.end,
+      allDay: x.allDay,
+      location: x.location,
+      detail: days.length > 1 ? `${x.calendarName} · día ${n + 1} de ${days.length}` : x.calendarName,
+      href: x.url,
+      external: Boolean(x.url),
+      color: x.color,
+    }));
+  });
+
+  return [...fromTasks, ...fromAssessments, ...fromEvents, ...fromGoogle];
 }
 
 /** Genera las clases del horario entre dos fechas (saltando festivos y días fuera de los períodos). */
@@ -155,8 +181,8 @@ export function expandClasses({ schedule, courses, lectures, periods, holidays, 
         courseId: c.id,
         location: s.room,
         detail: lecture?.title,
-        href: lecture?.affineDocUrl ?? `/courses/${c.slug}?tab=clases`,
-        external: Boolean(lecture?.affineDocUrl),
+        href: `/courses/${c.slug}?tab=clases`,
+        note: lecture?.notePath ? { path: lecture.notePath, lectureId: lecture.id } : undefined,
       });
     }
   }
