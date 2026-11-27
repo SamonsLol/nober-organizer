@@ -7,7 +7,7 @@ import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { getSession, requireUserId } from "@/lib/session";
 import { UserError, run, type Result } from "@/lib/actions/result";
 import { CourseraError, courseraSlug } from "@/lib/coursera";
-import { applyStudyPlan, importCoursera, importProgram } from "@/lib/study-courses";
+import { applyStudyPlan, importCoursera, importProgram, refreshIfOutdated } from "@/lib/study-courses";
 import { hashToken } from "@/lib/coursera-sync";
 import { VaultError, vaultInfo } from "@/lib/vault";
 import { vaultAllowed } from "@/lib/vault-access";
@@ -68,6 +68,7 @@ export async function getStudyCourse(courseId: string): Promise<Result<StudyCour
   return run(async () => {
     const cid = id.parse(courseId);
     const userId = await user();
+    await refreshIfOutdated(userId, cid);
     const c = await prisma.studyCourse.findFirst({
       where: { id: cid, userId },
       include: { modules: { orderBy: { position: "asc" }, include: { tasks: { select: { status: true } } } }, project: { select: { slug: true } } },
