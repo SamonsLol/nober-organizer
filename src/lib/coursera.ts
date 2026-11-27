@@ -92,3 +92,16 @@ export async function fetchCourseraItems(slug: string) {
     type: i.contentSummary?.typeName ?? "",
   }));
 }
+
+/** Descripción de un módulo y nombres de sus ítems (para generar repaso cuando aún no hay apuntes). */
+export async function fetchCourseraModuleOutline(slug: string, moduleId: string) {
+  const mat = await get<Linked<unknown>>(
+    `onDemandCourseMaterials.v2/?q=slug&slug=${encodeURIComponent(slug)}&includes=modules,items` +
+      "&fields=onDemandCourseMaterialModules.v1(name,description),onDemandCourseMaterialItems.v2(name,moduleId,contentSummary)",
+  );
+  const mod = ((mat.linked?.["onDemandCourseMaterialModules.v1"] ?? []) as { id: string; description?: string }[]).find((m) => m.id === moduleId);
+  const items = ((mat.linked?.["onDemandCourseMaterialItems.v2"] ?? []) as { name: string; moduleId: string; contentSummary?: { typeName?: string } }[])
+    .filter((i) => i.moduleId === moduleId && !/exam|quiz|graded|peer|discussion|widget/i.test(i.contentSummary?.typeName ?? ""))
+    .map((i) => i.name.trim());
+  return { description: (mod?.description ?? "").trim().slice(0, 3000), items: items.slice(0, 40) };
+}

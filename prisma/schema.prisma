@@ -43,6 +43,8 @@ model User {
   resources     Resource[]
   uploads       Upload[]
   studyCourses  StudyCourse[]
+  flashcards    Flashcard[]
+  quizAttempts  QuizAttempt[]
 
   @@map("user")
 }
@@ -663,7 +665,54 @@ model StudyModule {
   notePath    String?
   completedAt DateTime?
   tasks       Task[]
+  flashcards  Flashcard[]
+  quizzes     QuizAttempt[]
 
   @@unique([courseId, externalId])
   @@index([courseId])
+}
+
+/// Tarjeta de repaso con repetición espaciada (SM-2 simplificado, ver lib/srs.ts).
+model Flashcard {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Nombre del mazo para mostrar («Ethical Hacking · M1», «Cálculo · Clase del 3 de mayo»)
+  deck          String
+  front         String
+  back          String
+  /// Origen: nota de Obsidian y/o módulo de un curso en línea
+  notePath      String?
+  studyModuleId String?
+  studyModule   StudyModule? @relation(fields: [studyModuleId], references: [id], onDelete: Cascade)
+  ease          Float        @default(2.5)
+  /// Días hasta la próxima repasada (0 = aprendiendo)
+  interval      Int          @default(0)
+  reps          Int          @default(0)
+  lapses        Int          @default(0)
+  due           DateTime     @default(now())
+  reviewedAt    DateTime?
+  createdAt     DateTime     @default(now())
+
+  @@index([userId, due])
+  @@index([studyModuleId])
+}
+
+/// Intento de un quiz generado por IA (las preguntas se guardan para poder repasarlas).
+model QuizAttempt {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deck          String
+  notePath      String?
+  studyModuleId String?
+  studyModule   StudyModule? @relation(fields: [studyModuleId], references: [id], onDelete: SetNull)
+  score         Int
+  total         Int
+  /// [{ question, options, answer, explanation, picked }]
+  questions     Json
+  createdAt     DateTime     @default(now())
+
+  @@index([userId])
+  @@index([studyModuleId])
 }

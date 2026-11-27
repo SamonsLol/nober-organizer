@@ -7,6 +7,7 @@ import { ProjectEditorHost } from "@/components/projects/project-editor";
 import { WeekPlanHost } from "@/components/ai/week-plan";
 import { AiPlannerHost } from "@/components/ai/ai-planner";
 import { StudySetupHost } from "@/components/study/study-setup";
+import { ReviewHost } from "@/components/review/review-dialogs";
 import { NotePanel } from "@/components/notes/note-panel";
 import { VaultProvider } from "@/components/notes/vault-context";
 import { Toaster } from "@/components/shell/toast";
@@ -29,6 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <WeekPlanHost />
       <AiPlannerHost />
       <StudySetupHost />
+      <ReviewHost />
       <EventEditorHost courses={courses} />
       <AssessmentEditorHost courses={courses} periods={periods} currentPeriodId={period.id} scale={scale} />
     </div>

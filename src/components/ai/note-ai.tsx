@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ListChecks, Loader2, MessageCircleQuestion, ScrollText, X } from "lucide-react";
+import { Check, Layers, ListChecks, Loader2, MessageCircleQuestion, ScrollText, Trophy, X } from "lucide-react";
+import { openCardMaker, openQuiz } from "@/components/review/review-dialogs";
 import { cn } from "@/components/blocks/primitives";
 import { Markdown } from "@/components/notes/markdown";
 import { toast } from "@/components/shell/toast";
@@ -99,6 +100,12 @@ export function NoteAi({ path, getMtime, flush, reload, onClose }: {
             {label}
           </button>
         ))}
+        <button onClick={async () => { await flush(); openCardMaker({ path }); }} className="flex h-7 items-center gap-1.5 rounded-full bg-ink/[0.07] px-3 text-[12px] text-ink hover:bg-ink/[0.12]">
+          <Layers className="size-3.5" /> Tarjetas
+        </button>
+        <button onClick={async () => { await flush(); openQuiz({ path }); }} className="flex h-7 items-center gap-1.5 rounded-full bg-ink/[0.07] px-3 text-[12px] text-ink hover:bg-ink/[0.12]">
+          <Trophy className="size-3.5" /> Quiz
+        </button>
         <button onClick={onClose} aria-label="Cerrar IA" title="Cerrar" className="ml-auto grid size-7 place-items-center rounded-full text-ink/50 hover:bg-ink/[0.07] hover:text-ink">
           <X className="size-3.5" />
         </button>

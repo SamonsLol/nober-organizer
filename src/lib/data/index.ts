@@ -435,9 +435,19 @@ async function projectStudyCourse(projectId: string) {
   if (!hasDatabase()) return null;
   const c = await prisma.studyCourse.findUnique({
     where: { projectId },
-    include: { modules: { orderBy: { position: "asc" }, include: { tasks: { select: { status: true, dueAt: true } } } } },
+    include: {
+      modules: {
+        orderBy: { position: "asc" },
+        include: {
+          tasks: { select: { status: true, dueAt: true } },
+          flashcards: { select: { due: true } },
+          quizzes: { select: { score: true, total: true }, orderBy: { createdAt: "desc" }, take: 1 },
+        },
+      },
+    },
   });
   if (!c) return null;
+  const nowDate = new Date();
   return {
     id: c.id, name: c.name, partner: c.partner ?? undefined, slug: c.slug, status: c.status, progress: c.progress ?? undefined,
     syncedAt: c.syncedAt?.toISOString(),
@@ -445,6 +455,9 @@ async function projectStudyCourse(projectId: string) {
       const pending = m.tasks.filter((t) => t.status !== "DONE").sort((a, b) => +a.dueAt - +b.dueAt);
       return {
         id: m.id, name: m.name, position: m.position, minutes: m.minutes, notePath: m.notePath ?? undefined, progress: m.progress ?? undefined,
+        cards: m.flashcards.length,
+        cardsDue: m.flashcards.filter((f) => f.due <= nowDate).length,
+        quiz: m.quizzes[0] ? { score: m.quizzes[0].score, total: m.quizzes[0].total } : undefined,
         done: Boolean(m.completedAt) || (m.tasks.length > 0 && !pending.length),
         next: pending[0]?.dueAt.toISOString(),
       };

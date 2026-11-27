@@ -385,4 +385,18 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - UI: `components/study/` (`StudySetupHost` + `openStudySetup(id?)` en el layout, `StudyPending` en /projects
   «Cursos por organizar», `StudyCourseSection` en el proyecto, `CourseraConnect` en Ajustes; ⌘K «Importar curso de
   Coursera»). El `href="javascript:…"` del marcador se pone con `setAttribute` (React lo bloquea en JSX).
-- Pendiente: tarjetas de repaso con repetición espaciada y quiz por módulo.
+
+## Repaso: tarjetas y quiz
+
+- Modelos `Flashcard` (mazo, frente/reverso, `notePath` y/o `studyModuleId`, `ease`/`interval`/`reps`/`lapses`/`due`) y
+  `QuizAttempt` (preguntas con la opción elegida, puntaje). Migración `20261127020000_flashcards_quizzes`.
+- `lib/srs.ts` (puro): SM-2 simplificado, notas 0–3 (Otra vez 10 min · Difícil · Bien · Fácil), máx. 365 días.
+- `lib/study-source.ts`: material para la IA = apuntes de la nota (si tienen ≥ 300 caracteres propios) o, para un módulo
+  sin apuntes, el temario de Coursera (`fetchCourseraModuleOutline`: descripción + lecciones + ítems), marcado
+  `from: "outline"` y avisado en la UI. Una nota que es de un módulo liga las tarjetas al módulo.
+- Acciones `lib/actions/review.ts`: `generateCards` + `saveCards`, `dueCards` (vencidas, filtro por módulo o curso),
+  `reviewCard`, `updateCard`, `deleteCard`, `generateQuiz` + `saveQuizAttempt`.
+- UI `components/review/review-dialogs.tsx` (`ReviewHost` en el layout; `openCardMaker`, `openQuiz`, `openReview`,
+  `ReviewButton`). Entradas: iconos por módulo en `StudyCourseSection` (+ «Repasar N» del curso), botones «Tarjetas» y
+  «Quiz» en el panel IA del `NoteEditor`, ⌘K «Repasar tarjetas», aviso push en la mañana (`cards:<fecha>` en
+  `lib/reminders.ts`) que abre `/?review=1`. Del quiz: «Tarjetas con lo que fallé».

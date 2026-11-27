@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Copy, ExternalLink, GraduationCap, KeyRound, Loader2, NotebookPen, RefreshCw } from "lucide-react";
+import { Check, Copy, ExternalLink, GraduationCap, KeyRound, Layers, Loader2, NotebookPen, RefreshCw, Trophy } from "lucide-react";
+import { ReviewButton, openCardMaker, openQuiz } from "@/components/review/review-dialogs";
+import { useVault } from "@/components/notes/vault-context";
 import { cn } from "@/components/blocks/primitives";
 import { NoteLink } from "@/components/notes/note-panel";
 import { openStudySetup } from "@/components/study/study-setup";
@@ -62,10 +64,15 @@ export interface StudyDetail {
   slug: string;
   progress?: number;
   syncedAt?: string;
-  modules: { id: string; name: string; position: number; minutes: number; notePath?: string; progress?: number; done: boolean; next?: string }[];
+  modules: {
+    id: string; name: string; position: number; minutes: number; notePath?: string; progress?: number; done: boolean; next?: string;
+    cards: number; cardsDue: number; quiz?: { score: number; total: number };
+  }[];
 }
 
 export function StudyCourseSection({ study, color, emoji }: { study: StudyDetail; color: TagColor; emoji: string }) {
+  const vault = useVault();
+  const due = study.modules.reduce((a, m) => a + m.cardsDue, 0);
   const done = study.modules.filter((m) => m.done).length;
   const pct = study.modules.length ? Math.round((done / study.modules.length) * 100) : 0;
   return (
@@ -75,7 +82,8 @@ export function StudyCourseSection({ study, color, emoji }: { study: StudyDetail
         <div className="h-1.5 min-w-24 flex-1 overflow-hidden rounded-full bg-[var(--chart-track)]">
           <div className="h-full rounded-full bg-chart-1" style={{ width: `${pct}%` }} />
         </div>
-        {study.progress !== undefined ? <span title="Ítems completados según Coursera">Coursera: {study.progress} %</span> : null}
+        {study.progress !== undefined ? <span title="Avance según Coursera">Coursera: {study.progress} %</span> : null}
+        <ReviewButton due={due} courseId={study.id} title={study.name} small />
       </div>
       <ol className="flex flex-col">
         {study.modules.map((m) => (
@@ -89,8 +97,20 @@ export function StudyCourseSection({ study, color, emoji }: { study: StudyDetail
                 {formatMinutes(m.minutes)}
                 {!m.done && m.progress ? ` · ${m.progress} % en Coursera` : ""}
                 {!m.done && m.next ? ` · próxima sesión ${capitalize(fmt(m.next, "EEE d MMM").replace(".", ""))}` : ""}
+                {m.cards ? ` · ${m.cards} ${m.cards === 1 ? "tarjeta" : "tarjetas"}${m.cardsDue ? ` (${m.cardsDue} para hoy)` : ""}` : ""}
+                {m.quiz ? ` · último quiz ${m.quiz.score}/${m.quiz.total}` : ""}
               </div>
             </div>
+            {vault.ai ? (
+              <>
+                <button onClick={() => openCardMaker({ moduleId: m.id })} title="Crear tarjetas de repaso con IA" aria-label="Crear tarjetas" className="grid size-8 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-text">
+                  <Layers className="size-4" />
+                </button>
+                <button onClick={() => openQuiz({ moduleId: m.id })} title="Quiz de práctica con IA" aria-label="Quiz de práctica" className="grid size-8 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-text">
+                  <Trophy className="size-4" />
+                </button>
+              </>
+            ) : null}
             {m.notePath ? (
               <NoteLink path={m.notePath} title={`M${m.position + 1} · ${m.name}`} meta={study.name} emoji={emoji} color={color} label="Abrir apuntes del módulo" className="grid size-8 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-text">
                 <NotebookPen className="size-4" />
