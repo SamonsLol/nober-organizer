@@ -42,6 +42,7 @@ model User {
   focusSessions FocusSession[]
   resources     Resource[]
   uploads       Upload[]
+  studyCourses  StudyCourse[]
 
   @@map("user")
 }
@@ -212,6 +213,11 @@ model Settings {
   googleReadIds    String[]  @default([])
   googleReadAt     DateTime?
   googleReadError  String?
+  /// Sincronización con Coursera desde el navegador (marcador): hash SHA-256 de la clave personal
+  courseraTokenHash String?   @unique
+  courseraSyncedAt  DateTime?
+  /// Última respuesta cruda recibida (para diagnosticar cambios en Coursera)
+  courseraLastPayload Json?
   /// Recordatorios push: cuándo avisar de tareas (DAY_BEFORE, SAME_DAY, TWO_HOURS) y de evaluaciones (THREE_DAYS, DAY_BEFORE, SAME_DAY)
   remindTasks      String[]  @default(["DAY_BEFORE", "SAME_DAY"])
   remindExams      String[]  @default(["THREE_DAYS", "DAY_BEFORE", "SAME_DAY"])
@@ -289,6 +295,9 @@ model Task {
   /// Proyecto personal (no académico). Sin materia ni proyecto = tarea personal.
   projectId    String?
   project      Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  /// Sesión de estudio de un módulo de un curso en línea (Coursera…)
+  studyModuleId String?
+  studyModule   StudyModule? @relation(fields: [studyModuleId], references: [id], onDelete: SetNull)
   title        String
   emoji        String      @default("")
   description  String?
@@ -312,6 +321,7 @@ model Task {
   @@index([userId, dueAt])
   @@index([courseId])
   @@index([projectId])
+  @@index([studyModuleId])
 }
 
 enum ProjectStatus {
@@ -339,6 +349,7 @@ model Project {
   createdAt   DateTime      @default(now())
   tasks       Task[]
   files       ProjectFile[]
+  studyCourse StudyCourse?
 
   @@unique([userId, slug])
   @@index([userId])
@@ -598,4 +609,59 @@ model ExternalEvent {
 
   @@unique([userId, calendarId, googleId])
   @@index([userId, start])
+}
+
+enum StudyCourseStatus {
+  /// Detectado o importado: falta organizarlo (días, horas, fecha)
+  DETECTED
+  /// Con plan de estudio y proyecto
+  PLANNED
+  DONE
+  /// La persona no quiere organizarlo (la sincronización no lo vuelve a proponer)
+  IGNORED
+}
+
+/// Curso en línea (Coursera…) que se estudia como proyecto: módulos → sesiones de estudio (tareas) y notas.
+model StudyCourse {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider    String            @default("coursera")
+  /// Id del curso en el proveedor
+  externalId  String
+  slug        String
+  name        String
+  partner     String?
+  description String            @default("")
+  status      StudyCourseStatus @default(DETECTED)
+  projectId   String?           @unique
+  project     Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  /// Plan elegido: { days: minutos por día (0 = lunes), start, extra (%), notes }
+  plan        Json?
+  /// Avance según el proveedor (0–100), si se pudo leer
+  progress    Int?
+  syncedAt    DateTime?
+  createdAt   DateTime          @default(now())
+  modules     StudyModule[]
+
+  @@unique([userId, provider, externalId])
+  @@index([userId])
+}
+
+model StudyModule {
+  id          String      @id @default(cuid())
+  courseId    String
+  course      StudyCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  externalId  String
+  name        String
+  position    Int
+  /// Tiempo estimado por el proveedor
+  minutes     Int
+  lessons     String[]    @default([])
+  notePath    String?
+  completedAt DateTime?
+  tasks       Task[]
+
+  @@unique([courseId, externalId])
+  @@index([courseId])
 }

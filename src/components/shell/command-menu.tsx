@@ -5,12 +5,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen, CalendarPlus, Rocket, Sparkles, ClipboardCheck, CornerDownLeft, FilePlus2, Lightbulb, ListPlus, NotebookPen, Search,
   type LucideIcon,
+  GraduationCap,
 } from "lucide-react";
 import { NAV } from "@/components/shell/nav";
 import { useObsidianHome } from "@/components/notes/note-panel";
 import { useVault } from "@/components/notes/vault-context";
 import { openWeekPlan } from "@/components/ai/week-plan";
 import { openAiPlanner } from "@/components/ai/ai-planner";
+import { openStudySetup } from "@/components/study/study-setup";
 import { cn } from "@/components/blocks/primitives";
 import { openCourseEditor } from "@/components/courses/course-editor";
 import { openAssessmentEditor } from "@/components/grades/assessment-editor";
@@ -119,6 +121,7 @@ export function CommandMenu({ courses, projects = [] }: { courses: Course[]; pro
     if (mode === "create") return create;
     return [
       ...create,
+      { id: "coursera", group: "Crear", label: "Importar curso de Coursera", icon: GraduationCap, run: () => { setOpen(false); openStudySetup(); } },
       ...(ai
         ? [
             { id: "ai-tasks", group: "IA", label: "Crear tareas con IA", icon: Sparkles, run: () => { setOpen(false); openAiPlanner({ kind: "tasks" }); } },

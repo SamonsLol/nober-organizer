@@ -360,3 +360,28 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Cursos en línea (Coursera)
+
+- Modelos `StudyCourse` (DETECTED → PLANNED → DONE, o IGNORED; `plan` = días/minutos, inicio, % extra, notas) y
+  `StudyModule` (minutos estimados, lecciones, `notePath`, `completedAt`). `Task.studyModuleId` = sesión de estudio.
+  Migración `20261127000000_study_courses`.
+- `lib/coursera.ts`: API pública sin sesión (`courses.v1`, `onDemandCourseMaterials.v2` con módulos/lecciones/ítems);
+  no documentada → errores como `CourseraError` en español. `lib/study-plan.ts` (`planSessions`, puro: lo usa el
+  diálogo para la vista previa y el servidor para guardar). `lib/study-courses.ts`: `importCoursera`, `applyStudyPlan`
+  (proyecto `graduation-cap` azul + sesiones con enlace al módulo + notas índice y por módulo en
+  `<OBSIDIAN_PROJECTS_ROOT>/<curso>/`; replanear reemplaza solo las sesiones pendientes y salta módulos terminados),
+  `completeModules`. Acciones en `lib/actions/study-courses.ts`.
+- Sincronización «opción B»: marcador del navegador (Ajustes → Integraciones → Coursera) que carga
+  `/api/coursera/script` dentro de coursera.org, lee `memberships.v1` y avance con la sesión de la persona (nunca llega
+  al servidor) y hace POST a `/api/coursera/sync` con `Bearer nbr_…` (solo se guarda el SHA-256 en
+  `Settings.courseraTokenHash`; CORS solo `https://www.coursera.org`). `lib/coursera-sync.ts`: detecta cursos nuevos →
+  push a `/projects?study=<id>`; lee ítems completados con un recorrido tolerante (`completedItemIds`) y da un módulo por
+  terminado si lo calificado está completo y ≥ 80 % de sus ítems. La última respuesta (recortada) queda en
+  `Settings.courseraLastPayload` para ajustar la lectura si Coursera cambia: las direcciones de avance
+  (`onDemandCourseProgress.v1`, `onDemandCourseViewGrades.v1`, `onDemandGuidedCourseWeekCards.v1`) no se han
+  confirmado con una sesión real.
+- UI: `components/study/` (`StudySetupHost` + `openStudySetup(id?)` en el layout, `StudyPending` en /projects
+  «Cursos por organizar», `StudyCourseSection` en el proyecto, `CourseraConnect` en Ajustes; ⌘K «Importar curso de
+  Coursera»). El `href="javascript:…"` del marcador se pone con `setAttribute` (React lo bloquea en JSX).
+- Pendiente: tarjetas de repaso con repetición espaciada y quiz por módulo.
