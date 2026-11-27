@@ -15,10 +15,14 @@ const SCRIPT = String.raw`(async () => {
   const grab = async (url) => {
     try {
       const r = await fetch(url, { credentials: "include", headers: { Accept: "application/json" } });
-      return { url, status: r.status, body: (await r.text()).slice(0, 300000) };
+      const body = (await r.text()).slice(0, 300000);
+      // Rutas inexistentes responden una página HTML con 200: no cuentan
+      return { url, status: r.ok && /^\s*[[{]/.test(body) ? r.status : r.ok ? 404 : r.status, body };
     } catch (e) { return { url, status: 0, body: String(e) }; }
   };
   const page = location.pathname.match(/^\/learn\/([a-z0-9-]+)/i);
+  // Direcciones que la página de Coursera ya consultó (para aprender de dónde saca tu avance)
+  const seen = [...new Set(performance.getEntriesByType("resource").map((e) => e.name).filter((u) => /coursera\.org\/(api|graphql)/.test(u)))].slice(0, 300);
   const memberships = await grab("/api/memberships.v1?q=me&showHidden=true&filter=current,preEnrolled&includes=courseId,courses.v1&fields=courseId,role,courses.v1(name,slug)");
   let courses = [], uid = null;
   try {
@@ -31,12 +35,17 @@ const SCRIPT = String.raw`(async () => {
   if (memberships.status === 401 || memberships.status === 403) return say("inicia sesión en Coursera y vuelve a intentarlo.", true);
   say("leyendo tu avance (" + courses.length + " cursos)…");
   const progress = [];
+  // Repetir las consultas de avance/calificaciones que hizo la propia página (con sus campos exactos)
+  const replay = seen.filter((u) => /\/api\/[^?]*(grade|progress|weekcard|completion|itemprogress)/i.test(u) && !/graphql/.test(u)).slice(0, 12);
+  for (const u of replay) {
+    const cid = courses.find((c) => u.includes(c)) || null;
+    const r = await grab(u);
+    if (r.status === 200) progress.push({ ...r, courseId: cid || (courses.length === 1 ? courses[0] : "") });
+  }
   if (uid) {
     for (const cid of courses.slice(0, 10)) {
-      for (const path of ["onDemandCourseProgress.v1", "onDemandCourseViewGrades.v1", "onDemandGuidedCourseWeekCards.v1"]) {
-        const r = await grab("/api/" + path + "/" + uid + "~" + cid);
-        if (r.status === 200) { progress.push({ ...r, courseId: cid }); }
-      }
+      const r = await grab("/api/onDemandCourseViewGrades.v1/" + uid + "~" + cid + "?includes=items,passableItemGroups&fields=onDemandCourseViewGradeItems.v1(itemId,outcome,passingState,isPassed),onDemandCourseViewGrades.v1(items,passableItemGroups)");
+      if (r.status === 200) progress.push({ ...r, courseId: cid });
     }
   }
   say("enviando a Nober…");
@@ -44,7 +53,7 @@ const SCRIPT = String.raw`(async () => {
     const res = await fetch(cfg.u + "/api/coursera/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + cfg.t },
-      body: JSON.stringify({ page: page ? { slug: page[1].toLowerCase() } : null, memberships, progress }),
+      body: JSON.stringify({ page: page ? { slug: page[1].toLowerCase() } : null, memberships, progress, seen }),
     });
     const j = await res.json().catch(() => null);
     if (!res.ok || !j || !j.ok) return say((j && j.error) || "no se pudo sincronizar (" + res.status + ").", true);
