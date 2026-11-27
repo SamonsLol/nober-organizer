@@ -7,10 +7,10 @@ export const dynamic = "force-dynamic";
 const target = z.object({ kind: z.enum(["project", "course"]), id: z.string().min(1).max(64) });
 const input = z.object({
   step: z.enum(["preview", "apply"]),
-  kind: z.enum(["selection", "page"]),
+  kind: z.enum(["selection", "page", "note"]),
   text: z.string().min(1).max(120_000),
   instruction: z.string().max(1000).optional(),
-  url: z.string().min(1).max(2000),
+  url: z.string().max(2000),
   title: z.string().max(1000).optional(),
   dest: z.union([
     z.object({ auto: z.literal(true) }),

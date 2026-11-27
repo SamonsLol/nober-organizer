@@ -108,7 +108,7 @@ export async function previewClips(input: { path: string; ids: string[]; instruc
       const clips = await pickClips(userId, data.ids);
       const note = await readNote(data.path);
       const material = clips
-        .map((c, i) => `[${i + 1}] ${c.title || c.url}\n${c.text}${c.comment ? `\n(Nota de la persona: ${c.comment})` : ""}`)
+        .map((c, i) => `[${i + 1}] ${c.url ? c.title || c.url : "Idea escrita por la persona (puedes desarrollarla)"}\n${c.text}${c.comment ? `\n(Nota de la persona: ${c.comment})` : ""}`)
         .join("\n\n");
       return await proposeIntegration({ note: { title: noteName(note.path), content: note.content }, material, kind: "clips", instruction: data.instruction });
     } catch (e) {
@@ -128,7 +128,7 @@ export async function applyClips(input: { path: string; ids: string[]; edits: No
       const clips = await pickClips(userId, data.ids);
       const note = await readNote(data.path);
       if (data.mtime != null && Math.abs(note.mtime - data.mtime) > 1) throw new UserError("El apunte cambió mientras tanto (¿en Obsidian?). Recárgalo y vuelve a intentarlo.");
-      const w = await writeNote(note.path, applyEdits(note.content, data.edits, clips.map((c) => ({ url: c.url, title: c.title }))), note.mtime);
+      const w = await writeNote(note.path, applyEdits(note.content, data.edits, clips.filter((c) => c.url).map((c) => ({ url: c.url, title: c.title }))), note.mtime);
       if (w.conflict) throw new UserError("El apunte cambió mientras tanto. Recárgalo y vuelve a intentarlo.");
       await prisma.highlight.updateMany({ where: { userId, id: { in: clips.map((c) => c.id) } }, data: { status: "ADDED", notePath: note.path, addedAt: new Date() } });
       revalidatePath("/", "layout");

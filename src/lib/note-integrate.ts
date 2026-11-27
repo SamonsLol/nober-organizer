@@ -31,7 +31,8 @@ function noteForAi(content: string, budget: number) {
 export async function proposeIntegration(o: {
   note: { title: string; content: string };
   material: string;
-  kind: "selection" | "page" | "clips";
+  /** `note` = una idea o apunte rápido que la persona escribió: la IA lo desarrolla. */
+  kind: "selection" | "page" | "clips" | "note";
   instruction?: string;
   source?: { url: string; title: string };
   /** Sección sugerida (la lección de Coursera que se estaba viendo). */
@@ -41,7 +42,8 @@ export async function proposeIntegration(o: {
   const material = o.material.trim().slice(0, MAX_MATERIAL);
   if (material.length < 3) throw new AiError("No hay texto para agregar.");
   const noteText = noteForAi(o.note.content, Math.max(2000, AI_MAX_INPUT_CHARS - material.length - 2500));
-  const what = { selection: "un fragmento que la persona subrayó", page: "el texto de una página web", clips: "recortes que la persona guardó" }[o.kind];
+  const what = { selection: "un fragmento que la persona subrayó", page: "el texto de una página web", clips: "recortes que la persona guardó", note: "una idea o apunte rápido que la persona escribió" }[o.kind];
+  const expand = o.kind === "note";
 
   const r = await aiJson<{ summary: string; edits: { heading: string; markdown: string }[] }>({
     name: "integrar_apunte",
@@ -49,10 +51,14 @@ export async function proposeIntegration(o: {
       "Ayudas a un estudiante a completar sus apuntes de Obsidian. Respondes siempre en español de Colombia, claro y preciso. " +
       "Si hay fórmulas, en LaTeX entre $…$. Markdown de Obsidian.",
     user: [
-      `Material: ${what}${o.source?.title ? ` («${o.source.title}»)` : ""}. Decide qué vale la pena agregar al apunte y en qué sección.`,
+      expand
+        ? `Material: ${what}${o.source?.title ? ` (mientras veía «${o.source.title}»)` : ""}. Desarróllalo para el apunte y decide en qué sección va.`
+        : `Material: ${what}${o.source?.title ? ` («${o.source.title}»)` : ""}. Decide qué vale la pena agregar al apunte y en qué sección.`,
       "Reglas:",
       "- Solo lo importante para estudiar: definiciones, ideas clave, pasos, ejemplos, datos. Nada de relleno ni de lo que el apunte ya dice.",
-      "- Usa SOLO lo que dice el material: no agregues datos de tu propio conocimiento (salvo que el pedido de la persona lo diga).",
+      expand
+        ? "- Desarrolla la idea: explícala claro, completa con definiciones, el porqué y un ejemplo, usando conocimiento estándar y verificable del tema (y el contexto del apunte). Respeta lo que la persona quiso decir; si algo de su idea es incorrecto, corrígelo con una nota breve. No inventes datos específicos (cifras, fechas, nombres) que no sean de conocimiento general."
+        : "- Usa SOLO lo que dice el material: no agregues datos de tu propio conocimiento (salvo que el pedido de la persona lo diga).",
       "- Escribe con tus palabras, en viñetas cortas (puedes usar **negrita** para términos). Cita textual solo si una frase exacta importa.",
       "- Si el material está en otro idioma, escribe en español (los términos técnicos pueden quedar en su idioma).",
       `- "heading": copia EXACTA de uno de los encabezados existentes; si ninguno encaja, uno nuevo con el formato "## Nombre". Máximo 4 secciones.`,

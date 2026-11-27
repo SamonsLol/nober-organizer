@@ -1,20 +1,67 @@
 {
   "manifest_version": 3,
   "name": "Nober",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Agrega lo que lees a tus apuntes de Nober con IA o guárdalo en la bandeja. Sincroniza tu avance de Coursera.",
-  "icons": { "128": "icons/icon-192.png" },
-  "action": { "default_popup": "popup.html", "default_title": "Nober", "default_icon": { "128": "icons/icon-192.png" } },
-  "options_ui": { "page": "options.html", "open_in_tab": true },
-  "background": { "service_worker": "background.js" },
-  "permissions": ["storage", "contextMenus"],
-  "host_permissions": ["https://www.coursera.org/*"],
-  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "icons": {
+    "128": "icons/icon-192.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Nober",
+    "default_icon": {
+      "128": "icons/icon-192.png"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "contextMenus",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://www.coursera.org/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
   "content_scripts": [
-    { "matches": ["http://*/*", "https://*/*"], "js": ["content.js"], "css": ["highlight.css"], "run_at": "document_idle" },
-    { "matches": ["https://www.coursera.org/*"], "js": ["coursera.js"], "run_at": "document_idle" }
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "highlight.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.coursera.org/*"
+      ],
+      "js": [
+        "coursera.js"
+      ],
+      "run_at": "document_idle"
+    }
   ],
   "commands": {
-    "save-selection": { "suggested_key": { "default": "Alt+Shift+S" }, "description": "Agregar la selección (o la página) a tus apuntes" }
+    "save-selection": {
+      "suggested_key": {
+        "default": "Alt+Shift+S"
+      },
+      "description": "Agregar la selección (o la página) a tus apuntes"
+    }
   }
 }

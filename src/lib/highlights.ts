@@ -155,16 +155,17 @@ export async function courseraContext(u: ExtUser, rawUrl: string): Promise<Cours
 
 /* ───────────── Bandeja ───────────── */
 
-export interface ClipInput { text: string; comment?: string; url: string; title?: string; target?: Target }
+export interface ClipInput { text: string; comment?: string; url?: string; title?: string; target?: Target; kind?: "selection" | "note" }
 
 const cleanText = (t: string) => t.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 
 export async function saveClip(u: ExtUser, input: ClipInput) {
-  const url = normalizeUrl(input.url);
-  if (!url) throw new ExtError("Solo se pueden guardar recortes de páginas web (http/https).");
+  // Un apunte escrito no necesita página (puede venir de un PDF o de chrome://); un recorte sí
+  const url = normalizeUrl(input.url ?? "") ?? (input.kind === "note" ? "" : null);
+  if (url === null) throw new ExtError("Solo se pueden guardar recortes de páginas web (http/https).");
   const text = cleanText(input.text).slice(0, 5000);
-  if (text.length < 2) throw new ExtError("Selecciona algo de texto.");
-  const ctx = await courseraContext(u, url);
+  if (text.length < 2) throw new ExtError(input.kind === "note" ? "Escribe tu apunte." : "Selecciona algo de texto.");
+  const ctx = url ? await courseraContext(u, url) : null;
   let link: { projectId?: string | null; courseId?: string; studyModuleId?: string } = {};
   let where = "la bandeja";
   if (ctx) {
@@ -176,7 +177,7 @@ export async function saveClip(u: ExtUser, input: ClipInput) {
     where = t.name;
   }
   const row = await prisma.highlight.create({
-    data: { userId: u.userId, text, comment: (input.comment ?? "").trim().slice(0, 2000), url, title: cleanTitle(input.title), ...link },
+    data: { userId: u.userId, text, comment: (input.comment ?? "").trim().slice(0, 2000), url, title: url ? cleanTitle(input.title) : "", ...link },
   });
   return { id: row.id, where };
 }
@@ -187,7 +188,7 @@ export type Dest = { auto: true } | { notePath: string } | { target: Target; new
 
 export interface IntegrateInput {
   step: "preview" | "apply";
-  kind: "selection" | "page";
+  kind: "selection" | "page" | "note";
   text: string;
   instruction?: string;
   url: string;
@@ -200,7 +201,7 @@ export interface IntegrateInput {
 async function resolveDest(u: ExtUser, url: string, title: string, dest: Dest) {
   if (!u.vault) throw new ExtError("Tu cuenta no tiene acceso a la bóveda de Obsidian de este servidor.", 403);
   if ("auto" in dest) {
-    const ctx = await courseraContext(u, url);
+    const ctx = url ? await courseraContext(u, url) : null;
     if (!ctx) throw new ExtError("Elige en qué apunte agregarlo.");
     if (!ctx.notePath) throw new ExtError("Este módulo no tiene apunte en Obsidian. Elige otra nota o guárdalo en la bandeja.");
     return { where: ctx.where, notePath: ctx.notePath, hint: ctx.lesson ?? undefined, deck: ctx.deck, link: { studyModuleId: ctx.moduleId, projectId: ctx.projectId } };
@@ -224,13 +225,15 @@ async function resolveDest(u: ExtUser, url: string, title: string, dest: Dest) {
 export interface IntegratePreview extends Proposal { where: string; notePath: string | null }
 
 export async function extIntegrate(u: ExtUser, input: IntegrateInput): Promise<IntegratePreview | { where: string; notePath: string; sections: number; cards: number; cardsError?: string }> {
-  const url = normalizeUrl(input.url);
-  if (!url) throw new ExtError("Solo funciona en páginas web (http/https).");
-  const title = cleanTitle(input.title);
+  const isNote = input.kind === "note";
+  const url = normalizeUrl(input.url) ?? (isNote ? "" : null);
+  if (url === null) throw new ExtError("Solo funciona en páginas web (http/https).");
+  const title = url ? cleanTitle(input.title) : "";
   const text = cleanText(input.text).slice(0, input.kind === "page" ? 40_000 : 8000);
-  if (text.length < 3) throw new ExtError(input.kind === "page" ? "No encontré texto en esta página." : "Selecciona algo de texto.");
-  const d = await resolveDest(u, url, title, input.dest);
-  const source = { url, title };
+  if (text.length < 3) throw new ExtError(input.kind === "page" ? "No encontré texto en esta página." : isNote ? "Escribe tu apunte." : "Selecciona algo de texto.");
+  const d = await resolveDest(u, url, isNote && !url ? "Ideas" : title, input.dest);
+  // La idea propia no lleva «Fuente» (salvo para el contexto de la IA)
+  const source = url ? { url, title } : undefined;
 
   if (input.step === "preview") {
     const note = d.notePath ? await readNote(d.notePath) : { content: `# ${d.create!.name}\n`, path: "" };
@@ -253,7 +256,7 @@ export async function extIntegrate(u: ExtUser, input: IntegrateInput): Promise<I
   }
   for (let i = 0; ; i++) {
     const note = await readNote(notePath);
-    const w = await writeNote(notePath, applyEdits(note.content, edits, source), note.mtime);
+    const w = await writeNote(notePath, applyEdits(note.content, edits, isNote ? undefined : source), note.mtime);
     if (!w.conflict) break;
     if (i >= 2) throw new ExtError("El apunte está cambiando en este momento. Intenta de nuevo.", 409);
   }

@@ -8,7 +8,8 @@ const target = z.object({ kind: z.enum(["project", "course"]), id: z.string().mi
 const input = z.object({
   text: z.string().min(1).max(20_000),
   comment: z.string().max(4000).optional(),
-  url: z.string().min(1).max(2000),
+  url: z.string().max(2000).optional(),
+  kind: z.enum(["selection", "note"]).optional(),
   title: z.string().max(1000).optional(),
   target: target.optional(),
 });

@@ -151,9 +151,13 @@ export function ClipTray({ path, clips, setClips, ai, insert, flush, getMtime, r
                       {c.comment ? <p className="mt-0.5 text-[12px] text-ink/60">{c.comment}</p> : null}
                       <div className="mt-1 flex items-center gap-1.5 text-[11px] text-ink/50">
                         {c.here ? <span className="rounded-full bg-ink px-1.5 text-paper">de este apunte</span> : c.where ? <span className="rounded-full bg-ink/[0.07] px-1.5">{c.where}</span> : null}
-                        <a href={c.url} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1 truncate hover:text-ink" title={c.title || c.url}>
-                          <span className="truncate">{c.title || host}</span> <ExternalLink className="size-3 shrink-0" />
-                        </a>
+                        {c.url ? (
+                          <a href={c.url} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1 truncate hover:text-ink" title={c.title || c.url}>
+                            <span className="truncate">{c.title || host}</span> <ExternalLink className="size-3 shrink-0" />
+                          </a>
+                        ) : (
+                          <span>Apunte escrito</span>
+                        )}
                         <span className="shrink-0">· {relativeAgo(c.createdAt)}</span>
                       </div>
                     </div>
