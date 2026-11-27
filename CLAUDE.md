@@ -382,6 +382,15 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   `StudyModule.progress` guarda el % (migración `20261127010000_study_module_progress`). Si faltaran, se deduce de los ítems
   (`completedItemIds` + `finishedModules`). La última respuesta (recortada) queda en `Settings.courseraLastPayload`.
   No existen: `onDemandCourseProgress.v1` ni `onDemandGuidedCourseWeekCards.v1` (responden HTML con 200).
+- Programas (especialización / certificado): `fetchCourseraProgram` (`onDemandSpecializations.v1?q=primary&courseId=`, público)
+  guarda `programSlug/Name/Index/Total` en cada curso. «Organizar el programa completo» (`plan.program`) trae los cursos que
+  falten (`importProgram`) y planea TODOS en UN proyecto (`StudyCourse.projectId` ya no es único; `Project.studyCourses`),
+  etiquetas «C2 · M1», notas en `<raíz>/<programa>/C2 - <curso>/`. Pasar de curso suelto a programa reutiliza el proyecto
+  (nuevo nombre, dirección y carpeta; las notas ya creadas se quedan donde estaban).
+- Plan por LECCIÓN (`StudyModule.lessonMinutes`, migración `20261127030000_study_programs`): `planSessions` arma una
+  sesión por día y módulo con las lecciones que caben y solo parte una lección si no cabe; título «Estudiar C1 · M1:
+  Lección A + Lección B (1/2)» (`sessionTitle`). Pasos de cada sesión = videos/lecturas de esas lecciones con sus
+  minutos (`fetchCourseraLessonItems`, `itemKind`); una lección partida reparte sus ítems por duración (`itemsForPart`).
 - UI: `components/study/` (`StudySetupHost` + `openStudySetup(id?)` en el layout, `StudyPending` en /projects
   «Cursos por organizar», `StudyCourseSection` en el proyecto, `CourseraConnect` en Ajustes; ⌘K «Importar curso de
   Coursera»). El `href="javascript:…"` del marcador se pone con `setAttribute` (React lo bloquea en JSX).

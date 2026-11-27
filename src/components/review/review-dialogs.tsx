@@ -22,14 +22,14 @@ type Source = { path?: string; moduleId?: string };
 type Open =
   | { kind: "cards"; source: Source }
   | { kind: "quiz"; source: Source }
-  | { kind: "review"; moduleId?: string; courseId?: string; title?: string };
+  | { kind: "review"; moduleId?: string; courseId?: string; projectId?: string; title?: string };
 
 const EVT = "nober:review";
 const fire = (d: Open) => window.dispatchEvent(new CustomEvent<Open>(EVT, { detail: d }));
 
 export const openCardMaker = (source: Source) => fire({ kind: "cards", source });
 export const openQuiz = (source: Source) => fire({ kind: "quiz", source });
-export const openReview = (o: { moduleId?: string; courseId?: string; title?: string } = {}) => fire({ kind: "review", ...o });
+export const openReview = (o: { moduleId?: string; courseId?: string; projectId?: string; title?: string } = {}) => fire({ kind: "review", ...o });
 
 export function ReviewHost() {
   const [state, setState] = useState<{ open: Open; n: number } | null>(null);
@@ -338,7 +338,7 @@ const GRADES: { g: Grade; label: string; cls: string }[] = [
   { g: 3, label: "Fácil", cls: "bg-pill hover:bg-pill-hover" },
 ];
 
-function ReviewSession({ filter, onClose }: { filter: { moduleId?: string; courseId?: string; title?: string }; onClose: () => void }) {
+function ReviewSession({ filter, onClose }: { filter: { moduleId?: string; courseId?: string; projectId?: string; title?: string }; onClose: () => void }) {
   const router = useRouter();
   const [queue, setQueue] = useState<ReviewCard[] | null>(null);
   const [shown, setShown] = useState(false);
@@ -348,7 +348,7 @@ function ReviewSession({ filter, onClose }: { filter: { moduleId?: string; cours
   close.current = onClose;
 
   useEffect(() => {
-    dueCards({ moduleId: filter.moduleId, courseId: filter.courseId }).then((r) => {
+    dueCards({ moduleId: filter.moduleId, courseId: filter.courseId, projectId: filter.projectId }).then((r) => {
       if (!r.ok) {
         toast(r.error);
         close.current();
@@ -356,7 +356,7 @@ function ReviewSession({ filter, onClose }: { filter: { moduleId?: string; cours
       }
       setQueue(r.data.cards);
     });
-  }, [filter.moduleId, filter.courseId]);
+  }, [filter.moduleId, filter.courseId, filter.projectId]);
 
   const card = queue?.[0];
   const left = queue?.length ?? 0;
@@ -475,11 +475,11 @@ function ReviewSession({ filter, onClose }: { filter: { moduleId?: string; cours
 }
 
 /** Botón «Repasar» con el número de tarjetas pendientes (si hay). */
-export function ReviewButton({ due, moduleId, courseId, title, small }: { due: number; moduleId?: string; courseId?: string; title?: string; small?: boolean }) {
+export function ReviewButton({ due, moduleId, courseId, projectId, title, small }: { due: number; moduleId?: string; courseId?: string; projectId?: string; title?: string; small?: boolean }) {
   if (!due) return null;
   return (
     <button
-      onClick={() => openReview({ moduleId, courseId, title })}
+      onClick={() => openReview({ moduleId, courseId, projectId, title })}
       className={cn("inline-flex items-center gap-1.5 rounded-full bg-accent font-medium text-white hover:bg-accent-hover", small ? "h-7 px-2.5 text-[12px]" : "h-8 px-3.5 text-[12.5px]")}
     >
       <Layers className="size-3.5" /> Repasar {due}

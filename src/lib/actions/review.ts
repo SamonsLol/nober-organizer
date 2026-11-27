@@ -109,14 +109,20 @@ export async function saveCards(input: z.input<typeof saveCardsInput>): Promise<
 export interface ReviewCard { id: string; deck: string; front: string; back: string; ease: number; interval: number; reps: number; lapses: number; isNew: boolean }
 
 /** Tarjetas para repasar ahora (primero las vencidas, luego hasta `newLimit` nuevas). Filtro opcional por módulo o curso. */
-export async function dueCards(input: { moduleId?: string; courseId?: string; limit?: number } = {}): Promise<Result<{ cards: ReviewCard[]; total: number }>> {
+export async function dueCards(input: { moduleId?: string; courseId?: string; projectId?: string; limit?: number } = {}): Promise<Result<{ cards: ReviewCard[]; total: number }>> {
   return run(async () => {
-    const data = z.object({ moduleId: id.optional(), courseId: id.optional(), limit: z.number().int().min(1).max(200).optional() }).parse(input);
+    const data = z.object({ moduleId: id.optional(), courseId: id.optional(), projectId: id.optional(), limit: z.number().int().min(1).max(200).optional() }).parse(input);
     const userId = await user();
     const where = {
       userId,
       due: { lte: new Date() },
-      ...(data.moduleId ? { studyModuleId: data.moduleId } : data.courseId ? { studyModule: { courseId: data.courseId } } : {}),
+      ...(data.moduleId
+        ? { studyModuleId: data.moduleId }
+        : data.courseId
+          ? { studyModule: { courseId: data.courseId } }
+          : data.projectId
+            ? { studyModule: { course: { projectId: data.projectId } } }
+            : {}),
     };
     const [rows, total] = await Promise.all([
       prisma.flashcard.findMany({ where, orderBy: [{ reps: "desc" }, { due: "asc" }], take: data.limit ?? 60 }),

@@ -54,8 +54,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
           </div>
 
           {d.study ? (
-            <Section title={`Curso${d.study.partner ? ` · ${d.study.partner}` : ""}`}>
-              <StudyCourseSection study={d.study} color={p.color} emoji={p.emoji} />
+            <Section title={d.study.program ? `Programa · ${d.study.courses.length} cursos` : `Curso${d.study.courses[0]?.partner ? ` · ${d.study.courses[0].partner}` : ""}`}>
+              <StudyCourseSection study={d.study} color={p.color} emoji={p.emoji} projectId={p.id} />
             </Section>
           ) : null}
 

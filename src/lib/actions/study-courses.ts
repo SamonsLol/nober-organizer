@@ -7,7 +7,7 @@ import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { getSession, requireUserId } from "@/lib/session";
 import { UserError, run, type Result } from "@/lib/actions/result";
 import { CourseraError, courseraSlug } from "@/lib/coursera";
-import { applyStudyPlan, importCoursera } from "@/lib/study-courses";
+import { applyStudyPlan, importCoursera, importProgram } from "@/lib/study-courses";
 import { hashToken } from "@/lib/coursera-sync";
 import { VaultError, vaultInfo } from "@/lib/vault";
 import { vaultAllowed } from "@/lib/vault-access";
@@ -28,6 +28,8 @@ async function user() {
   return requireUserId();
 }
 
+export interface StudyModuleView { id: string; name: string; position: number; minutes: number; lessons: string[]; lessonMinutes: number[]; done: boolean }
+
 export interface StudyCourseView {
   id: string;
   name: string;
@@ -35,10 +37,18 @@ export interface StudyCourseView {
   slug: string;
   status: "DETECTED" | "PLANNED" | "DONE" | "IGNORED";
   projectSlug?: string;
-  plan?: { days: number[]; start: string; extra: number; notes: boolean };
-  modules: { id: string; name: string; position: number; minutes: number; lessons: number; done: boolean }[];
+  plan?: { days: number[]; start: string; extra: number; notes: boolean; program?: boolean };
+  /** Programa de Coursera al que pertenece (este curso es el `index + 1` de `total`). */
+  program?: { name: string; index: number; total: number };
+  modules: StudyModuleView[];
   canWriteVault: boolean;
 }
+
+type ModuleRow = { id: string; name: string; position: number; minutes: number; lessons: string[]; lessonMinutes: number[]; completedAt: Date | null; tasks: { status: string }[] };
+const moduleView = (m: ModuleRow): StudyModuleView => ({
+  id: m.id, name: m.name, position: m.position, minutes: m.minutes, lessons: m.lessons, lessonMinutes: m.lessonMinutes,
+  done: Boolean(m.completedAt) || (m.tasks.length > 0 && m.tasks.every((t) => t.status === "DONE")),
+});
 
 export async function importCourseraCourse(url: string): Promise<Result<{ id: string }>> {
   return run(async () => {
@@ -67,12 +77,29 @@ export async function getStudyCourse(courseId: string): Promise<Result<StudyCour
     return {
       id: c.id, name: c.name, partner: c.partner ?? undefined, slug: c.slug, status: c.status, projectSlug: c.project?.slug,
       plan: plan ?? undefined,
-      modules: c.modules.map((m) => ({
-        id: m.id, name: m.name, position: m.position, minutes: m.minutes, lessons: m.lessons.length,
-        done: Boolean(m.completedAt) || (m.tasks.length > 0 && m.tasks.every((t) => t.status === "DONE")),
-      })),
+      program: c.programName ? { name: c.programName, index: c.programIndex ?? 0, total: c.programTotal ?? 0 } : undefined,
+      modules: c.modules.map(moduleView),
       canWriteVault: vaultInfo().enabled && vaultAllowed((await getSession())?.user.email),
     };
+  });
+}
+
+/** Cursos del programa (trae de Coursera los que falten) con sus módulos, para la vista previa del plan completo. */
+export async function getProgramModules(courseId: string): Promise<Result<{ courses: { id: string; name: string; index: number; modules: StudyModuleView[] }[] }>> {
+  return run(async () => {
+    const cid = id.parse(courseId);
+    const userId = await user();
+    try {
+      const list = await importProgram(userId, cid);
+      const rows = await prisma.studyCourse.findMany({
+        where: { id: { in: list.map((c) => c.id) } },
+        include: { modules: { orderBy: { position: "asc" }, include: { tasks: { select: { status: true } } } } },
+        orderBy: { programIndex: "asc" },
+      });
+      return { courses: rows.map((c) => ({ id: c.id, name: c.name, index: c.programIndex ?? 0, modules: c.modules.map(moduleView) })) };
+    } catch (e) {
+      throw err(e);
+    }
   });
 }
 
@@ -82,6 +109,7 @@ const planInput = z.object({
   start: z.iso.date(),
   extra: z.number().int().min(0).max(200),
   notes: z.boolean(),
+  program: z.boolean().optional(),
 });
 
 export async function planStudyCourse(input: z.input<typeof planInput>): Promise<Result<{ slug: string; sessions: number; lastDay: string }>> {

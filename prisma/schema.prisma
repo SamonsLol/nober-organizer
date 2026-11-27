@@ -351,7 +351,7 @@ model Project {
   createdAt   DateTime      @default(now())
   tasks       Task[]
   files       ProjectFile[]
-  studyCourse StudyCourse?
+  studyCourses StudyCourse[]
 
   @@unique([userId, slug])
   @@index([userId])
@@ -636,8 +636,15 @@ model StudyCourse {
   partner     String?
   description String            @default("")
   status      StudyCourseStatus @default(DETECTED)
-  projectId   String?           @unique
+  /// Proyecto donde se estudia (varios cursos de un mismo programa comparten proyecto)
+  projectId   String?
   project     Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  /// Programa de Coursera (especialización / certificado profesional) al que pertenece
+  programSlug  String?
+  programName  String?
+  /// Posición del curso en el programa (0 = primero) y cuántos cursos tiene
+  programIndex Int?
+  programTotal Int?
   /// Plan elegido: { days: minutos por día (0 = lunes), start, extra (%), notes }
   plan        Json?
   /// Avance según el proveedor (0–100), si se pudo leer
@@ -648,6 +655,7 @@ model StudyCourse {
 
   @@unique([userId, provider, externalId])
   @@index([userId])
+  @@index([projectId])
 }
 
 model StudyModule {
@@ -662,6 +670,8 @@ model StudyModule {
   /// Avance del módulo según el proveedor (0–100)
   progress    Int?
   lessons     String[]    @default([])
+  /// Minutos estimados de cada lección (mismo orden que `lessons`)
+  lessonMinutes Int[]     @default([])
   notePath    String?
   completedAt DateTime?
   tasks       Task[]

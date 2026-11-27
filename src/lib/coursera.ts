@@ -16,8 +16,11 @@ export interface CourseraCourse {
   name: string;
   partner?: string;
   description: string;
-  modules: { externalId: string; name: string; minutes: number; lessons: string[] }[];
+  modules: { externalId: string; name: string; minutes: number; lessons: string[]; lessonMinutes: number[] }[];
+  program?: CourseraProgram;
 }
+
+export interface CourseraProgram { slug: string; name: string; courseIds: string[] }
 
 /** «https://www.coursera.org/learn/what-is-datascience/home/module/1» → «what-is-datascience». */
 export function courseraSlug(input: string) {
@@ -52,10 +55,10 @@ export async function fetchCourseraCourse(by: { slug: string } | { id: string })
 
   const mat = await get<Linked<{ moduleIds: string[] }>>(
     `onDemandCourseMaterials.v2/?q=slug&slug=${encodeURIComponent(course.slug)}&includes=modules,lessons` +
-      "&fields=moduleIds,onDemandCourseMaterialModules.v1(name,timeCommitment,lessonIds),onDemandCourseMaterialLessons.v1(name,moduleId)",
+      "&fields=moduleIds,onDemandCourseMaterialModules.v1(name,timeCommitment,lessonIds),onDemandCourseMaterialLessons.v1(name,moduleId,timeCommitment)",
   ).catch(() => null);
   const mods = (mat?.linked?.["onDemandCourseMaterialModules.v1"] ?? []) as { id: string; name: string; timeCommitment?: number; lessonIds?: string[] }[];
-  const lessons = new Map(((mat?.linked?.["onDemandCourseMaterialLessons.v1"] ?? []) as { id: string; name: string }[]).map((l) => [l.id, l.name]));
+  const lessons = new Map(((mat?.linked?.["onDemandCourseMaterialLessons.v1"] ?? []) as { id: string; name: string; timeCommitment?: number }[]).map((l) => [l.id, l]));
   const order = mat?.elements[0]?.moduleIds ?? mods.map((m) => m.id);
   const byId = new Map(mods.map((m) => [m.id, m]));
 
@@ -73,8 +76,12 @@ export async function fetchCourseraCourse(by: { slug: string } | { id: string })
         name: m.name.trim(),
         // Coursera da milisegundos; sin dato, una hora
         minutes: Math.max(10, Math.round((m.timeCommitment ?? 3_600_000) / 60_000)),
-        lessons: (m.lessonIds ?? []).map((l) => lessons.get(l)?.trim()).filter((x): x is string => Boolean(x)),
+        ...(() => {
+          const ls = (m.lessonIds ?? []).map((l) => lessons.get(l)).filter((x): x is NonNullable<typeof x> => Boolean(x?.name));
+          return { lessons: ls.map((l) => l.name.trim()), lessonMinutes: ls.map((l) => Math.round((l.timeCommitment ?? 0) / 60_000)) };
+        })(),
       })),
+    program: (await fetchCourseraProgram(course.id).catch(() => null)) ?? undefined,
   };
 }
 
@@ -104,4 +111,53 @@ export async function fetchCourseraModuleOutline(slug: string, moduleId: string)
     .filter((i) => i.moduleId === moduleId && !/exam|quiz|graded|peer|discussion|widget/i.test(i.contentSummary?.typeName ?? ""))
     .map((i) => i.name.trim());
   return { description: (mod?.description ?? "").trim().slice(0, 3000), items: items.slice(0, 40) };
+}
+
+/** Programa (especialización o certificado profesional) principal del curso, con sus cursos en orden. */
+export async function fetchCourseraProgram(courseId: string): Promise<CourseraProgram | null> {
+  const r = await get<Linked<{ slug: string; name: string; courseIds?: string[] }>>(
+    `onDemandSpecializations.v1?q=primary&courseId=${encodeURIComponent(courseId)}&fields=name,slug,courseIds`,
+  );
+  const p = r.elements[0];
+  if (!p?.courseIds?.length || p.courseIds.length < 2) return null;
+  return { slug: p.slug, name: p.name.trim(), courseIds: p.courseIds };
+}
+
+export interface LessonItem { name: string; type: string; minutes: number }
+
+/** Ítems (videos, lecturas, prácticas, quizzes) de cada lección, por módulo y en orden: `byModule.get(moduleId)[lessonIndex]`. */
+export async function fetchCourseraLessonItems(slug: string) {
+  const mat = await get<Linked<{ moduleIds: string[] }>>(
+    `onDemandCourseMaterials.v2/?q=slug&slug=${encodeURIComponent(slug)}&includes=modules,lessons,items` +
+      "&fields=moduleIds,onDemandCourseMaterialModules.v1(lessonIds),onDemandCourseMaterialLessons.v1(itemIds),onDemandCourseMaterialItems.v2(name,timeCommitment,contentSummary)",
+  );
+  const mods = (mat.linked?.["onDemandCourseMaterialModules.v1"] ?? []) as { id: string; lessonIds?: string[] }[];
+  const lessons = new Map(((mat.linked?.["onDemandCourseMaterialLessons.v1"] ?? []) as { id: string; itemIds?: string[] }[]).map((l) => [l.id, l]));
+  const items = new Map(
+    ((mat.linked?.["onDemandCourseMaterialItems.v2"] ?? []) as { id: string; name: string; timeCommitment?: number; contentSummary?: { typeName?: string } }[]).map((i) => [i.id, i]),
+  );
+  const byModule = new Map<string, LessonItem[][]>();
+  for (const m of mods) {
+    byModule.set(
+      m.id,
+      (m.lessonIds ?? []).map((lid) =>
+        (lessons.get(lid)?.itemIds ?? [])
+          .map((iid) => items.get(iid))
+          .filter((i): i is NonNullable<typeof i> => Boolean(i))
+          .map((i) => ({ name: i.name.trim(), type: i.contentSummary?.typeName ?? "", minutes: Math.max(1, Math.round((i.timeCommitment ?? 0) / 60_000)) })),
+      ),
+    );
+  }
+  return byModule;
+}
+
+/** «lecture» → «Video», etc. Para los pasos de cada sesión de estudio. */
+export function itemKind(type: string) {
+  if (/lecture/i.test(type)) return "Video";
+  if (/supplement|reading/i.test(type)) return "Lectura";
+  if (/exam|quiz/i.test(type)) return "Quiz";
+  if (/peer|staff|assignment|programming|gradedLti/i.test(type)) return "Tarea";
+  if (/discussion/i.test(type)) return "Foro";
+  if (/widget|ungraded|lab|notebook/i.test(type)) return "Práctica";
+  return "Actividad";
 }

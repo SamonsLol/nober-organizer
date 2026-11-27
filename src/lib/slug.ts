@@ -7,7 +7,12 @@ export function slugify(name: string, fallback: string) {
       .replace(/\p{Diacritic}/gu, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
-      .slice(0, 40) || fallback
+      // Máximo 40 caracteres sin cortar una palabra a la mitad
+      .replace(/^.+$/, (all) => {
+        if (all.length <= 40) return all;
+        const cut = all.slice(0, 41).lastIndexOf("-");
+        return cut > 0 ? all.slice(0, cut) : all.slice(0, 40);
+      }) || fallback
   );
 }
 
