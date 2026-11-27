@@ -3,18 +3,25 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  BookOpen, CalendarPlus, ClipboardCheck, CornerDownLeft, FilePlus2, Lightbulb, ListPlus, NotebookPen, Search,
+  BookOpen, CalendarPlus, Rocket, Sparkles, ClipboardCheck, CornerDownLeft, FilePlus2, Lightbulb, ListPlus, NotebookPen, Search,
   type LucideIcon,
+  GraduationCap, Layers,
 } from "lucide-react";
 import { NAV } from "@/components/shell/nav";
-import { openAffine } from "@/components/affine/affine";
-import { AFFINE_HOME } from "@/lib/affine";
+import { useObsidianHome } from "@/components/notes/note-panel";
+import { useVault } from "@/components/notes/vault-context";
+import { openWeekPlan } from "@/components/ai/week-plan";
+import { openAiPlanner } from "@/components/ai/ai-planner";
+import { openStudySetup } from "@/components/study/study-setup";
+import { openReview } from "@/components/review/review-dialogs";
 import { cn } from "@/components/blocks/primitives";
 import { openCourseEditor } from "@/components/courses/course-editor";
 import { openAssessmentEditor } from "@/components/grades/assessment-editor";
 import { openEventEditor } from "@/components/calendar/event-editor";
 import { toast } from "@/components/shell/toast";
-import type { Course } from "@/lib/types";
+import type { Course, Project } from "@/lib/types";
+import { openProjectEditor } from "@/components/projects/project-editor";
+import { Ico } from "@/components/blocks/icons";
 
 type Mode = "all" | "create";
 const EVT = "nober:command";
@@ -30,6 +37,7 @@ export function openCommandMenu(mode: Mode = "all") {
 export function runCreateAction(id: string, push: (href: string) => void) {
   if (id === "task") push("/tasks?new=1");
   else if (id === "course") openCourseEditor();
+  else if (id === "project") openProjectEditor();
   else if (id === "assessment") openAssessmentEditor();
   else if (id === "event") openEventEditor();
   else {
@@ -45,6 +53,7 @@ export const CREATE_ACTIONS: { id: string; label: string; icon: LucideIcon }[] =
   { id: "event", label: "Nuevo evento", icon: CalendarPlus },
   { id: "topic", label: "Nuevo tema", icon: Lightbulb },
   { id: "course", label: "Nueva materia", icon: BookOpen },
+  { id: "project", label: "Nuevo proyecto", icon: Rocket },
 ];
 
 interface Item {
@@ -56,8 +65,10 @@ interface Item {
   run: () => void;
 }
 
-export function CommandMenu({ courses }: { courses: Course[] }) {
+export function CommandMenu({ courses, projects = [] }: { courses: Course[]; projects?: Project[] }) {
   const router = useRouter();
+  const obsidian = useObsidianHome();
+  const { ai } = useVault();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("all");
   const [q, setQ] = useState("");
@@ -111,30 +122,32 @@ export function CommandMenu({ courses }: { courses: Course[] }) {
     if (mode === "create") return create;
     return [
       ...create,
+      { id: "review", group: "Estudiar", label: "Repasar tarjetas", icon: Layers, run: () => { setOpen(false); openReview(); } },
+      { id: "coursera", group: "Crear", label: "Importar curso de Coursera", icon: GraduationCap, run: () => { setOpen(false); openStudySetup(); } },
+      ...(ai
+        ? [
+            { id: "ai-tasks", group: "IA", label: "Crear tareas con IA", icon: Sparkles, run: () => { setOpen(false); openAiPlanner({ kind: "tasks" }); } },
+            { id: "ai-project", group: "IA", label: "Nuevo proyecto con IA", icon: Sparkles, run: () => { setOpen(false); openAiPlanner({ kind: "new-project" }); } },
+            { id: "ai-week", group: "IA", label: "Plan de la semana", icon: Sparkles, run: () => { setOpen(false); openWeekPlan(); } },
+          ]
+        : []),
       ...NAV.map((n) => ({ id: `n-${n.href}`, group: "Ir a", label: n.label, icon: n.icon, run: go(n.href) })),
       {
-        id: "affine",
+        id: "obsidian",
         group: "Ir a",
-        label: "AFFiNE (todos los apuntes)",
+        label: "Obsidian (todos los apuntes)",
         icon: NotebookPen,
         run: () => {
           setOpen(false);
-          openAffine({ url: AFFINE_HOME, title: "AFFiNE", meta: "Todos los documentos", size: "full" });
+          if (obsidian.external) window.open(obsidian.href, "_blank", "noopener");
+          else window.location.href = obsidian.href;
         },
       },
-      ...courses.map((c) => ({
-        id: `a-${c.id}`,
-        group: "Apuntes en AFFiNE",
-        label: `Carpeta de ${c.name}`,
-        emoji: c.emoji,
-        run: () => {
-          setOpen(false);
-          openAffine({ url: c.affineFolderUrl ?? AFFINE_HOME, title: `${c.name} — carpeta`, meta: "AFFiNE", emoji: c.emoji, color: c.color });
-        },
-      })),
+      ...courses.map((c) => ({ id: `a-${c.id}`, group: "Apuntes", label: `Apuntes de ${c.name}`, emoji: c.emoji, run: go(`/courses/${c.slug}?tab=apuntes`) })),
       ...courses.map((c) => ({ id: `m-${c.id}`, group: "Materias", label: c.name, emoji: c.emoji, run: go(`/courses/${c.slug}`) })),
+      ...projects.map((p) => ({ id: `p-${p.id}`, group: "Proyectos", label: p.name, emoji: p.emoji, run: go(`/projects/${p.slug}`) })),
     ];
-  }, [mode, courses, router]);
+  }, [mode, courses, projects, router, obsidian.href, obsidian.external, ai]);
 
   const filtered = items.filter((i) => i.label.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").includes(q.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "")));
 
@@ -189,7 +202,7 @@ export function CommandMenu({ courses }: { courses: Course[] }) {
                         n === idx ? "bg-surface-hover text-text" : "text-muted",
                       )}
                     >
-                      {Icon ? <Icon className="size-4" /> : <span className="w-4 text-center">{i.emoji}</span>}
+                      {Icon ? <Icon className="size-4" /> : <span className="w-4 text-center"><Ico value={i.emoji} className="mr-0" /></span>}
                       {i.label}
                       {n === idx ? <CornerDownLeft className="ml-auto size-3.5 text-faint" /> : null}
                     </button>

@@ -3,18 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { GraduationCap, Maximize2, Menu, Moon, NotebookPen, Plus, Search, Settings, Sun, X } from "lucide-react";
-import { AffineLink } from "@/components/affine/affine";
-import { AFFINE_HOME } from "@/lib/affine";
+import { ExternalLink, GraduationCap, Menu, Moon, NotebookPen, Plus, Search, Settings, Sun, X } from "lucide-react";
+import { OpenObsidian } from "@/components/notes/open-obsidian";
 import { cn } from "@/components/blocks/primitives";
 import { openCommandMenu } from "@/components/shell/command-menu";
 import { openCourseEditor } from "@/components/courses/course-editor";
 import { NAV } from "@/components/shell/nav";
 import { setTheme, useTheme } from "@/components/shell/theme";
-import type { Course } from "@/lib/types";
+import type { Course, Project } from "@/lib/types";
+import { openProjectEditor } from "@/components/projects/project-editor";
 import { APP_NAME } from "@/lib/brand";
+import { Ico } from "@/components/blocks/icons";
 
-export function Sidebar({ courses, subtitle }: { courses: Course[]; subtitle: string }) {
+export function Sidebar({ courses, projects, subtitle }: { courses: Course[]; projects: Project[]; subtitle: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -62,14 +63,14 @@ export function Sidebar({ courses, subtitle }: { courses: Course[]; subtitle: st
         ))}
       </nav>
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="-mr-1 flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
         <div className="flex items-center px-3.5 pb-1.5">
           <span className="text-[11.5px] font-medium text-faint">Mis materias</span>
           <button onClick={() => openCourseEditor()} className="ml-auto rounded-full p-1 text-faint hover:bg-surface-hover hover:text-muted" aria-label="Nueva materia">
             <Plus className="size-3.5" />
           </button>
         </div>
-        <div className="-mr-1 flex flex-col gap-0.5 overflow-y-auto pr-1">
+        <div className="flex flex-col gap-0.5">
           {courses.map((c) => {
             const href = `/courses/${c.slug}`;
             return (
@@ -87,14 +88,39 @@ export function Sidebar({ courses, subtitle }: { courses: Course[]; subtitle: st
             );
           })}
         </div>
+
+        <div className="flex items-center px-3.5 pb-1.5 pt-4">
+          <span className="text-[11.5px] font-medium text-faint">Mis proyectos</span>
+          <button onClick={() => openProjectEditor()} className="ml-auto rounded-full p-1 text-faint hover:bg-surface-hover hover:text-muted" aria-label="Nuevo proyecto">
+            <Plus className="size-3.5" />
+          </button>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          {projects.map((p) => {
+            const href = `/projects/${p.slug}`;
+            return (
+              <Link
+                key={p.id}
+                href={href}
+                className={cn(
+                  "flex h-8 shrink-0 items-center gap-2.5 rounded-full px-3.5 text-[12.5px] transition-colors",
+                  pathname === href ? "bg-surface-2 text-text" : "text-muted hover:bg-surface-hover hover:text-text",
+                )}
+              >
+                <Ico value={p.emoji} fallback="rocket" className="mr-0 size-3.5 text-muted" />
+                <span className="truncate">{p.name}</span>
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       <div className="flex flex-col gap-1">
-        <AffineLink href={AFFINE_HOME} title="AFFiNE" meta="Todos los documentos" size="full" className={item(false)}>
+        <OpenObsidian className={item(false)}>
           <NotebookPen className="size-[17px]" />
-          Abrir AFFiNE
-          <Maximize2 className="ml-auto size-3.5 text-faint" />
-        </AffineLink>
+          Abrir Obsidian
+          <ExternalLink className="ml-auto size-3.5 text-faint" />
+        </OpenObsidian>
         <div className="flex items-center gap-1">
           <Link href="/settings" className={cn(item(isActive("/settings")), "flex-1")}>
             <Settings className="size-[17px]" />

@@ -1,6 +1,7 @@
 import cn from "clsx";
 import { Section } from "@/components/blocks/primitives";
 import type { ClassSchedule, Course } from "@/lib/types";
+import { Ico } from "@/components/blocks/icons";
 
 const DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
 
@@ -30,7 +31,7 @@ export function ScheduleGrid({ schedule, courses, todayWd, title = "Horario sema
                 const c = s ? byId[s.courseId] : undefined;
                 return c ? (
                   <a key={i} href={`/courses/${c.slug}`} className={cn("rounded-[14px] px-3 py-2 text-on-pastel transition-transform hover:-translate-y-0.5", `pastel-${c.color}`)}>
-                    <div className="truncate text-[12.5px] font-medium">{c.emoji} {c.name}</div>
+                    <div className="truncate text-[12.5px] font-medium"><Ico value={c.emoji} fallback="book" />{c.name}</div>
                     <div className="text-[11px] text-on-pastel-muted">{s!.room}</div>
                   </a>
                 ) : (

@@ -11,7 +11,7 @@ export default async function CoursesPage() {
   const wd = ((now.getDay() + 6) % 7) + 1;
   return (
     <div className="pb-16">
-      <PageHeader emoji="📚" title="Materias" subtitle={`${data.courseCards.length} materias · ${data.period.name}`} />
+      <PageHeader emoji="library" title="Materias" subtitle={`${data.courseCards.length} materias · ${data.period.name}`} />
       <div className="mx-auto mt-6 flex w-full max-w-[1480px] flex-col gap-5 px-4 sm:px-6">
         <CoursesGallery data={data} title="Todas las materias" wide />
         <ScheduleGrid schedule={data.schedule} courses={data.courses} todayWd={wd <= 5 ? wd : undefined} />

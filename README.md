@@ -9,8 +9,8 @@
 **English** · [Español](README.es.md)
 
 **An open-source, self-hosted school planner** for students: courses with a weekly timetable, tasks, calendar,
-grades by term, topics, resources and class notes in [AFFiNE](https://affine.pro), all in one place.
-Dark and light themes, built for desktop and mobile.
+grades by term, topics, resources, projects, online courses and class notes in [Obsidian](https://obsidian.md),
+all in one place. Dark and light themes, built for desktop and mobile.
 
 > The interface is in Spanish (Colombian format: 24 h, weeks start on Monday). Help translating it is welcome.
 
@@ -31,20 +31,44 @@ Dark and light themes, built for desktop and mobile.
 - **Tasks**: list, board (drag and drop) and by-date views; steps, links, tags, priority, notes and file attachments.
 - **Calendar**: month, week and agenda views with classes, deadlines, exams, events and **holidays** (they remove
   that day's classes).
+- **Projects**: personal or work projects (status, target date, progress) with their tasks, files and a folder of
+  notes in Obsidian; the `- [ ]` checkboxes in those notes (Tasks plugin format) show up and can be ticked in the app.
+- **Online courses (Coursera)**: import a course by its link (or a whole program, e.g. a 6-course certificate) and
+  choose how long you study each day. Nober builds study sessions **lesson by lesson** using Coursera's time estimates
+  (each session's steps are its videos and readings), creates one note per module in Obsidian and, with the browser
+  extension (or a bookmarklet), detects the courses you start and marks what you've completed.
+- **Browser extension (Chrome)**: select text on any page, or use the whole page, and the AI proposes what to add to
+  your notes and under which section (you review and edit it before applying); or drop the clip in the **inbox** and add
+  it later from the note editor, by hand or with AI. On a Coursera course it uses the note of the module and lesson
+  you're watching.
+- **Review**: spaced-repetition flashcards (Again / Hard / Good / Easy) and multiple-choice practice quizzes, generated
+  with AI from your notes or from a module's syllabus; what you miss in a quiz becomes flashcards.
 - **Grades**: configurable scale (1.0–5.0 by default, passing at 3.0), weighted terms, scores on a different scale
   (85/100 → 4.3), the grade you still need to pass, and a simulator.
-- **Notes in AFFiNE**: every class links to its document, which opens embedded in a side panel. Content is never
-  copied into the app; it stays in your AFFiNE.
+- **Notes in Obsidian**: every class has its own `.md` note in your vault (with a template and properties). Read and
+  edit it in a panel inside the app (math, clickable task checkboxes, `[[links]]`, images and PDF attachments) or open
+  it in the Obsidian app with one click. Content lives in your vault; your Obsidian sync takes it to your devices.
 - **Accounts**: email and password (Google optional) with [Better Auth](https://better-auth.com). Each user only
   sees their own data, and sign-ups can be closed once your account exists.
 
 ## Integrations
 
-- **AFFiNE via MCP** (0.27+): with a workspace token, each class offers "Crear apunte" (create note), which creates
-  the document from a template and links it. The token is stored encrypted.
+- **Obsidian**: "Crear apunte" creates the class note from a template; if you move or rename it in Obsidian, the app
+  finds it again. Autosave never overwrites a change made in Obsidian meanwhile: it asks which version to keep.
+- **AI (optional)**: summaries, review questions, note → tasks, flashcards, quizzes, a weekly study plan, "project
+  with AI" (an idea → a project with its task plan), task breakdown and "add to my notes" from the extension or the
+  inbox. Works with [Groq](https://console.groq.com) (free tier), [OpenAI](https://platform.openai.com) or any
+  OpenAI-compatible API that supports JSON-schema responses. The AI only proposes: nothing is written or created
+  without your confirmation.
+- **Browser extension and Coursera**: in Settings → Integrations you create a personal key (only its hash is stored)
+  and download the extension (Chrome, "Load unpacked"). On coursera.org it reads your courses and progress **in your
+  browser** (your Coursera session never reaches the server) and syncs them on its own; a bookmarklet does the same
+  where extensions aren't available. It relies on undocumented Coursera endpoints, which may change.
 - **Google Calendar**: a dedicated calendar with recurring classes (skipping holidays), tasks, assessments and
-  events, without duplicates. Minimal permission: only calendars created by the app.
-- **Files**: upload PDFs, documents, images, audio or video to tasks and resources (only the owner can open them).
+  events, without duplicates; other calendars can be shown read-only.
+- **Push reminders**: deadlines, exams and flashcards due today, on every device you enable (PWA on iOS 16.4+).
+- **Files**: upload PDFs, documents, images, audio or video to tasks, resources and projects (only the owner can
+  open them).
 - **PWA**: install it on your phone from the browser ("Add to Home Screen").
 
 Setup instructions are in the deployment guide ([`deploy/README.md`](deploy/README.md), in Spanish).
@@ -56,7 +80,7 @@ Requirements: a server with Docker and Docker Compose, and a domain with HTTPS (
 ```bash
 git clone https://github.com/SamonsLol/nober-organizer.git
 cd nober-organizer
-cp .env.production.example .env.production   # fill in: passwords, domain, AFFiNE
+cp .env.production.example .env.production   # fill in: passwords, domain, Obsidian, AI, push keys
 docker compose --env-file .env.production up -d --build
 curl -s http://127.0.0.1:3100/api/health     # {"ok":true,"db":true}
 ```
@@ -65,18 +89,34 @@ Then expose `127.0.0.1:3100` through your reverse proxy (nginx template in
 [`deploy/nginx/nober.conf`](deploy/nginx/nober.conf)). The full guide (DNS, nginx, first run, updates and backups)
 is in [`deploy/README.md`](deploy/README.md).
 
-### AFFiNE
+### Obsidian
 
-Works with AFFiNE Cloud or a self-hosted instance. For the embedded panel to stay signed in, **self-host AFFiNE on
-the same domain** as the app (e.g. `notes.example.com` and `planner.example.com`): browsers block third-party
-cookies inside iframes.
+The app works on **a copy of your vault on the server** (a folder with `.obsidian/`) kept up to date by whatever sync
+you already use: [Self-hosted LiveSync](https://github.com/vrtmrz/obsidian-livesync) (with an always-on Obsidian on
+the server, e.g. the `linuxserver/obsidian` image), Obsidian Sync with the desktop client, Syncthing, git…
 
 | Variable | Meaning |
 | --- | --- |
-| `NEXT_PUBLIC_AFFINE_ORIGIN` | Your AFFiNE URL (defaults to `https://app.affine.pro`) |
-| `NEXT_PUBLIC_AFFINE_WORKSPACE` | Workspace ID: what comes after `/workspace/` in AFFiNE's URL |
+| `OBSIDIAN_VAULT_DIR` | Vault path on the server (mounted into the container; uid 1000 must be able to write) |
+| `OBSIDIAN_VAULT_NAME` | Vault name in Obsidian, for `obsidian://` links (defaults to the folder name) |
+| `OBSIDIAN_NOTES_ROOT` | Class notes folder: `<root>/<course>/<date> <class>.md` (default `Apuntes`) |
+| `OBSIDIAN_PROJECTS_ROOT` | Projects folder: `<root>/<project>/` (default `Proyectos`) |
+| `OBSIDIAN_ALLOWED_EMAILS` | Accounts allowed to use the vault (empty = every account on the instance) |
+| `OBSIDIAN_WEB_URL` | Optional: Obsidian in the browser, for the "Abrir Obsidian" button |
 
-They are baked in at build time: if you change them, run again with `--build`.
+Without a vault the app works the same, just without creating or opening notes.
+
+### AI
+
+| Variable | Meaning |
+| --- | --- |
+| `AI_API_KEY` | Provider key (empty = no AI). The provider is detected from it: `gsk_…` Groq, `sk-…` OpenAI |
+| `AI_PROVIDER` | Optional: `groq`, `openai` or `custom` (any other OpenAI-compatible API) |
+| `AI_MODEL` | Model (default `openai/gpt-oss-120b` on Groq, `gpt-5-mini` on OpenAI) |
+| `AI_BASE_URL` | Base URL for `custom` (OpenRouter, Ollama, LM Studio…) |
+| `AI_MAX_INPUT_CHARS` | Max text per request (default 14,000 on Groq's free tier, 48,000 on OpenAI) |
+
+Note content is sent to the provider you configure.
 
 ## Development
 
@@ -103,21 +143,23 @@ Better Auth · date-fns · lucide-react. No component library: the design system
 
 ```
 src/
-  app/(app)/          screens (home, calendar, tasks, courses, notes, grades, resources, settings)
-  app/api/            auth, files and health
+  app/(app)/          screens (home, calendar, tasks, courses, projects, notes, grades, resources, settings)
+  app/api/            auth, files, vault, Coursera, reminders and health
   components/         one view per screen, editors (dialogs) and design blocks
   lib/actions/        Server Actions (validated with zod, always scoped to the user)
   lib/data/           data layer: loads the user's data and derives what each screen needs
-  lib/affine*.ts      AFFiNE integration (links and MCP client), isolated
+  lib/vault.ts        Obsidian vault access (never outside the vault)
+  lib/coursera*.ts    Coursera public API and bookmarklet sync
+  lib/note-integrate.ts  AI "add to my notes" (proposal + apply by section)
+extension/            Chrome extension (MV3): AI notes, inbox, Coursera sync
 prisma/               schema, migrations and seed
-deploy/               nginx template and deployment guide
+deploy/               nginx template, backup script and deployment guide
 ```
 
 ## Roadmap
 
-- Reminders (push notifications) for deadlines and exams.
-- Read other Google calendars (read-only).
 - Data export and import.
+- More online-course platforms besides Coursera.
 - Interface translations.
 
 ## Contributing

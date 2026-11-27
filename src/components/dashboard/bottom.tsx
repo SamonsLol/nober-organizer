@@ -13,6 +13,7 @@ import { Section, ViewTabs, cn } from "@/components/blocks/primitives";
 import { capitalize, dayKey, fmt } from "@/lib/dates";
 import type { DashboardData } from "@/lib/data";
 import type { Goal, TagColor } from "@/lib/types";
+import { Ico } from "@/components/blocks/icons";
 
 /* ───────────── Metas ───────────── */
 
@@ -151,9 +152,10 @@ export function MonthCalendar({ data }: { data: DashboardData }) {
     ...data.calendar.tasks.map((t) => ({ id: t.id, key: dayKey(t.dueAt), label: t.title, emoji: t.emoji, color: color(t.courseId), kind: "task" as const, graded: !!t.assessmentId })),
     ...data.calendar.assessments.filter((a) => !linked.has(a.id)).map((a) => ({
       id: a.id, key: dayKey(a.date!), label: `${a.title} · ${data.courseById[a.courseId].name}`,
-      emoji: a.kind === "EXAM" ? "🎯" : a.kind === "QUIZ" ? "⏱️" : "📌", color: color(a.courseId), kind: "assessment" as const,
+      emoji: a.kind === "EXAM" ? "target" : a.kind === "QUIZ" ? "clock" : "pin", color: color(a.courseId), kind: "assessment" as const,
     })),
     ...data.calendar.events.map((e) => ({ id: e.id, key: dayKey(e.start), label: e.title, emoji: e.emoji, color: (e.kind === "IMPORTANT" ? "brown" : e.kind === "EXAM" ? "red" : "gray") as TagColor, time: e.allDay ? undefined : fmt(e.start, "HH:mm"), kind: "event" as const })),
+    ...data.calendar.google.map((e) => ({ id: `g:${e.id}`, key: dayKey(e.start), label: `${e.title} · ${e.calendarName}`, emoji: "calendar", color: e.color, time: e.allDay ? undefined : fmt(e.start, "HH:mm"), kind: "event" as const })),
     ...data.calendar.lectures.map((l) => ({ id: l.id, key: dayKey(l.date), label: l.title, emoji: l.emoji, color: color(l.courseId), time: fmt(l.date, "HH:mm"), kind: "lecture" as const })),
   ];
 
@@ -237,7 +239,7 @@ export function MonthCalendar({ data }: { data: DashboardData }) {
                   <div key={i.id} className="flex items-center gap-2 rounded-full bg-surface-2 px-3 py-1.5 text-[13px]">
                     <span className={cn("size-1.5 shrink-0 rounded-full", `dot-${i.color}`)} />
                     {i.time ? <span className="shrink-0 text-[12px] tabular-nums text-faint">{i.time}</span> : null}
-                    <span className="truncate">{i.emoji} {i.label}</span>
+                    <span className="truncate"><Ico value={i.emoji} />{i.label}</span>
                   </div>
                 ))}
               </div>
@@ -275,7 +277,7 @@ export function MonthCalendar({ data }: { data: DashboardData }) {
                         <div key={i.id} title={i.label} className="flex items-center gap-1 truncate rounded-full bg-surface-2 px-2 py-[3px] text-[11px] leading-tight">
                           <span className={cn("size-1.5 shrink-0 rounded-full", `dot-${i.color}`)} />
                           {i.time ? <span className="shrink-0 text-[10.5px] text-faint">{i.time}</span> : null}
-                          <span className="truncate">{i.emoji} {i.label}</span>
+                          <span className="truncate"><Ico value={i.emoji} />{i.label}</span>
                         </div>
                       ))}
                       {list.length > 3 ? <div className="px-1.5 text-[11px] text-faint">+{list.length - 3} más</div> : null}

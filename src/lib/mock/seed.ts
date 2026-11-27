@@ -1,9 +1,9 @@
 import { addDays, addWeeks, setHours, setMinutes, startOfDay, subWeeks, formatISO } from "date-fns";
 import { academicWeekStart } from "@/lib/dates";
-import { AFFINE_BASE, AFFINE_HOME } from "@/lib/affine";
+import { safeName } from "@/lib/notes";
 import type {
   Assessment, CalendarEvent, ClassSchedule, Course, Goal, GradingScale, Lecture, Period,
-  Profile, QuickNote, RecentDoc, Resource, Task, Topic,
+  ExternalItem, Profile, Project, QuickNote, RecentDoc, Resource, Task, Topic,
 } from "@/lib/types";
 
 /**
@@ -11,8 +11,6 @@ import type {
  * Todo se genera en relación con "hoy", así la app siempre se ve viva:
  * hay tareas para esta semana, entregas atrasadas, exámenes próximos, etc.
  */
-
-export { AFFINE_BASE };
 
 const iso = (d: Date) => formatISO(d);
 const day = (d: Date) => formatISO(d, { representation: "date" });
@@ -42,15 +40,16 @@ export function buildMock(now: Date = new Date()) {
   ];
 
   const courses: Course[] = [
-    { id: "mat", slug: "matematicas", name: "Matemáticas", emoji: "➗", color: "blue", cover: "math", teacher: "Laura Méndez", room: "Aula 204", code: "MAT-11" },
-    { id: "fis", slug: "fisica", name: "Física", emoji: "⚛️", color: "purple", cover: "physics", teacher: "Carlos Ríos", room: "Lab. 2", code: "FIS-11" },
-    { id: "qui", slug: "quimica", name: "Química", emoji: "🧪", color: "red", cover: "chemistry", teacher: "Andrea Salazar", room: "Lab. 1", code: "QUI-11" },
-    { id: "ing", slug: "ingles", name: "Inglés", emoji: "💬", color: "pink", cover: "english", teacher: "Daniel Ortiz", room: "Aula 110", code: "ING-11" },
-    { id: "his", slug: "historia", name: "Ciencias sociales", emoji: "🏛️", color: "brown", cover: "history", teacher: "Marta Cárdenas", room: "Aula 207", code: "SOC-11" },
-    { id: "len", slug: "lengua", name: "Lengua castellana", emoji: "📖", color: "orange", cover: "literature", teacher: "Julián Pardo", room: "Aula 204", code: "LEN-11" },
-    { id: "bio", slug: "biologia", name: "Biología", emoji: "🌿", color: "green", cover: "biology", teacher: "Sofía Herrera", room: "Lab. 1", code: "BIO-11" },
-    { id: "fil", slug: "filosofia", name: "Filosofía", emoji: "💭", color: "yellow", cover: "philosophy", teacher: "Tomás Rincón", room: "Aula 110", code: "FIL-11" },
-  ].map((c) => ({ ...c, affineFolderUrl: AFFINE_HOME })) as Course[];
+    { id: "mat", slug: "matematicas", name: "Matemáticas", emoji: "divide", color: "blue", cover: "math", teacher: "Laura Méndez", room: "Aula 204", code: "MAT-11" },
+    { id: "fis", slug: "fisica", name: "Física", emoji: "atom", color: "purple", cover: "physics", teacher: "Carlos Ríos", room: "Lab. 2", code: "FIS-11" },
+    { id: "qui", slug: "quimica", name: "Química", emoji: "flask-conical", color: "red", cover: "chemistry", teacher: "Andrea Salazar", room: "Lab. 1", code: "QUI-11" },
+    { id: "ing", slug: "ingles", name: "Inglés", emoji: "message-circle", color: "pink", cover: "english", teacher: "Daniel Ortiz", room: "Aula 110", code: "ING-11" },
+    { id: "his", slug: "historia", name: "Ciencias sociales", emoji: "landmark", color: "brown", cover: "history", teacher: "Marta Cárdenas", room: "Aula 207", code: "SOC-11" },
+    { id: "len", slug: "lengua", name: "Lengua castellana", emoji: "book-open", color: "orange", cover: "literature", teacher: "Julián Pardo", room: "Aula 204", code: "LEN-11" },
+    { id: "bio", slug: "biologia", name: "Biología", emoji: "leaf", color: "green", cover: "biology", teacher: "Sofía Herrera", room: "Lab. 1", code: "BIO-11" },
+    { id: "fil", slug: "filosofia", name: "Filosofía", emoji: "brain", color: "yellow", cover: "philosophy", teacher: "Tomás Rincón", room: "Aula 110", code: "FIL-11" },
+  ] as Course[];
+  const folderOf = (courseId: string) => `Apuntes/${safeName(courses.find((c) => c.id === courseId)!.name)}`;
 
   // Horario semanal (bloques de colegio)
   const blocks = [["07:00", "07:55"], ["08:00", "08:55"], ["09:25", "10:20"], ["10:25", "11:20"], ["11:45", "12:40"]];
@@ -74,61 +73,61 @@ export function buildMock(now: Date = new Date()) {
   );
 
   const topics: Topic[] = [
-    { id: "t1", courseId: "mat", title: "Límites y continuidad", emoji: "📈", preparation: "GOOD", lastStudiedAt: iso(addDays(today, -1)) },
-    { id: "t2", courseId: "mat", title: "Derivadas", emoji: "✏️", preparation: "LEARNING", lastStudiedAt: iso(addDays(today, -2)) },
-    { id: "t3", courseId: "fis", title: "Movimiento armónico simple", emoji: "〰️", preparation: "LEARNING", lastStudiedAt: iso(addDays(today, -1)) },
-    { id: "t4", courseId: "fis", title: "Ondas mecánicas", emoji: "🌊", preparation: "NONE" },
-    { id: "t5", courseId: "qui", title: "Estequiometría", emoji: "⚖️", preparation: "GOOD", lastStudiedAt: iso(addDays(today, -3)) },
-    { id: "t6", courseId: "qui", title: "Gases ideales", emoji: "🎈", preparation: "LEARNING" },
-    { id: "t7", courseId: "ing", title: "Conditionals (2nd & 3rd)", emoji: "🔁", preparation: "MASTERED", lastStudiedAt: iso(addDays(today, -4)) },
-    { id: "t8", courseId: "his", title: "Frente Nacional", emoji: "🗳️", preparation: "LEARNING", lastStudiedAt: iso(addDays(today, -2)) },
-    { id: "t9", courseId: "len", title: "Boom latinoamericano", emoji: "🦋", preparation: "GOOD", lastStudiedAt: iso(addDays(today, -5)) },
-    { id: "t10", courseId: "bio", title: "Genética mendeliana", emoji: "🧬", preparation: "LEARNING", lastStudiedAt: iso(addDays(today, -1)) },
-    { id: "t11", courseId: "fil", title: "Kant y la razón pura", emoji: "🕯️", preparation: "NONE" },
+    { id: "t1", courseId: "mat", title: "Límites y continuidad", emoji: "chart-line", preparation: "GOOD", lastStudiedAt: iso(addDays(today, -1)) },
+    { id: "t2", courseId: "mat", title: "Derivadas", emoji: "pencil", preparation: "LEARNING", lastStudiedAt: iso(addDays(today, -2)) },
+    { id: "t3", courseId: "fis", title: "Movimiento armónico simple", emoji: "waves", preparation: "LEARNING", lastStudiedAt: iso(addDays(today, -1)) },
+    { id: "t4", courseId: "fis", title: "Ondas mecánicas", emoji: "waves", preparation: "NONE" },
+    { id: "t5", courseId: "qui", title: "Estequiometría", emoji: "scale", preparation: "GOOD", lastStudiedAt: iso(addDays(today, -3)) },
+    { id: "t6", courseId: "qui", title: "Gases ideales", emoji: "party-popper", preparation: "LEARNING" },
+    { id: "t7", courseId: "ing", title: "Conditionals (2nd & 3rd)", emoji: "history", preparation: "MASTERED", lastStudiedAt: iso(addDays(today, -4)) },
+    { id: "t8", courseId: "his", title: "Frente Nacional", emoji: "landmark", preparation: "LEARNING", lastStudiedAt: iso(addDays(today, -2)) },
+    { id: "t9", courseId: "len", title: "Boom latinoamericano", emoji: "feather", preparation: "GOOD", lastStudiedAt: iso(addDays(today, -5)) },
+    { id: "t10", courseId: "bio", title: "Genética mendeliana", emoji: "dna", preparation: "LEARNING", lastStudiedAt: iso(addDays(today, -1)) },
+    { id: "t11", courseId: "fil", title: "Kant y la razón pura", emoji: "flame", preparation: "NONE" },
   ];
 
   // Temas previstos para cada clase de la semana
   const lectureTitles: Record<string, { title: string; emoji: string; topicId?: string }[]> = {
     mat: [
-      { title: "Derivada por definición", emoji: "✏️", topicId: "t2" },
-      { title: "Regla de la cadena", emoji: "⛓️", topicId: "t2" },
-      { title: "Taller de derivadas", emoji: "📝", topicId: "t2" },
-      { title: "Razón de cambio", emoji: "📈", topicId: "t2" },
-      { title: "Repaso para el parcial", emoji: "🔁", topicId: "t2" },
+      { title: "Derivada por definición", emoji: "pencil", topicId: "t2" },
+      { title: "Regla de la cadena", emoji: "variable", topicId: "t2" },
+      { title: "Taller de derivadas", emoji: "notebook-pen", topicId: "t2" },
+      { title: "Razón de cambio", emoji: "chart-line", topicId: "t2" },
+      { title: "Repaso para el parcial", emoji: "history", topicId: "t2" },
     ],
     fis: [
-      { title: "Péndulo simple", emoji: "🕰️", topicId: "t3" },
-      { title: "Energía en el MAS", emoji: "⚡", topicId: "t3" },
-      { title: "Laboratorio: resortes", emoji: "🧲", topicId: "t3" },
+      { title: "Péndulo simple", emoji: "history", topicId: "t3" },
+      { title: "Energía en el MAS", emoji: "zap", topicId: "t3" },
+      { title: "Laboratorio: resortes", emoji: "magnet", topicId: "t3" },
     ],
     qui: [
-      { title: "Reactivo límite", emoji: "⚖️", topicId: "t5" },
-      { title: "Ley de Boyle", emoji: "🎈", topicId: "t6" },
-      { title: "Ley combinada", emoji: "🌡️", topicId: "t6" },
+      { title: "Reactivo límite", emoji: "scale", topicId: "t5" },
+      { title: "Ley de Boyle", emoji: "party-popper", topicId: "t6" },
+      { title: "Ley combinada", emoji: "thermometer", topicId: "t6" },
     ],
     ing: [
-      { title: "Third conditional", emoji: "🔁", topicId: "t7" },
-      { title: "Reading: climate", emoji: "🌍" },
-      { title: "Speaking practice", emoji: "🎙️" },
+      { title: "Third conditional", emoji: "history", topicId: "t7" },
+      { title: "Reading: climate", emoji: "earth" },
+      { title: "Speaking practice", emoji: "mic" },
     ],
     his: [
-      { title: "Origen del Frente Nacional", emoji: "🗳️", topicId: "t8" },
-      { title: "Guerrillas y reforma agraria", emoji: "🌾", topicId: "t8" },
-      { title: "Constitución de 1991", emoji: "📜" },
+      { title: "Origen del Frente Nacional", emoji: "landmark", topicId: "t8" },
+      { title: "Guerrillas y reforma agraria", emoji: "sprout", topicId: "t8" },
+      { title: "Constitución de 1991", emoji: "scroll-text" },
     ],
     len: [
-      { title: "Cien años de soledad", emoji: "🦋", topicId: "t9" },
-      { title: "Cortázar: Rayuela", emoji: "🎲", topicId: "t9" },
-      { title: "Ensayo argumentativo", emoji: "🖋️" },
+      { title: "Cien años de soledad", emoji: "feather", topicId: "t9" },
+      { title: "Cortázar: Rayuela", emoji: "dice-5", topicId: "t9" },
+      { title: "Ensayo argumentativo", emoji: "pen-line" },
     ],
     bio: [
-      { title: "Leyes de Mendel", emoji: "🧬", topicId: "t10" },
-      { title: "Cuadros de Punnett", emoji: "🔲", topicId: "t10" },
-      { title: "Herencia ligada al sexo", emoji: "🧫" },
+      { title: "Leyes de Mendel", emoji: "dna", topicId: "t10" },
+      { title: "Cuadros de Punnett", emoji: "shapes", topicId: "t10" },
+      { title: "Herencia ligada al sexo", emoji: "microscope" },
     ],
     fil: [
-      { title: "Crítica de la razón pura", emoji: "🕯️", topicId: "t11" },
-      { title: "Imperativo categórico", emoji: "⚖️" },
+      { title: "Crítica de la razón pura", emoji: "flame", topicId: "t11" },
+      { title: "Imperativo categórico", emoji: "scale" },
     ],
   };
 
@@ -151,7 +150,7 @@ export function buildMock(now: Date = new Date()) {
         title: pick.title,
         emoji: pick.emoji,
         topicId: pick.topicId,
-        affineDocUrl: `${AFFINE_BASE}/doc-${s.courseId}-${w}-${wd}`,
+        notePath: `${folderOf(s.courseId)}/${day(date)} ${safeName(pick.title)}.md`,
       });
     }
   }
@@ -161,51 +160,63 @@ export function buildMock(now: Date = new Date()) {
 
   const rawTasks: (Omit<Task, "links"> & { links?: { label: string; url: string }[] })[] = [
     {
-      id: "k1", title: "Taller de derivadas (pág. 142)", emoji: "📝", courseId: "mat", type: "HOMEWORK", dueAt: iso(at(addDays(today, -2), 23, 59)), allDay: false, priority: "HIGH", status: "IN_PROGRESS", tags: ["taller"], assessmentId: "a-mat-2",
+      id: "k1", title: "Taller de derivadas (pág. 142)", emoji: "notebook-pen", courseId: "mat", type: "HOMEWORK", dueAt: iso(at(addDays(today, -2), 23, 59)), allDay: false, priority: "HIGH", status: "IN_PROGRESS", tags: ["taller"], assessmentId: "a-mat-2",
       description: "Resolver los ejercicios 1 a 24 de la página 142. Mostrar el procedimiento completo; se entrega en hojas cuadriculadas.",
       steps: steps("k1", [["Ejercicios 1–4 (regla de la potencia)", true], ["Ejercicios 5–8 (producto)", true], ["Ejercicios 9–12 (cociente)", true], ["Ejercicios 13–16 (cadena)", true], ["Ejercicios 17–20 (implícitas)", false], ["Ejercicios 21–24 (aplicaciones)", false]]),
       note: "La profe dijo que recibe hasta el lunes con −0.5. Preguntar el 19 en asesoría.",
     },
     {
-      id: "k2", title: "Informe laboratorio de resortes", emoji: "🧲", courseId: "fis", type: "LAB", dueAt: iso(at(addDays(week, 3), 23, 59)), allDay: false, priority: "HIGH", status: "TODO", tags: ["laboratorio", "grupo"], assessmentId: "a-fis-8",
+      id: "k2", title: "Informe laboratorio de resortes", emoji: "magnet", courseId: "fis", type: "LAB", dueAt: iso(at(addDays(week, 3), 23, 59)), allDay: false, priority: "HIGH", status: "TODO", tags: ["laboratorio", "grupo"], assessmentId: "a-fis-8",
       description: "Informe en formato IMRyD sobre la ley de Hooke con los datos tomados en clase. Grupo de 3.",
       steps: steps("k2", [["Pasar datos a la hoja de cálculo", true], ["Gráfica F vs. x con regresión", true], ["Marco teórico", false], ["Análisis de resultados", false], ["Conclusiones", false], ["Revisar formato y referencias", false]]),
       files: [{ id: "k2-f1", name: "datos-resortes.xlsx", kind: "DOC", size: "48 KB" }, { id: "k2-f2", name: "guia-laboratorio-4.pdf", kind: "PDF", size: "1,2 MB" }],
       links: [{ label: "Documento compartido del grupo", url: "#" }],
     },
     {
-      id: "k3", title: "Ensayo: realismo mágico", emoji: "🖋️", courseId: "len", type: "ESSAY", dueAt: iso(at(addDays(week, 4), 23, 59)), allDay: false, priority: "MEDIUM", status: "IN_PROGRESS", tags: ["ensayo"], assessmentId: "a-len-19",
+      id: "k3", title: "Ensayo: realismo mágico", emoji: "pen-line", courseId: "len", type: "ESSAY", dueAt: iso(at(addDays(week, 4), 23, 59)), allDay: false, priority: "MEDIUM", status: "IN_PROGRESS", tags: ["ensayo"], assessmentId: "a-len-19",
       description: "Ensayo argumentativo de 2 a 3 páginas sobre el realismo mágico en «Cien años de soledad».",
       steps: steps("k3", [["Elegir tesis", true], ["Buscar tres citas", true], ["Esquema", true], ["Borrador", false], ["Revisión final", false]]),
       links: [{ label: "Rúbrica", url: "#" }],
       note: "Idea de tesis: lo mágico como forma de contar la violencia sin nombrarla.",
     },
-    { id: "k4", title: "Vocabulary list unit 7", emoji: "📚", courseId: "ing", type: "HOMEWORK", dueAt: iso(at(addDays(week, 1), 7, 0)), allDay: false, priority: "LOW", status: "TODO", tags: [], description: "Aprender las 30 palabras de la unidad 7 con ejemplo de uso." },
+    { id: "k4", title: "Vocabulary list unit 7", emoji: "library", courseId: "ing", type: "HOMEWORK", dueAt: iso(at(addDays(week, 1), 7, 0)), allDay: false, priority: "LOW", status: "TODO", tags: [], description: "Aprender las 30 palabras de la unidad 7 con ejemplo de uso." },
     {
-      id: "k5", title: "Línea de tiempo Frente Nacional", emoji: "🗳️", courseId: "his", type: "PROJECT", dueAt: iso(at(addDays(week, 2), 23, 59)), allDay: false, priority: "MEDIUM", status: "TODO", tags: ["proyecto"], assessmentId: "a-his-16",
+      id: "k5", title: "Línea de tiempo Frente Nacional", emoji: "landmark", courseId: "his", type: "PROJECT", dueAt: iso(at(addDays(week, 2), 23, 59)), allDay: false, priority: "MEDIUM", status: "TODO", tags: ["proyecto"], assessmentId: "a-his-16",
       description: "Línea de tiempo ilustrada 1958–1974 con presidentes, hechos clave y consecuencias.",
       steps: steps("k5", [["Investigar fechas", true], ["Seleccionar imágenes", false], ["Diseñar la línea", false], ["Texto de cada hito", false]]),
       files: [{ id: "k5-f1", name: "fuentes-frente-nacional.pdf", kind: "PDF", size: "860 KB" }],
     },
-    { id: "k6", title: "Ejercicios de estequiometría", emoji: "⚖️", courseId: "qui", type: "HOMEWORK", dueAt: iso(at(addDays(today, -1), 23, 59)), allDay: false, priority: "MEDIUM", status: "DONE", tags: [] },
-    { id: "k7", title: "Cuadros de Punnett (guía 5)", emoji: "🔲", courseId: "bio", type: "HOMEWORK", dueAt: iso(at(addDays(week, 3), 7, 0)), allDay: false, priority: "LOW", status: "TODO", tags: ["guía"], files: [{ id: "k7-f1", name: "guia-5-genetica.pdf", kind: "PDF", size: "420 KB" }] },
-    { id: "k8", title: "Comprar cuaderno cuadriculado", emoji: "🛒", type: "TODO", dueAt: iso(today), allDay: true, priority: "LOW", status: "TODO", tags: ["personal"] },
-    { id: "k9", title: "Pedir certificado de estudios", emoji: "📄", type: "TODO", dueAt: iso(addDays(week, 0)), allDay: true, priority: "MEDIUM", status: "TODO", tags: ["trámite"], note: "Secretaría atiende de 7:00 a 12:00. Llevar copia del documento." },
-    { id: "k10", title: "Organizar carpeta de física", emoji: "🗂️", type: "TODO", dueAt: iso(addDays(week, 1)), allDay: true, priority: "LOW", status: "DONE", tags: ["personal"] },
-    { id: "k11", title: "Reflexión: imperativo categórico", emoji: "💭", courseId: "fil", type: "ESSAY", dueAt: iso(at(addDays(week, 8), 23, 59)), allDay: false, priority: "LOW", status: "TODO", tags: [], description: "Una página: ¿se puede mentir para salvar a alguien según Kant?" },
+    { id: "k6", title: "Ejercicios de estequiometría", emoji: "scale", courseId: "qui", type: "HOMEWORK", dueAt: iso(at(addDays(today, -1), 23, 59)), allDay: false, priority: "MEDIUM", status: "DONE", tags: [] },
+    { id: "k7", title: "Cuadros de Punnett (guía 5)", emoji: "shapes", courseId: "bio", type: "HOMEWORK", dueAt: iso(at(addDays(week, 3), 7, 0)), allDay: false, priority: "LOW", status: "TODO", tags: ["guía"], files: [{ id: "k7-f1", name: "guia-5-genetica.pdf", kind: "PDF", size: "420 KB" }] },
+    { id: "k8", title: "Comprar cuaderno cuadriculado", emoji: "shopping-cart", type: "TODO", dueAt: iso(today), allDay: true, priority: "LOW", status: "TODO", tags: ["personal"] },
+    { id: "k9", title: "Pedir certificado de estudios", emoji: "file-text", type: "TODO", dueAt: iso(addDays(week, 0)), allDay: true, priority: "MEDIUM", status: "TODO", tags: ["trámite"], note: "Secretaría atiende de 7:00 a 12:00. Llevar copia del documento." },
+    { id: "k10", title: "Organizar carpeta de física", emoji: "folder", type: "TODO", dueAt: iso(addDays(week, 1)), allDay: true, priority: "LOW", status: "DONE", tags: ["personal"] },
+    { id: "k11", title: "Reflexión: imperativo categórico", emoji: "brain", courseId: "fil", type: "ESSAY", dueAt: iso(at(addDays(week, 8), 23, 59)), allDay: false, priority: "LOW", status: "TODO", tags: [], description: "Una página: ¿se puede mentir para salvar a alguien según Kant?" },
     {
-      id: "k12", title: "Leer capítulos 4–6 (Cien años)", emoji: "🦋", courseId: "len", type: "HOMEWORK", dueAt: iso(at(addDays(today, 0), 21, 0)), allDay: false, priority: "MEDIUM", status: "IN_PROGRESS", tags: ["lectura"],
+      id: "k12", title: "Leer capítulos 4–6 (Cien años)", emoji: "feather", courseId: "len", type: "HOMEWORK", dueAt: iso(at(addDays(today, 0), 21, 0)), allDay: false, priority: "MEDIUM", status: "IN_PROGRESS", tags: ["lectura"],
       steps: steps("k12", [["Capítulo 4", true], ["Capítulo 5", false], ["Capítulo 6", false]]),
     },
     {
-      id: "k13", title: "Maqueta de la célula vegetal", emoji: "🌱", courseId: "bio", type: "PROJECT", dueAt: iso(at(addDays(week, 10), 7, 0)), allDay: false, priority: "MEDIUM", status: "TODO", tags: ["proyecto", "grupo"],
+      id: "k13", title: "Maqueta de la célula vegetal", emoji: "sprout", courseId: "bio", type: "PROJECT", dueAt: iso(at(addDays(week, 10), 7, 0)), allDay: false, priority: "MEDIUM", status: "TODO", tags: ["proyecto", "grupo"],
       description: "Maqueta en 3D con organelos rotulados y ficha explicativa.",
       steps: steps("k13", [["Comprar materiales", false], ["Base y membrana", false], ["Organelos", false], ["Rótulos y ficha", false]]),
     },
-    { id: "k14", title: "Presentación oral: My dream job", emoji: "🎤", courseId: "ing", type: "PROJECT", dueAt: iso(at(addDays(week, 9), 7, 0)), allDay: false, priority: "HIGH", status: "TODO", tags: ["exposición"], links: [{ label: "Plantilla de diapositivas", url: "#" }] },
-    { id: "k15", title: "Balanceo de ecuaciones (redox)", emoji: "🧪", courseId: "qui", type: "HOMEWORK", dueAt: iso(at(addDays(week, -3), 23, 59)), allDay: false, priority: "LOW", status: "DONE", tags: ["taller"] },
-    { id: "k16", title: "Inscribirme a las pruebas Saber 11", emoji: "🎓", type: "TODO", dueAt: iso(addDays(week, 5)), allDay: true, priority: "HIGH", status: "IN_PROGRESS", tags: ["trámite"], links: [{ label: "Portal ICFES", url: "#" }], note: "Tener a mano el documento y el código del colegio." },
+    { id: "k14", title: "Presentación oral: My dream job", emoji: "mic", courseId: "ing", type: "PROJECT", dueAt: iso(at(addDays(week, 9), 7, 0)), allDay: false, priority: "HIGH", status: "TODO", tags: ["exposición"], links: [{ label: "Plantilla de diapositivas", url: "#" }] },
+    { id: "k15", title: "Balanceo de ecuaciones (redox)", emoji: "flask-conical", courseId: "qui", type: "HOMEWORK", dueAt: iso(at(addDays(week, -3), 23, 59)), allDay: false, priority: "LOW", status: "DONE", tags: ["taller"] },
+    { id: "k16", title: "Inscribirme a las pruebas Saber 11", emoji: "graduation-cap", type: "TODO", dueAt: iso(addDays(week, 5)), allDay: true, priority: "HIGH", status: "IN_PROGRESS", tags: ["trámite"], links: [{ label: "Portal ICFES", url: "#" }], note: "Tener a mano el documento y el código del colegio." },
   ];
+
+  // Proyectos personales (fuera de lo académico)
+  const projects: Project[] = [
+    { id: "pj-web", slug: "pagina-web", name: "Página web personal", emoji: "globe", color: "blue", status: "ACTIVE", description: "Portafolio con mis proyectos y un blog.", dueDate: day(addDays(today, 20)) },
+    { id: "pj-gym", slug: "rutina-gimnasio", name: "Rutina de gimnasio", emoji: "dumbbell", color: "green", status: "ACTIVE", description: "Tres días por semana hasta diciembre." },
+    { id: "pj-viaje", slug: "viaje-vacaciones", name: "Viaje de vacaciones", emoji: "plane", color: "orange", status: "PAUSED", description: "Planear presupuesto y fechas." },
+  ];
+  rawTasks.push(
+    { id: "tp1", title: "Elegir plantilla del portafolio", emoji: "palette", projectId: "pj-web", type: "TODO", dueAt: iso(at(addDays(today, 2), 18)), allDay: false, priority: "MEDIUM", status: "IN_PROGRESS", tags: [] },
+    { id: "tp2", title: "Comprar dominio", emoji: "globe", projectId: "pj-web", type: "TODO", dueAt: iso(at(addDays(today, 5), 18)), allDay: true, priority: "LOW", status: "TODO", tags: [] },
+    { id: "tp3", title: "Renovar pasaporte", emoji: "ticket", type: "TODO", dueAt: iso(at(addDays(today, 9), 9)), allDay: true, priority: "HIGH", status: "TODO", tags: ["trámites"] },
+  );
 
   const tasks: Task[] = rawTasks.map((t) => ({
     ...t,
@@ -267,13 +278,13 @@ export function buildMock(now: Date = new Date()) {
   });
 
   const events: CalendarEvent[] = [
-    { id: "e1", title: "Izada de bandera", emoji: "🚩", kind: "EVENT", start: iso(at(addDays(week, 0), 6, 30)), end: iso(at(addDays(week, 0), 7, 0)), allDay: false, location: "Coliseo" },
-    { id: "e2", title: "Salida pedagógica — Museo de Ciencias", emoji: "🚌", kind: "EVENT", start: iso(addDays(week, 9)), allDay: true },
-    { id: "e3", title: "Cierre del Período 3", emoji: "🏁", kind: "IMPORTANT", start: iso(p3End), allDay: true },
-    { id: "e4", title: "Entrega de boletines", emoji: "📬", kind: "IMPORTANT", start: iso(addDays(p3End, 8)), allDay: true },
-    { id: "e5", title: "Simulacro Saber 11", emoji: "🎯", kind: "EXAM", start: iso(at(addDays(week, 5), 7, 0)), allDay: false, location: "Aula múltiple" },
-    { id: "e6", title: "Reunión de padres", emoji: "👨‍👩‍👧", kind: "EVENT", start: iso(at(addDays(week, 11), 17, 0)), allDay: false },
-    { id: "e7", title: "Festivo", emoji: "🌴", kind: "HOLIDAY", start: iso(addDays(week, 14)), allDay: true },
+    { id: "e1", title: "Izada de bandera", emoji: "flag", kind: "EVENT", start: iso(at(addDays(week, 0), 6, 30)), end: iso(at(addDays(week, 0), 7, 0)), allDay: false, location: "Coliseo" },
+    { id: "e2", title: "Salida pedagógica — Museo de Ciencias", emoji: "bus", kind: "EVENT", start: iso(addDays(week, 9)), allDay: true },
+    { id: "e3", title: "Cierre del Período 3", emoji: "flag", kind: "IMPORTANT", start: iso(p3End), allDay: true },
+    { id: "e4", title: "Entrega de boletines", emoji: "mail", kind: "IMPORTANT", start: iso(addDays(p3End, 8)), allDay: true },
+    { id: "e5", title: "Simulacro Saber 11", emoji: "target", kind: "EXAM", start: iso(at(addDays(week, 5), 7, 0)), allDay: false, location: "Aula múltiple" },
+    { id: "e6", title: "Reunión de padres", emoji: "users", kind: "EVENT", start: iso(at(addDays(week, 11), 17, 0)), allDay: false },
+    { id: "e7", title: "Festivo", emoji: "sun", kind: "HOLIDAY", start: iso(addDays(week, 14)), allDay: true },
   ];
 
   const goals: Goal[] = [
@@ -296,11 +307,11 @@ export function buildMock(now: Date = new Date()) {
   ];
 
   const recentDocs: RecentDoc[] = [
-    { id: "d1", title: "Regla de la cadena — apuntes", courseId: "mat", updatedAt: iso(addDays(now, -0.1)), url: `${AFFINE_BASE}/doc-mat-2` },
-    { id: "d2", title: "Energía en el MAS", courseId: "fis", updatedAt: iso(addDays(now, -0.6)), url: `${AFFINE_BASE}/doc-fis-2` },
-    { id: "d3", title: "Frente Nacional — mapa conceptual", courseId: "his", updatedAt: iso(addDays(now, -1.2)), url: `${AFFINE_BASE}/doc-his-1` },
-    { id: "d4", title: "Leyes de Mendel", courseId: "bio", updatedAt: iso(addDays(now, -2)), url: `${AFFINE_BASE}/doc-bio-2` },
-    { id: "d5", title: "Plan del ensayo", courseId: "len", updatedAt: iso(addDays(now, -3)), url: `${AFFINE_BASE}/doc-len-4` },
+    { id: "d1", title: "Regla de la cadena — apuntes", courseId: "mat", updatedAt: iso(addDays(now, -0.1)), path: `${folderOf("mat")}/Regla de la cadena — apuntes.md` },
+    { id: "d2", title: "Energía en el MAS", courseId: "fis", updatedAt: iso(addDays(now, -0.6)), path: `${folderOf("fis")}/Energía en el MAS.md` },
+    { id: "d3", title: "Frente Nacional — mapa conceptual", courseId: "his", updatedAt: iso(addDays(now, -1.2)), path: `${folderOf("his")}/Frente Nacional — mapa conceptual.md` },
+    { id: "d4", title: "Leyes de Mendel", courseId: "bio", updatedAt: iso(addDays(now, -2)), path: `${folderOf("bio")}/Leyes de Mendel.md` },
+    { id: "d5", title: "Plan del ensayo", courseId: "len", updatedAt: iso(addDays(now, -3)), path: `${folderOf("len")}/Plan del ensayo.md` },
   ];
 
   // Registro de sesiones de foco de los últimos 7 días (minutos)
@@ -339,8 +350,9 @@ export function buildMock(now: Date = new Date()) {
   return {
     resources,
     focusLog,
-    profile, scale, periods, courses, schedule, topics, lectures, tasks, assessments, events,
+    profile, scale, periods, courses, schedule, topics, lectures, tasks, assessments, events, projects,
     goals, quickNotes, recentDocs, week: iso(week), now: iso(now),
+    externalEvents: [] as ExternalItem[],
   };
 }
 

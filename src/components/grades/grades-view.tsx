@@ -3,13 +3,16 @@
 import { openCourseEditor } from "@/components/courses/course-editor";
 import { useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ChevronDown } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Section, Tag, cn } from "@/components/blocks/primitives";
 import { KIND, gradeClass, toneClass } from "@/components/blocks/shared";
 import { capitalize, deadline, fmt } from "@/lib/dates";
 import { courseGrade, formatGrade, gradeTone } from "@/lib/grades";
 import type { GradesPageData } from "@/lib/data";
 import type { GradingScale } from "@/lib/types";
+import { Select } from "@/components/blocks/select";
+import { Ico } from "@/components/blocks/icons";
+import { AppIcon } from "@/components/blocks/icons";
 
 const tone = (v: number | undefined, scale: GradingScale) => (v === undefined ? "text-faint" : gradeClass[gradeTone(v, scale)!]);
 
@@ -36,7 +39,7 @@ export function GradesView({ data }: { data: GradesPageData }) {
             </>
           ) : (
             <section className="glass flex flex-col items-center gap-3 px-6 py-12 text-center">
-              <span className="text-[32px]">🎓</span>
+              <AppIcon value="graduation-cap" className="size-8 text-muted" />
               <div>
                 <p className="text-[14px] font-medium">Todavía no hay notas</p>
                 <p className="mx-auto mt-1 max-w-[420px] text-[12.5px] text-muted">
@@ -100,7 +103,7 @@ function GradeTable({ data }: { data: GradesPageData }) {
                   <td className="px-2 py-2.5">
                     <Link href={`/courses/${r.course.slug}?tab=notas`} className="flex items-center gap-2 hover:underline">
                       <span className={cn("size-2 shrink-0 rounded-full", `dot-${r.course.color}`)} />
-                      {r.course.emoji} {r.course.name}
+                      <Ico value={r.course.emoji} fallback="book" />{r.course.name}
                     </Link>
                   </td>
                   {r.periods.map(({ period: p, grade }) => (
@@ -170,7 +173,7 @@ function PeriodChart({ data }: { data: GradesPageData }) {
               onMouseLeave={() => setHover(null)}
               className={cn("grid grid-cols-[minmax(0,130px)_minmax(0,1fr)_88px] items-center gap-3 rounded-[10px] px-1 py-0.5 transition-opacity sm:grid-cols-[170px_minmax(0,1fr)_110px]", hover && hover !== r.course.id && "opacity-45")}
             >
-              <span className="truncate text-[12.5px] text-muted">{r.course.emoji} {r.course.name}</span>
+              <span className="truncate text-[12.5px] text-muted"><Ico value={r.course.emoji} fallback="book" />{r.course.name}</span>
               <div className="relative h-2.5 rounded-full bg-[var(--chart-track)]">
                 {v !== undefined ? <div className="h-full rounded-full bg-chart-1" style={{ width: `${pos(v)}%` }} /> : null}
                 <span className="absolute -top-1 h-[18px] w-px bg-text/55" style={{ left: `${pos(scale.passing)}%` }} />
@@ -222,24 +225,19 @@ function Simulator({ data }: { data: GradesPageData }) {
 
   return (
     <Section title="Simulador" strong>
-      <label className="relative mb-4 flex items-center">
-        <select
+      <div className="mb-4">
+        <Select
+          label="Materia"
+          variant="pill"
+          className="w-full"
           value={courseId}
-          onChange={(e) => {
-            setCourseId(e.target.value);
+          onChange={(v) => {
+            setCourseId(v);
             setGuesses({});
           }}
-          aria-label="Materia"
-          className="h-9 w-full appearance-none rounded-full bg-pill pl-4 pr-9 text-[13px] outline-none hover:bg-pill-hover"
-        >
-          {data.rows.map((r) => (
-            <option key={r.course.id} value={r.course.id} className="bg-panel-strong text-text">
-              {r.course.emoji} {r.course.name}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-3.5 size-4 text-muted" />
-      </label>
+          options={data.rows.map((r) => ({ value: r.course.id, label: r.course.name, emoji: r.course.emoji, color: r.course.color }))}
+        />
+      </div>
 
       <div className="flex items-end justify-between">
         <div>
@@ -254,7 +252,7 @@ function Simulator({ data }: { data: GradesPageData }) {
           {pending.map((a) => (
             <li key={a.id}>
               <div className="mb-1 flex items-center justify-between gap-2 text-[12.5px]">
-                <span className="truncate">{KIND[a.kind].emoji} {a.title} <span className="text-faint">· {a.weight} %</span></span>
+                <span className="truncate"><Ico value={KIND[a.kind].emoji} />{a.title} <span className="text-faint">· {a.weight} %</span></span>
                 <span className="tabular-nums">{formatGrade(guess(a.id), scale)}</span>
               </div>
               <input

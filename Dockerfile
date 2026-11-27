@@ -17,16 +17,12 @@ RUN npm ci
 # ── Compilación ──
 FROM base AS builder
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
-# AFFiNE y el enlace al código fuente se fijan al compilar (variables NEXT_PUBLIC_*)
-ARG NEXT_PUBLIC_AFFINE_ORIGIN
-ARG NEXT_PUBLIC_AFFINE_WORKSPACE
+# Enlace al código fuente (AGPLv3): se fija al compilar (variable NEXT_PUBLIC_*)
 ARG NEXT_PUBLIC_SOURCE_URL
-ENV NEXT_PUBLIC_AFFINE_ORIGIN=$NEXT_PUBLIC_AFFINE_ORIGIN \
-    NEXT_PUBLIC_AFFINE_WORKSPACE=$NEXT_PUBLIC_AFFINE_WORKSPACE \
-    NEXT_PUBLIC_SOURCE_URL=$NEXT_PUBLIC_SOURCE_URL
+ENV NEXT_PUBLIC_SOURCE_URL=$NEXT_PUBLIC_SOURCE_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx prisma generate && npm run build
+RUN node scripts/zip-extension.mjs && npx prisma generate && npm run build
 
 # ── Migraciones: corre una vez y termina (compose arranca la app después) ──
 FROM builder AS migrate
@@ -40,7 +36,8 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
     UPLOAD_DIR=/data/uploads
-# Archivos subidos: volumen montado aquí (el usuario node debe poder escribir)
+# Archivos subidos: volumen montado aquí (el usuario node debe poder escribir).
+# La bóveda de Obsidian se monta en /vault: el usuario node (uid 1000) debe poder escribir en ella.
 RUN mkdir -p /data/uploads && chown -R node:node /data
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static

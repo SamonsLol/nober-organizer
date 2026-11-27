@@ -7,6 +7,7 @@ import { FocusBars, PeriodRings, UrgentCards } from "@/components/dashboard/hero
 import { Goals, MonthCalendar } from "@/components/dashboard/bottom";
 import { GettingStarted } from "@/components/dashboard/getting-started";
 import { getDashboard } from "@/lib/data";
+import { WeekPlanButton } from "@/components/ai/week-plan";
 import { APP_NAME } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +46,7 @@ export default async function DashboardPage() {
             </>
           )
         }
+        extra={<WeekPlanButton />}
       />
 
       <div className="mx-auto mt-6 flex w-full max-w-[1480px] flex-col gap-5 px-4 sm:px-6">

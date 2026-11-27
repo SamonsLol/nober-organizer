@@ -5,12 +5,18 @@ import { buildMock, type MockDB } from "@/lib/mock/seed";
 import { hasDatabase, prisma } from "@/lib/db/prisma";
 import { getSession, requireUserId } from "@/lib/session";
 import { googleAccount, googleConfigured, hasCalendarScope, maybeAutoSync } from "@/lib/google-calendar";
+import { hasReadScope } from "@/lib/google-scope";
 import { loadUserDB } from "@/lib/data/source";
-import { AFFINE_BASE, AFFINE_WORKSPACE } from "@/lib/affine";
+import { folderNotes, folderTasks, vaultInfo } from "@/lib/vault";
+import { vaultAllowed } from "@/lib/vault-access";
+import { aiConfigured } from "@/lib/ai";
+import { pushConfigured, pushPublicKey } from "@/lib/push";
+import { upcomingReminders } from "@/lib/reminders";
+import { noteName, projectFolder, type VaultInfo, type VaultTask } from "@/lib/notes";
 import { courseGrade, periodAverage, yearAverage } from "@/lib/grades";
 import { dayKey, toDate } from "@/lib/dates";
 import { buildItems, expandClasses, holidayKeys } from "@/lib/calendar";
-import type { Assessment, Course } from "@/lib/types";
+import type { Assessment, Course, Project, ProjectFile } from "@/lib/types";
 
 /**
  * Capa de datos (repositorio).
@@ -23,31 +29,44 @@ const db = cache(async (): Promise<MockDB> => {
   return loadUserDB(await requireUserId());
 });
 
-/** Estado de la conexión con AFFiNE (nunca el token). */
-export const getAffineStatus = cache(async () => {
-  if (!hasDatabase()) return { connected: false, workspace: AFFINE_WORKSPACE, customWorkspace: "" };
-  const userId = await requireUserId();
-  const s = await prisma.settings.findUnique({ where: { userId }, select: { affineToken: true, affineWorkspace: true } });
-  return { connected: Boolean(s?.affineToken), workspace: s?.affineWorkspace || AFFINE_WORKSPACE, customWorkspace: s?.affineWorkspace ?? "" };
+/**
+ * Bóveda de Obsidian del servidor. `canWrite`: esta cuenta puede crear y editar apuntes
+ * (hay bóveda, base de datos y, si OBSIDIAN_ALLOWED_EMAILS existe, el correo está en la lista).
+ */
+export const getVault = cache(async (): Promise<VaultInfo & { canWrite: boolean; ai: boolean }> => {
+  const v = vaultInfo();
+  if (!hasDatabase()) return { ...v, canWrite: false, ai: false };
+  const allowed = vaultAllowed((await getSession())?.user.email);
+  // `ai`: hay clave de IA y esta cuenta puede usarla (mismas cuentas que la bóveda)
+  return { ...v, canWrite: v.enabled && allowed, ai: aiConfigured() && allowed };
 });
 
-export type AffineStatus = Awaited<ReturnType<typeof getAffineStatus>>;
+export type VaultStatus = Awaited<ReturnType<typeof getVault>>;
 
 /** Estado de Google Calendar para Ajustes (nunca tokens). */
 export async function getGoogleStatus() {
   const configured = googleConfigured();
-  if (!hasDatabase()) return { configured, linked: false, enabled: false, syncedAt: null as string | null, error: null as string | null };
+  if (!hasDatabase()) return { configured, linked: false, sendScope: false, enabled: false, syncedAt: null as string | null, error: null as string | null, readScope: false, read: false, readCount: 0, readAt: null as string | null, readError: null as string | null };
   const userId = await requireUserId();
   const [acc, s] = await Promise.all([
     googleAccount(userId),
-    prisma.settings.findUnique({ where: { userId }, select: { googleSync: true, googleSyncedAt: true, googleSyncError: true } }),
+    prisma.settings.findUnique({ where: { userId }, select: { googleSync: true, googleSyncedAt: true, googleSyncError: true, googleRead: true, googleReadAt: true, googleReadError: true } }),
   ]);
+  const readCount = s?.googleRead ? await prisma.externalEvent.count({ where: { userId } }) : 0;
   return {
     configured,
-    linked: Boolean(acc && hasCalendarScope(acc.scope)),
+    linked: Boolean(acc && (hasCalendarScope(acc.scope) || hasReadScope(acc.scope))),
+    /** Puede enviar (calendario propio) */
+    sendScope: Boolean(acc && hasCalendarScope(acc.scope)),
     enabled: Boolean(s?.googleSync),
     syncedAt: s?.googleSyncedAt?.toISOString() ?? null,
     error: s?.googleSyncError ?? null,
+    /** Lectura de los demás calendarios */
+    readScope: Boolean(acc && hasReadScope(acc.scope)),
+    read: Boolean(s?.googleRead),
+    readCount,
+    readAt: s?.googleReadAt?.toISOString() ?? null,
+    readError: s?.googleReadError ?? null,
   };
 }
 
@@ -193,6 +212,7 @@ export async function getDashboard() {
     today: {
       classes: todayClasses,
       events: d.events.filter((e) => isTodayISO(e.start)),
+      google: d.externalEvents.filter((e) => isTodayISO(e.start) || (e.allDay && e.end && toDate(e.start) <= now && toDate(e.end) >= startOfDay(now))),
       tasks: d.tasks.filter((t) => isTodayISO(t.dueAt) && t.status !== "DONE"),
       next: { date: nextSchoolDay.toISOString(), classes: d.schedule.filter((s) => s.weekday === nextWd) },
     },
@@ -212,6 +232,7 @@ export async function getDashboard() {
       assessments: d.assessments.filter((a) => a.date && a.periodId === period.id),
       events: d.events,
       lectures: d.lectures,
+      google: d.externalEvents,
     },
   };
 }
@@ -304,7 +325,7 @@ export async function getCourseDetail(slug: string) {
     upcoming,
     resources: d.resources.filter((r) => r.courseId === course.id),
     docs: d.recentDocs.filter((r) => r.courseId === course.id),
-    affine: await getAffineStatus(),
+    vault: await getVault(),
   };
 }
 
@@ -320,6 +341,7 @@ export async function getTasksPage() {
     week: d.week,
     tasks: [...d.tasks].sort((a, b) => +toDate(a.dueAt) - +toDate(b.dueAt)),
     courses: d.courses,
+    projects: d.projects,
     // Solo las evaluaciones vinculadas a alguna tarea (para mostrar peso y fecha en el panel)
     assessments: d.assessments.filter((a) => linked.has(a.id)),
     tags: [...new Set(d.tasks.flatMap((t) => t.tags))].sort((a, b) => a.localeCompare(b, "es")),
@@ -332,6 +354,8 @@ export type TasksPageData = Awaited<ReturnType<typeof getTasksPage>>;
 
 export async function getCalendarPage() {
   const d = await db();
+  // Lee Google (envío y lectura) si pasaron más de 15 minutos; lo nuevo aparece en la próxima visita
+  if (hasDatabase()) maybeAutoSync(await requireUserId()).catch(() => {});
   const period = await getCurrentPeriod(toDate(d.now));
   return {
     now: d.now,
@@ -342,13 +366,13 @@ export async function getCalendarPage() {
     periods: d.periods,
     lectures: d.lectures,
     holidays: holidayKeys(d.events),
-    items: buildItems({ tasks: d.tasks, assessments: d.assessments, events: d.events, courses: d.courses }),
+    items: buildItems({ tasks: d.tasks, assessments: d.assessments, events: d.events, courses: d.courses, external: d.externalEvents }),
   };
 }
 
 export type CalendarPageData = Awaited<ReturnType<typeof getCalendarPage>>;
 
-/* ───────────── Apuntes (AFFiNE) ───────────── */
+/* ───────────── Apuntes (Obsidian) ───────────── */
 
 export async function getNotesPage() {
   const d = await db();
@@ -360,16 +384,172 @@ export async function getNotesPage() {
   return {
     now: d.now,
     courses: d.courses,
-    lectures: d.lectures.filter((l) => toDate(l.date) <= now).sort((a, b) => +toDate(b.date) - +toDate(a.date)),
+    lectures: d.lectures.filter((l) => l.notePath && toDate(l.date) <= now).sort((a, b) => +toDate(b.date) - +toDate(a.date)),
     recentDocs: d.recentDocs,
     topics: d.topics,
     nextClasses,
-    affineBase: AFFINE_BASE,
-    affine: await getAffineStatus(),
+    vault: await getVault(),
   };
 }
 
 export type NotesPageData = Awaited<ReturnType<typeof getNotesPage>>;
+
+/* ───────────── Proyectos (fuera de lo académico) ───────────── */
+
+/** Tareas de la app y casillas de Obsidian de un proyecto. */
+async function projectObsidian(p: Project, vault: VaultStatus) {
+  const folder = projectFolder(p, vault.projectsRoot);
+  if (!vault.canWrite) return { folder, notes: [] as { path: string; title: string; updatedAt: string }[], vaultTasks: [] as VaultTask[] };
+  const [notes, vaultTasks] = await Promise.all([folderNotes(folder), folderTasks(folder)]);
+  return {
+    folder,
+    notes: notes.map((n) => ({ path: n.path, title: noteName(n.path), updatedAt: new Date(n.mtime).toISOString() })),
+    vaultTasks,
+  };
+}
+
+const byDue = (a: { dueAt: string }, b: { dueAt: string }) => +toDate(a.dueAt) - +toDate(b.dueAt);
+
+/** Cursos en línea detectados o importados que falta organizar. */
+async function pendingStudyCourses() {
+  if (!hasDatabase()) return [];
+  const userId = await requireUserId();
+  const rows = await prisma.studyCourse.findMany({
+    where: { userId, OR: [{ status: "DETECTED" }, { status: "PLANNED", projectId: null }] },
+    include: { modules: { select: { minutes: true } } },
+    orderBy: [{ createdAt: "asc" }],
+  });
+  // Cursos de un mismo programa traídos al ver el plan: una sola fila (la del curso por el que se empezó)
+  const seen = new Set<string>();
+  return rows
+    .filter((c) => !c.programSlug || (seen.has(c.programSlug) ? false : (seen.add(c.programSlug), true)))
+    .map((c) => ({
+      id: c.id, name: c.name, partner: c.partner ?? undefined, modules: c.modules.length, minutes: c.modules.reduce((a, m) => a + m.minutes, 0),
+      program: c.programName ? { name: c.programName, index: c.programIndex ?? 0, total: c.programTotal ?? 0 } : undefined,
+    }));
+}
+
+async function getCourseraStatus() {
+  if (!hasDatabase()) return null;
+  const userId = await requireUserId();
+  const s = await prisma.settings.findUnique({ where: { userId }, select: { courseraTokenHash: true, courseraSyncedAt: true } });
+  const courses = await prisma.studyCourse.count({ where: { userId, provider: "coursera", status: { not: "IGNORED" } } });
+  return { active: Boolean(s?.courseraTokenHash), syncedAt: s?.courseraSyncedAt?.toISOString() ?? null, courses };
+}
+
+/** Cursos en línea ligados a un proyecto (uno, o todos los de un programa): módulos, avance, tarjetas y quizzes. */
+async function projectStudy(projectId: string) {
+  if (!hasDatabase()) return null;
+  const rows = await prisma.studyCourse.findMany({
+    where: { projectId },
+    orderBy: [{ programIndex: "asc" }, { createdAt: "asc" }],
+    include: {
+      modules: {
+        orderBy: { position: "asc" },
+        include: {
+          tasks: { select: { status: true, dueAt: true } },
+          flashcards: { select: { due: true } },
+          quizzes: { select: { score: true, total: true }, orderBy: { createdAt: "desc" }, take: 1 },
+        },
+      },
+    },
+  });
+  if (!rows.length) return null;
+  const nowDate = new Date();
+  const program = rows.length > 1 || (rows[0].plan as { program?: boolean } | null)?.program;
+  return {
+    program: program && rows[0].programName ? { name: rows[0].programName, total: rows[0].programTotal ?? rows.length } : undefined,
+    courses: rows.map((c) => ({
+      id: c.id, name: c.name, partner: c.partner ?? undefined, slug: c.slug, status: c.status, progress: c.progress ?? undefined,
+      syncedAt: c.syncedAt?.toISOString(),
+      label: program ? `C${(c.programIndex ?? 0) + 1}` : undefined,
+      modules: c.modules.map((m) => {
+        const pending = m.tasks.filter((t) => t.status !== "DONE").sort((x, y) => +x.dueAt - +y.dueAt);
+        return {
+          id: m.id, name: m.name, position: m.position, minutes: m.minutes, notePath: m.notePath ?? undefined, progress: m.progress ?? undefined,
+          label: program ? `C${(c.programIndex ?? 0) + 1} · M${m.position + 1}` : `M${m.position + 1}`,
+          cards: m.flashcards.length,
+          cardsDue: m.flashcards.filter((f) => f.due <= nowDate).length,
+          quiz: m.quizzes[0] ? { score: m.quizzes[0].score, total: m.quizzes[0].total } : undefined,
+          done: Boolean(m.completedAt) || (m.tasks.length > 0 && !pending.length),
+          next: pending[0]?.dueAt.toISOString(),
+        };
+      }),
+    })),
+  };
+}
+
+export async function getProjectsPage() {
+  const d = await db();
+  const vault = await getVault();
+  const cards = await Promise.all(
+    d.projects.map(async (p) => {
+      const tasks = d.tasks.filter((t) => t.projectId === p.id);
+      const pending = tasks.filter((t) => t.status !== "DONE").sort(byDue);
+      const obs = vault.canWrite ? (await folderTasks(projectFolder(p, vault.projectsRoot)).catch(() => [])) : [];
+      return {
+        project: p,
+        total: tasks.length + obs.length,
+        done: tasks.length - pending.length + obs.filter((t) => t.done).length,
+        next: pending[0],
+        obsidianPending: obs.filter((t) => !t.done).length,
+      };
+    }),
+  );
+  return {
+    now: d.now,
+    vault,
+    projects: cards,
+    // «Otras actividades»: tareas sin materia ni proyecto
+    personal: d.tasks.filter((t) => !t.courseId && !t.projectId && t.status !== "DONE").sort(byDue),
+    studyPending: await pendingStudyCourses(),
+  };
+}
+
+export type ProjectsPageData = Awaited<ReturnType<typeof getProjectsPage>>;
+
+export async function getProjectDetail(slug: string) {
+  const d = await db();
+  const project = d.projects.find((p) => p.slug === slug);
+  if (!project) return null;
+  const vault = await getVault();
+  const tasks = d.tasks.filter((t) => t.projectId === project.id).sort(byDue);
+  const files: ProjectFile[] = hasDatabase()
+    ? (await prisma.projectFile.findMany({ where: { projectId: project.id }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] })).map((f) => ({
+        id: f.id, name: f.name, kind: f.kind, size: f.size ?? undefined, url: `/api/files/${f.uploadId}`, createdAt: f.createdAt.toISOString(),
+      }))
+    : [];
+  // Bandeja: recortes de la extensión ligados al proyecto o a sus módulos, aún sin agregar a un apunte
+  const highlights = hasDatabase()
+    ? (
+        await prisma.highlight.findMany({
+          where: { status: "PENDING", OR: [{ projectId: project.id }, { studyModule: { course: { projectId: project.id } } }] },
+          include: { studyModule: { select: { position: true, notePath: true, course: { select: { programIndex: true, programTotal: true } } } } },
+          orderBy: { createdAt: "desc" },
+          take: 40,
+        })
+      ).map((h) => ({
+        id: h.id,
+        text: h.text,
+        comment: h.comment,
+        url: h.url,
+        title: h.title,
+        notePath: h.studyModule?.notePath ?? undefined,
+        label: h.studyModule
+          ? `${h.studyModule.course.programIndex != null && h.studyModule.course.programTotal ? `C${h.studyModule.course.programIndex + 1} · ` : ""}M${h.studyModule.position + 1}`
+          : undefined,
+        createdAt: h.createdAt.toISOString(),
+      }))
+    : [];
+  return { now: d.now, vault, project, tasks, files, highlights, study: await projectStudy(project.id), ...(await projectObsidian(project, vault)) };
+}
+
+export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
+
+/** Proyectos para la barra lateral y ⌘K (los terminados no). */
+export async function getActiveProjects() {
+  return (await db()).projects.filter((p) => p.status !== "DONE");
+}
 
 /* ───────────── Calificaciones ───────────── */
 
@@ -439,10 +619,31 @@ export async function getSettings() {
     classesPerWeek: d.schedule.length,
     // Evaluaciones por período: un período con evaluaciones no se puede quitar
     periodUsage: Object.fromEntries(d.periods.map((p) => [p.id, d.assessments.filter((a) => a.periodId === p.id).length])) as Record<string, number>,
-    affineBase: AFFINE_BASE,
     account: hasDatabase() ? { email: (await getSession())?.user.email ?? "" } : null,
-    affine: await getAffineStatus(),
+    vault: await getVault(),
     google: await getGoogleStatus(),
+    push: await getPushStatus(),
+    coursera: await getCourseraStatus(),
+  };
+}
+
+/** Notificaciones push para Ajustes: dispositivos, preferencias y próximos avisos. */
+async function getPushStatus() {
+  const configured = pushConfigured();
+  const defaults = { remindTasks: ["DAY_BEFORE", "SAME_DAY"], remindExams: ["THREE_DAYS", "DAY_BEFORE", "SAME_DAY"], remindMorning: "07:00", remindEvening: "19:00" };
+  if (!hasDatabase()) return { configured, publicKey: pushPublicKey(), devices: [], prefs: defaults, upcoming: [] };
+  const userId = await requireUserId();
+  const [devices, s, upcoming] = await Promise.all([
+    prisma.pushSubscription.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, select: { endpoint: true, userAgent: true, createdAt: true } }),
+    prisma.settings.findUnique({ where: { userId }, select: { remindTasks: true, remindExams: true, remindMorning: true, remindEvening: true } }),
+    configured ? upcomingReminders(userId) : Promise.resolve([]),
+  ]);
+  return {
+    configured,
+    publicKey: pushPublicKey(),
+    devices: devices.map((d) => ({ endpoint: d.endpoint, userAgent: d.userAgent, createdAt: d.createdAt.toISOString() })),
+    prefs: s ?? defaults,
+    upcoming,
   };
 }
 

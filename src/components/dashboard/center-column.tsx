@@ -8,9 +8,8 @@ import {
 } from "lucide-react";
 import { EmptyHint, GhostAdd, NewButton, Section, Tag, ViewTabs, cn } from "@/components/blocks/primitives";
 import { CourseCover } from "@/components/illustrations/course-cover";
-import { AffineLink } from "@/components/affine/affine";
+import { LectureLink } from "@/components/notes/note-panel";
 import { openCommandMenu } from "@/components/shell/command-menu";
-import { AFFINE_HOME } from "@/lib/affine";
 import { openCourseEditor } from "@/components/courses/course-editor";
 import { toast } from "@/components/shell/toast";
 import { updateTask } from "@/lib/actions/tasks";
@@ -19,6 +18,8 @@ import { formatGrade, gradeTone } from "@/lib/grades";
 import type { DashboardData } from "@/lib/data";
 import type { Task, TaskStatus } from "@/lib/types";
 import { Dots, KIND, gradeClass, toneClass } from "@/components/blocks/shared";
+import { Ico } from "@/components/blocks/icons";
+import { AppIcon } from "@/components/blocks/icons";
 
 
 
@@ -40,7 +41,7 @@ export function CoursesGallery({ data, title = "Materias este período", wide }:
       />
       {data.courseCards.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-[18px] border border-dashed border-border px-6 py-10 text-center">
-          <span className="text-[32px]">📚</span>
+          <AppIcon value="library" className="size-8 text-muted" />
           <div>
             <p className="text-[14px] font-medium">Aún no tienes materias</p>
             <p className="mt-1 text-[12.5px] text-muted">Crea la primera con su horario: las clases del calendario salen de ahí.</p>
@@ -59,7 +60,7 @@ export function CoursesGallery({ data, title = "Materias este período", wide }:
               <div className="flex flex-col gap-2 p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="text-[14px] font-semibold leading-tight">
-                    <span className="mr-1.5">{c.emoji}</span>
+                    <span className="mr-1.5"><Ico value={c.emoji} fallback="book" className="mr-0" /></span>
                     {c.name}
                   </div>
                   <span
@@ -95,7 +96,7 @@ export function CoursesGallery({ data, title = "Materias este período", wide }:
         <div className="flex flex-col">
           {data.courseCards.map(({ course: c, grade, progress }) => (
             <Link key={c.id} href={`/courses/${c.slug}`} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-surface-hover">
-              <span className="w-5 text-center">{c.emoji}</span>
+              <span className="w-5 text-center"><Ico value={c.emoji} fallback="book" className="mr-0" /></span>
               <span className="min-w-0 flex-1 truncate text-[13.5px]">{c.name}</span>
               <span className="hidden text-[12px] text-faint sm:block">{c.teacher}</span>
               <div className="w-28"><Dots value={progress} compact /></div>
@@ -177,7 +178,7 @@ export function WeekTasks({ data }: { data: DashboardData }) {
                   return (
                     <div key={t.id} className="rounded-md border border-border bg-surface p-2">
                       <div className="text-[13px] leading-snug">
-                        {t.emoji} {t.title}
+                        <Ico value={t.emoji} />{t.title}
                       </div>
                       <div className="mt-1.5 flex items-center justify-between gap-2">
                         {c ? <Tag color={c.color}>{c.name}</Tag> : <Tag>Personal</Tag>}
@@ -201,11 +202,11 @@ function TaskRow({ task: t, data, now, onToggle }: { task: Task; data: Dashboard
   return (
     <div className="group flex items-center gap-2.5 rounded-md px-1.5 py-[5px] hover:bg-surface-hover">
       <input type="checkbox" checked={done} onChange={onToggle} className="size-3.5 shrink-0 accent-[var(--accent)]" aria-label={`Marcar ${t.title}`} />
-      <span className="w-4 shrink-0 text-center text-[13px]">{t.emoji}</span>
+      <span className="w-4 shrink-0 text-center text-[13px]"><Ico value={t.emoji} className="mr-0" /></span>
       <span className={cn("min-w-0 flex-1 truncate text-[13.5px]", done && "text-faint line-through")}>{t.title}</span>
       {t.status === "IN_PROGRESS" ? <Tag color="blue" className="hidden sm:inline-flex">En curso</Tag> : null}
       <span className="hidden w-[132px] shrink-0 sm:block">
-        {c ? <Tag color={c.color}>{c.emoji} {c.name}</Tag> : <Tag>Personal</Tag>}
+        {c ? <Tag color={c.color}><Ico value={c.emoji} fallback="book" />{c.name}</Tag> : <Tag>Personal</Tag>}
       </span>
       <span className="hidden w-[92px] shrink-0 text-right text-[12px] text-faint 2xl:block">
         {capitalize(fmt(t.dueAt, "EEE d MMM").replace(".", ""))}
@@ -246,10 +247,10 @@ export function UpcomingAssessments({ data }: { data: DashboardData }) {
           return (
             <div key={a.id} className="flex items-start gap-3 border-t border-border px-1 py-2 text-[13px] first:border-t-0">
               <div className="min-w-0 flex-1">
-                <div className="leading-tight">{k.emoji} {a.title}</div>
+                <div className="leading-tight"><Ico value={k.emoji} />{a.title}</div>
                 <div className="mt-1 flex items-center gap-1.5 text-[11.5px] text-faint">
                   <Tag color={k.color}>{k.label}</Tag>
-                  <span className="truncate">{c.emoji} {c.name} · {a.weight}%</span>
+                  <span className="truncate"><Ico value={c.emoji} fallback="book" />{c.name} · {a.weight}%</span>
                 </div>
               </div>
               <div className="shrink-0 text-right">
@@ -278,8 +279,8 @@ export function UpcomingAssessments({ data }: { data: DashboardData }) {
               return (
                 <tr key={a.id} className="border-t border-border hover:bg-surface-hover">
                   <td className="px-2 py-2">
-                    <div className="leading-tight">{k.emoji} {a.title}</div>
-                    <div className="mt-0.5 text-[11.5px] text-faint">{c.emoji} {c.name} · {a.weight}%</div>
+                    <div className="leading-tight"><Ico value={k.emoji} />{a.title}</div>
+                    <div className="mt-0.5 text-[11.5px] text-faint"><Ico value={c.emoji} fallback="book" />{c.name} · {a.weight}%</div>
                   </td>
                   <td className="px-2 py-2"><Tag color={k.color}>{k.label}</Tag></td>
                   <td className="whitespace-nowrap px-2 py-2 text-muted">{capitalize(fmt(a.date!, "EEE d MMM").replace(".", ""))}</td>
@@ -340,24 +341,21 @@ export function WeekLectures({ data }: { data: DashboardData }) {
                   {items.map((l) => {
                     const c = data.courseById[l.courseId];
                     return (
-                      <AffineLink
+                      <LectureLink
                         key={l.id}
-                        href={l.affineDocUrl ?? AFFINE_HOME}
-                        title={l.title}
-                        meta={`${c.name} · ${capitalize(fmt(l.date, "EEE d MMM").replace(".", ""))}`}
-                        emoji={l.emoji}
-                        color={c.color}
+                        lecture={l}
+                        course={c}
                         className="group rounded-md border border-border bg-surface-2 px-2 py-1.5 transition-colors hover:border-border-strong"
                       >
                         <div className="line-clamp-2 text-[12.5px] font-medium leading-snug">
-                          {l.emoji} {l.title}
+                          <Ico value={l.emoji} />{l.title}
                         </div>
                         <div className="mt-1 flex items-center gap-1 text-[11px] text-faint">
                           <span className={cn("size-1.5 rounded-full", `dot-${c.color}`)} />
                           <span className="truncate">{c.name}</span>
                           <PanelRight className="ml-auto size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
                         </div>
-                      </AffineLink>
+                      </LectureLink>
                     );
                   })}
                 </div>
@@ -373,24 +371,21 @@ export function WeekLectures({ data }: { data: DashboardData }) {
             return (
               <div key={c.id}>
                 <div className="mb-1 flex items-center gap-2 px-1 text-[12.5px] text-muted">
-                  <span>{c.emoji}</span>
+                  <span><Ico value={c.emoji} fallback="book" className="mr-0" /></span>
                   {c.name}
                   <span className="text-faint">{items.length}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {items.map((l) => (
-                    <AffineLink
+                    <LectureLink
                       key={l.id}
-                      href={l.affineDocUrl ?? AFFINE_HOME}
-                      title={l.title}
-                      meta={`${c.name} · ${capitalize(fmt(l.date, "EEE d MMM").replace(".", ""))}`}
-                      emoji={l.emoji}
-                      color={c.color}
+                      lecture={l}
+                      course={c}
                       className="rounded-md border border-border bg-surface-2 px-2 py-1 text-[12.5px] hover:border-border-strong"
                     >
-                      {l.emoji} {l.title}
+                      <Ico value={l.emoji} />{l.title}
                       <span className="ml-1.5 text-[11px] text-faint">{capitalize(fmt(l.date, "EEE").replace(".", ""))}</span>
-                    </AffineLink>
+                    </LectureLink>
                   ))}
                 </div>
               </div>
