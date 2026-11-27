@@ -24,6 +24,8 @@ export const syncPayload = z.object({
   page: z.object({ slug: z.string().max(200) }).nullable().optional(),
   memberships: raw.nullable().optional(),
   progress: z.array(raw.extend({ courseId: z.string().max(100) })).max(30).optional(),
+  /** Direcciones de la API que la página de Coursera ya había consultado (diagnóstico). */
+  seen: z.array(z.string().max(2000)).max(300).optional(),
 });
 
 export type SyncPayload = z.infer<typeof syncPayload>;
@@ -143,7 +145,7 @@ export async function runCourseraSync(userId: string, data: SyncPayload): Promis
 
   // Copia recortada (20 KB por respuesta) para diagnosticar
   const cut = <T extends { body: string }>(r: T) => ({ ...r, body: r.body.slice(0, 20_000) });
-  const sample = { page: data.page ?? null, memberships: data.memberships ? cut(data.memberships) : null, progress: (data.progress ?? []).map(cut) };
+  const sample = { page: data.page ?? null, memberships: data.memberships ? cut(data.memberships) : null, progress: (data.progress ?? []).map(cut), seen: data.seen ?? [] };
   await prisma.settings.update({ where: { userId }, data: { courseraSyncedAt: new Date(), courseraLastPayload: sample } });
 
   // 3. Aviso: curso nuevo → organizarlo
