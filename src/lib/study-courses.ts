@@ -42,11 +42,23 @@ export async function importCoursera(userId: string, by: { slug: string } | { id
   return course;
 }
 
+/**
+ * Cursos importados antes de que se guardaran el programa y los minutos por lección: se actualizan desde Coursera
+ * (no cambia su estado ni su plan). Si Coursera no responde, se sigue con lo que hay.
+ */
+export async function refreshIfOutdated(userId: string, courseId: string) {
+  const c = await prisma.studyCourse.findFirst({ where: { id: courseId, userId }, include: { modules: { select: { lessons: true, lessonMinutes: true } } } });
+  if (!c) return;
+  const outdated = c.modules.some((m) => m.lessons.length > 0 && m.lessonMinutes.length === 0);
+  if (outdated) await importCoursera(userId, { id: c.externalId }).catch(() => null);
+}
+
 /** Trae los cursos del programa que falten. Devuelve los cursos del programa en orden. */
 export async function importProgram(userId: string, courseId: string) {
   const first = await prisma.studyCourse.findFirst({ where: { id: courseId, userId } });
   if (!first?.programSlug) return first ? [first] : [];
   const data = await fetchCourseraCourse({ id: first.externalId });
+  await upsertStudyCourse(userId, data);
   const ids = data.program?.courseIds ?? [];
   const have = new Set((await prisma.studyCourse.findMany({ where: { userId, provider: "coursera", externalId: { in: ids } }, select: { externalId: true } })).map((c) => c.externalId));
   for (const id of ids) if (!have.has(id)) await importCoursera(userId, { id }).catch((e) => console.error("programa:", (e as Error).message));
