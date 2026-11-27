@@ -104,6 +104,17 @@ async function dueReminders(userId: string, now: Date): Promise<Due[]> {
       }
     }
   }
+
+  // Tarjetas de repaso: un aviso en la mañana si hay pendientes para hoy
+  const today = at(now, morning);
+  const cards = await prisma.flashcard.count({ where: { userId, due: { lte: addHours(today, 20) } } });
+  if (cards) {
+    out.push({
+      key: `cards:${today.toISOString().slice(0, 10)}`,
+      fire: today,
+      payload: { title: `Tienes ${cards} ${cards === 1 ? "tarjeta" : "tarjetas"} para repasar`, body: "Unos minutos de repaso hoy y no se te olvida.", url: "/?review=1", tag: "cards" },
+    });
+  }
   return out;
 }
 
